@@ -4,7 +4,7 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>TindaHand</Text>
-      <Text style={styles.subtitle}>Welcome to your store</Text>
+      <Text style={styles.subtitle}>Magandang araw!</Text>
     </View>
   );
 }
