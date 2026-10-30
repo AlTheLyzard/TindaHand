@@ -1,0 +1,55 @@
+# Updated POS flow
+
+This delivery replaces the preview-only payment behavior described in `pos-payment.md`. It remains frontend-only: records live in memory for the current mock owner session, and GCash is entered manually without transfer verification. Reloading or ending the session resets POS records and cart state.
+
+## References and decisions
+
+Inspected the existing routes, session guards, motion primitives, buttons, fields, dialogs, success toast, inventory, Quick Add debt records, dashboard summaries, and placeholder transaction/receivables destinations before editing. Read the System Request, Requirements Engineering, Project Charter, frontend plan, and baseline workbook stories MA-POS-001–004, KH-POS-001–004 and MA/KH-AR-001–004. Compared the copy owner worksheet separately.
+
+Reviewed every successive state in `docs/designs/POS 1.png`, `POS 2 & POS 3.png`, `POS Validation.png`, `POS Cash.png`, `POS GCash payment.png`, `POS Split payment.png`, and `POS May kulang payment.png`, alongside the supplied typography, palette, buttons and form controls. The established Poppins fonts, blue surfaces, navigation, icons, motion components and safe-area frame remain the visual foundation. Device chrome is omitted.
+
+The updated user request explicitly authorizes Split Payment and Partial Payment for this owner POS, expanding the baseline owner story's Cash/GCash selector. The cashier sheet already includes Split Payment. The copy owner worksheet adds stock/removal/clear notes and a partial debt label; its unresolved item-allocation and receipt remarks were not merged into this task. The reference's inconsistent product prices and stale cart totals are not new rules: existing catalog prices and calculated totals remain authoritative. Existing live inventory includes more than the six reference products, so the product count is derived from the full shared catalog.
+
+The user resolved the two payment-policy gaps during implementation:
+
+- GCash must not exceed the sale total. Split Payment combines Cash and GCash; change can come only from Cash.
+- Partial Payment requires an explicit Cash/GCash selection, a customer, and an amount strictly greater than zero and less than the total. GCash requires a reference. Zero-payment full-credit sales are rejected in this flow. A payment covering the total offers a switch to regular Cash/GCash, carrying the amount and reference forward.
+
+No reference-number length or numeric-only rule is imposed. References are trimmed strings preserving leading zeroes. No installment feature or GCash refund flow exists. The partial-sale reference does not specify a due date, and the source criteria allow setting one rather than defining a default; POS debt records therefore have `dueDate: null` instead of an invented deadline.
+
+No agreed backend API schema or customer repository exists in this codebase. The new name-only customer registry follows the existing Quick Add name-entry pattern, uses typed fictional fixtures, and is shared by Quick Add and POS. DTO mapping, authoritative stock, authentication, persistence and transfer verification remain future adapter/backend work.
+
+## Behavior and changed files
+
+- `src/components/pos/product-browsing-screen.tsx`, `src/utils/pos.ts`: inset stock badges, selected-card styling, reserved quantity/name space, stock-limited plus controls, derived distinct-product/unit counts, and disabled empty-cart progression. Amber stock badges reuse the previously approved inventory demo threshold of 1–5 available units. Search, suggestions, single-row scrolling category chips and the alphabetical jump index are retained.
+- `src/components/pos/payment-screen.tsx`, new `payment-amount-field.tsx` and `payment-customer-field.tsx`: one screen with four modes, mode-specific drafts, independently targeted quick amounts, live correction after a submit attempt, customer search, explicit tender choice for Partial Payment, balance/change summaries, keyboard dismissal, scrolling and accessible controls. Existing back navigation preserves drafts. Existing cart removal/empty dialogs retain their action-specific copy and confirmation behavior.
+- `src/components/pos/pos-dialog.tsx`: shared checkout confirmation includes Cancel and Close as well as Confirm. The checkout summary includes total, tender, received amount, cash change and customer debt where applicable.
+- `src/components/pos/payment-preview-toast.tsx`: reuses the existing dismissible success-toast component and 15-second application duration, positioned without shifting catalog content. It now reports a recorded demo order.
+- `src/types/pos.ts`, `src/types/quick-add.ts`, `src/types/dashboard.ts`, `src/data/customers.ts`: typed customer, sale/payment/ledger/command records; debt linkage and partial payment status; sale identity on dashboard lines. Sale and debt items preserve name and unit-price snapshots.
+- `src/utils/pos-payment.ts`, new `src/utils/pos-checkout.ts`: exact centavo parsing and mode validation, combined-tender calculations and an immutable checkout commit. Invalid payment, missing/deleted customer or stock conflict changes nothing. Successful completion commits the sale, manual payment, customer when needed, stock deduction and remaining debt in one inventory-state update. Order IDs reject duplicate completion while allowing a later identical purchase.
+- `src/state/inventory.tsx`, `src/utils/inventory.ts`: shared session ledger and current-state checkout validation. Adding items to a cart never deducts stock. Quick Add customer registration reuses normalized-name matches.
+- `src/state/pos.tsx`, `src/app/_layout.tsx`, `src/app/owner-pos/_layout.tsx`: the session-scoped cart survives leaving and re-entering POS, as well as moving among its steps. Direct routes still require the existing owner capability. Successful completion clears drafts only after commit; rejection/exception preserves them for retry. Cancel Order and Empty Cart explicitly confirm discard. Navigating away without clearing preserves the order and needs no discard warning.
+- `src/state/quick-add.tsx`, new `src/utils/pos-records.ts`, dashboard/inventory screens: POS debts share the existing Quick Add record shape and totals; sales update activity, sales totals, best sellers and inventory rankings. Physical cash includes only net Cash tender, excluding GCash. Linked debts are not counted as duplicate sale events. Once live session sales exist, dashboard periods use their current timestamp; historical fixture comparisons are not presented as current growth.
+- New `src/components/pos/session-records.tsx`, `src/components/menu/tool-placeholder-screen.tsx`, `src/data/menu.ts`: shared saved records are visible within the existing Transactions and Receivables placeholders. Their full search/filter/debt-payment designs remain unimplemented; no separate screens or routes were invented.
+- `tailwind.config.js`: explicit class-based NativeWind dark-mode initialization fixes the browser development error overlay encountered during visual checks. No dependencies, native projects, EAS settings or backend integrations were added.
+- `tests/payment.test.cjs`, new `tests/pos-checkout.test.cjs`: focused parser, active-field validation, tender math, stock rejection, immutable snapshots, customer reuse/linkage, remaining debt, cash accounting, retry and duplicate-order coverage.
+
+The existing cashier authentication/access flow is not implemented by this task. Shared components and records remain reusable; the current `/owner-pos` entry points retain their owner guard.
+
+## Verification
+
+Shared checks: `npm run typecheck` and `npm run lint` pass without errors or warnings. `node --test tests/*.test.cjs` passes all **66 tests**, including new coverage of Manila midnight/month/week boundaries and counting multi-product orders once. No packages were installed or upgraded.
+
+Browser: headless Chrome against an exported development build, using the documented opt-in mock Owner login. Passed direct-payment access guard, stock ceilings and stable card geometry, empty progression, removal/empty-cart cancellation and confirmation, back navigation retaining drafts, all four payment modes, missing references, invalid/negative/insufficient amounts, GCash overpayment rejection, Partial Payment's explicit method/customer requirements, zero/full-payment rejection, and carrying a fully paid partial draft into Cash. Existing/new customer flows, customer reuse after creation, quick amounts for every tender, search/suggestions, one-row categories and scrolling the final chip into view also pass.
+
+The integration run completes five orders, with 20 rapid confirmation calls for subsequent orders: Transactions shows exactly five sales and Receivables exactly two linked partial debts totalling ₱40.00. Cash change, stock deductions, string references with leading zeroes, success toast/dismissal, clean cart/form reset, and navigation out of and back into POS retaining an unfinished cart are checked. The final browser run reports no console errors or exceptions.
+
+Cash form and reachable footer screenshots cover 320×568, 360×800, 390×844 and 430×932; Partial Payment also covers 320×568 and 390×844. Checked screenshots against the supplied catalog/cart/payment references and inspected the new customer/debt records. These browser checks establish viewport overflow, scrolling, input and control behavior only; they do not simulate a native soft keyboard or accessibility text scaling. Scripts, screenshots and results are ignored under `.expo/pos-update-check/`.
+
+The initial watch-based preview encountered a Windows `EMFILE` limit during repeated bundling. Final browser verification uses local static serving of `expo export --platform web --dev --no-minify` with temporary `EXPO_NO_BUNDLE_SPLITTING=1` and `EXPO_NO_METRO_LAZY=1` environment flags. Disabling development chunk splitting also avoids collisions between same-named route chunks in this SDK's development export. These test-only flags are not written into project configuration or an environment file; the default mock-auth gate remains unchanged.
+
+Android: JavaScript bundle export **passed** via `npx expo export --platform android --platform ios --output-dir .expo/pos-update-native --no-bytecode --max-workers 2`. Native build and runtime **not tested**: ADB is installed, but `adb devices -l` reports no connected device/emulator.
+
+iOS: JavaScript bundle export **passed** with the same command. Native build and runtime **not tested**: this Windows environment has no iOS simulator. Neither export generated Hermes bytecode or a signed native binary.
+
+Native soft-keyboard avoidance/focus/dismissal, safe areas on real devices, TalkBack/VoiceOver, larger accessibility text, Android system back and iOS back gestures/modal dismissal remain unverified. Customer debt payment management, persistence, authoritative transaction/idempotency checks and GCash verification remain outside this frontend task. Original requirements documents are unchanged. Nothing was committed, pushed, deployed or published.

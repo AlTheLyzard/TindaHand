@@ -1,0 +1,129 @@
+import { MotionContent } from '@/components/ui/motion-content';
+import { usePushOnce } from '@/hooks/use-push-once';
+import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
+import { router } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
+import Animated, { FadeOut, LinearTransition, ReduceMotion } from 'react-native-reanimated';
+
+import { PosDialog } from '@/components/pos/pos-dialog';
+import { PosBackButton } from '@/components/pos/pos-back-button';
+import { PosFrame } from '@/components/pos/pos-frame';
+import { PosIcon } from '@/components/pos/pos-icon';
+import { Button } from '@/components/ui/button';
+import tokens from '@/constants/design-tokens.json';
+import { useInventory } from '@/state/inventory';
+import { useDashboardNavigation } from '@/hooks/use-dashboard-navigation';
+import { useTranslation } from '@/i18n/use-translation';
+import { usePos } from '@/state/pos';
+import type { OwnerIdentity } from '@/types/auth';
+import { formatPesos } from '@/utils/dashboard';
+import { selectionSummary } from '@/utils/pos';
+import { EmptyState, useContentPreview } from '@/components/ui/content-state';
+import { RecordSkeleton } from '@/components/ui/content-skeletons';
+
+type Confirmation = { kind: 'remove' | 'zero'; productId: string; name: string } | { kind: 'clear' };
+
+const moveRow = LinearTransition.duration(200).reduceMotion(ReduceMotion.System);
+const removeRow = FadeOut.duration(160).reduceMotion(ReduceMotion.System);
+
+export function CartReviewScreen({ owner }: { owner: OwnerIdentity }) {
+  const push = usePushOnce();
+  const { store: { products } } = useInventory();
+  const { t } = useTranslation();
+  const navigation = useDashboardNavigation();
+  const { selection, changeQuantity, remove, clear, hasStockConflict } = usePos();
+  const preview = useContentPreview();
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const pendingConfirmation = useRef<Confirmation | null>(null);
+  const removed = useRef(new Set<string>());
+  useEffect(() => { for (const id of removed.current) if (selection[id]) removed.current.delete(id); }, [selection]);
+  const items = preview.empty ? [] : Object.values(selection);
+  const summary = selectionSummary(preview.empty ? {} : selection);
+  const browse = () => router.navigate('/owner-pos');
+  const close = () => { pendingConfirmation.current = null; setConfirmation(null); };
+  function requestConfirmation(next: Confirmation) {
+    if (pendingConfirmation.current || (next.kind !== 'clear' && removed.current.has(next.productId))) return;
+    pendingConfirmation.current = next;
+    setConfirmation(next);
+  }
+
+  function confirm() {
+    const pending = pendingConfirmation.current;
+    if (!pending) return;
+    pendingConfirmation.current = null;
+    if (pending.kind === 'remove' || pending.kind === 'zero') { removed.current.add(pending.productId); remove(pending.productId); }
+    if (pending.kind === 'clear') clear();
+    close();
+  }
+
+  const title = confirmation?.kind === 'zero' ? t('pos.cart.zeroTitle') : confirmation?.kind === 'clear' ? t('pos.cart.clearTitle') : t('pos.cart.removeTitle');
+  const message = confirmation?.kind === 'zero' ? t('pos.cart.zeroHelp', { name: confirmation.name })
+    : confirmation?.kind === 'remove' ? t('pos.cart.removeHelp', { name: confirmation.name })
+    : t('pos.cart.clearHelp');
+
+  return <PosFrame owner={owner} step="cart" expanded={navigation.expanded} onPos={browse}>
+    <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: tokens.spacing.four }}>
+      <MotionContent changeKey={preview.mode} className="w-full max-w-[460px] self-center px-4">
+        {preview.control}
+        <View className="mt-2 flex-row items-center justify-between gap-3">
+          <Text accessibilityRole="header" className="font-poppins-bold text-[16px] text-[#102342]">{t('pos.cart.title')}</Text>
+          <Text accessibilityLiveRegion="polite" className="font-poppins-bold text-[11px] text-text-secondary">{preview.loading ? 'Loading cart' : t(items.length === 1 ? 'pos.cart.lineCountOne' : 'pos.cart.lineCount', { count: items.length })}</Text>
+        </View>
+        <PosBackButton label={t('pos.cart.back')} onPress={browse} />
+        {preview.loading ? <RecordSkeleton kind="cart" count={items.length || 2} /> : <>
+        <View collapsable={false}>
+          {items.map(item => {
+            const stock = products.find(product => product.id === item.productId)?.stock ?? 0;
+            const atLimit = item.quantity >= stock;
+            return <Animated.View key={item.productId} collapsable={false} layout={moveRow} exiting={removeRow} style={{ marginBottom: tokens.spacing.three, borderRadius: tokens.radius.card, backgroundColor: '#FFFFFF', padding: tokens.spacing.three }}>
+              <View className="flex-row items-start justify-between gap-2">
+                <View className="flex-1">
+                  <Text className="font-poppins-bold text-[15px] text-[#102342]">{item.itemName}</Text>
+                  <Text className="mt-1 font-poppins text-[12px] text-text-secondary">{t('pos.cart.unitPrice', { price: formatPesos(item.unitPriceCentavos) })}</Text>
+                </View>
+                <Pressable accessibilityRole="button" accessibilityLabel={t('pos.cart.removeLabel', { name: item.itemName })} onPress={() => requestConfirmation({ kind: 'remove', productId: item.productId, name: item.itemName })} className="min-h-12 min-w-12 items-center justify-center rounded-pill"><PosIcon name="trash" color="#B4232C" /></Pressable>
+              </View>
+              <View className="mt-3 flex-row flex-wrap items-center justify-between gap-3">
+                <View className="flex-row items-center gap-2">
+                  <Pressable accessibilityRole="button" accessibilityLabel={t('pos.cart.decrease', { name: item.itemName })} onPress={() => item.quantity === 1 ? requestConfirmation({ kind: 'zero', productId: item.productId, name: item.itemName }) : changeQuantity(item.productId, -1)}
+                    className="min-h-12 min-w-12 items-center justify-center rounded-pill bg-action" style={{ boxShadow: '0 2px 4px #112F6F40' }}><Text className="font-poppins-bold text-[18px] text-white">−</Text></Pressable>
+                  <Text accessibilityLabel={t('pos.cart.quantity', { name: item.itemName, count: item.quantity })} className="min-w-6 text-center font-poppins-bold text-[16px] text-[#102342]">{item.quantity}</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel={t('pos.cart.increase', { name: item.itemName })} accessibilityState={{ disabled: atLimit }} disabled={atLimit} onPress={() => changeQuantity(item.productId, 1)}
+                    className="min-h-12 min-w-12 items-center justify-center rounded-pill" style={{ backgroundColor: atLimit ? '#ADC9EE' : '#245399', boxShadow: '0 2px 4px #112F6F40' }}><Text className="font-poppins-bold text-[18px]" style={{ color: atLimit ? '#304B70' : '#FFFFFF' }}>+</Text></Pressable>
+                </View>
+                <View className="ml-auto items-end">
+                  <Text className="font-poppins text-[11px] text-text-secondary">{item.quantity} × {formatPesos(item.unitPriceCentavos)}</Text>
+                  <Text className="mt-1 font-poppins-bold text-[16px] text-brand">{formatPesos(item.quantity * item.unitPriceCentavos)}</Text>
+                </View>
+              </View>
+              {atLimit && <Text className="mt-2 font-poppins-bold text-[11px] text-text-secondary">{t('pos.cart.stockLimit')}</Text>}
+            </Animated.View>;
+          })}
+        </View>
+        <Animated.View layout={moveRow}>
+        {!preview.empty && hasStockConflict && <Text accessibilityRole="alert" className="my-3 font-poppins text-[12px] text-[#972020]">{t('pos.catalogChanged')}</Text>}
+        {items.length === 0 && <EmptyState icon="cart" title={t('pos.cart.empty')} description={t('pos.cart.emptyHelp')} action={t('pos.cart.browse')} onAction={() => { preview.reset(); browse(); }} />}
+        <View accessibilityLiveRegion="polite" className="mt-6 rounded-card bg-[#D1E1F5] p-5">
+          <Text accessibilityRole="header" className="font-poppins-bold text-[17px] text-[#102342]">{t('pos.cart.summary')}</Text>
+          <View className="mt-4 flex-row flex-wrap justify-between gap-2 border-b border-[#ADC9EE] pb-4">
+            <Text className="font-poppins text-[14px] text-brand">{t('pos.cart.subtotal')}</Text>
+            <Text className="font-poppins-bold text-[14px] text-[#102342]">{formatPesos(summary.totalCentavos)}</Text>
+          </View>
+          <Text className="mt-3 font-poppins-bold text-[11px] text-[#102342]">{t('pos.cart.total')}</Text>
+          <Text className="mt-2 font-poppins-bold text-[28px] text-brand">{formatPesos(summary.totalCentavos)}</Text>
+        </View>
+        <View className="mt-6 flex-row gap-4">
+          <View className="flex-1"><Button variant="secondary" disabled={items.length === 0} onPress={() => requestConfirmation({ kind: 'clear' })}>{t('pos.cart.emptyAction')}</Button></View>
+          <View className="flex-1"><Button disabled={items.length === 0 || hasStockConflict} onPress={() => push('/owner-pos/payment')}>{t('pos.cart.checkout')}</Button></View>
+        </View>
+        <Text className="mt-3 font-poppins text-[10px] text-text-secondary">{t('pos.demo')}</Text>
+        </Animated.View>
+        </>}
+      </MotionContent>
+    </ScrollView>
+    <PosDialog visible={!!confirmation} title={title} message={message} destructive onClose={close} onConfirm={confirm}
+      confirmLabel={confirmation?.kind === 'clear' ? t('pos.cart.emptyAction') : t('pos.cart.remove')} />
+  </PosFrame>;
+}

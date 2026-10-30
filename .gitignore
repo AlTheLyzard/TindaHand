@@ -22,15 +22,21 @@ expo-env.d.ts
 .metro-health-check*
 
 # debug
+*.log
 npm-debug.*
 yarn-debug.*
 yarn-error.*
 
 # macOS
 .DS_Store
+Thumbs.db
+Desktop.ini
 *.pem
 
 # local env files
+.env
+.env.*
+!.env.example
 .env*.local
 
 # typescript
@@ -41,3 +47,16 @@ example
 # generated native folders
 /ios
 /android
+
+# local root design references
+/designs/
+
+# local PowerShell module discovery cache
+/Microsoft/Windows/PowerShell/ModuleAnalysisCache
+
+# generated native/build artifacts
+/build/
+/coverage/
+*.apk
+*.aab
+*.ipa

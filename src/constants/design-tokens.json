@@ -1,0 +1,11 @@
+{
+  "color": { "warningBase": "#F9A825", "surfaceSubtle": "#D9E7F4", "accentBase": "#2F6CC9", "accentContainer": "#D1E1F5", "primaryDisabled": "#B8CCE4", "borderOutline": "#B0C8E3", "navigationSurface": "#FFFFFF", "navigationActive": "#D1E2F8", "navigationBorder": "#ADC9EE", "navigationText": "#102342" },
+  "radius": { "control": 10, "surface": 12, "card": 16, "pill": 9999 },
+  "spacing": { "half": 2, "one": 4, "two": 8, "three": 16, "four": 24, "five": 32, "six": 64 },
+  "size": { "badge": 36, "iconCircle": 40, "statusIndicator": 22, "touchTarget": 48, "navigationIcon": 28 },
+  "navigation": {
+    "height": 64, "cornerRadius": 20, "maxWidth": 288, "expandedMaxWidth": 344, "expandedLift": 6,
+    "scrollThreshold": 8, "durationMs": 320,
+    "labelDurationMs": 320, "labelFontSize": 12, "labelLineHeight": 18
+  }
+}
