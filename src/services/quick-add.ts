@@ -1,6 +1,7 @@
 import type { OwnerIdentity } from '@/types/auth';
 import type { QuickAddDraft, QuickAddRecord } from '@/types/quick-add';
 import { quickAddErrors, quickAddTotal } from '@/utils/quick-add';
+import { createPayablesRepository } from '@/services/payables';
 
 /** Record-only mock boundary. No cash, sales, revenue, or inventory effects are authorized. */
 // TODO(BACKEND): Replace this local Map with authorized debt/expense writes and
@@ -9,9 +10,13 @@ import { quickAddErrors, quickAddTotal } from '@/utils/quick-add';
 // open; see docs/backend-handoff.md#quick-add-and-expenses and docs/api-contract.md#customers-and-debts.
 export function createQuickAddService() {
   const saved = new Map<string, QuickAddRecord>();
+  const payables = createPayablesRepository();
   return {
+    readPayables: payables.read,
+    confirmPayablePayment: payables.confirmPayment,
     async save(owner: OwnerIdentity | null, token: string, draft: QuickAddDraft): Promise<QuickAddRecord> {
       if (!owner) throw new Error('An owner session is required.');
+      if (draft.kind === 'storeDebt') return payables.saveDebt(owner, token, draft);
       const key = `${owner.id}:${token}`;
       const existing = saved.get(key);
       if (existing) return existing;

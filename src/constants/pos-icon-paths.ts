@@ -1,4 +1,5 @@
 export const posIconPaths = {
+  money: '<path d="M2 5c6-3 14 3 20 0v14c-6 3-14-3-20 0zM6 10v4M18 10v4"/><ellipse cx="12" cy="12" rx="2.5" ry="3.5"/>',
   financial: '<path d="M3 3v18h18M7 15l4-5 4 3 6-6M16 7h5v5"/>',
   history: '<path d="M21 11a9 9 0 1 0-2 7M12 6v6l4 2M18 12l3-3 3 3M21 9v7"/>',
   profile: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="9" r="4"/><path d="M5 19v-1c0-4 14-4 14 0v1"/>',

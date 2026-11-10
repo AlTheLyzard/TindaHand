@@ -12,6 +12,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 
 import { AuthFlowProvider } from "@/state/auth-flow";
+import { SettingsProvider } from "@/state/settings";
 import { CashRegisterProvider } from "@/state/cash-register";
 import { InventoryProvider } from "@/state/inventory";
 import { QuickAddProvider } from "@/state/quick-add";
@@ -35,6 +36,7 @@ function RootNavigation() {
 
   return (
     <AuthFlowProvider>
+      <SettingsProvider>
       <InventoryProvider>
         <CashRegisterProvider>
           <QuickAddProvider>
@@ -53,6 +55,7 @@ function RootNavigation() {
           </QuickAddProvider>
         </CashRegisterProvider>
       </InventoryProvider>
+      </SettingsProvider>
     </AuthFlowProvider>
   );
 }

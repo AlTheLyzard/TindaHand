@@ -1,13 +1,33 @@
 import { dashboardDemo } from '@/data/dashboard';
 import { getLocaleFormats } from '@/i18n';
-import type { DemoSale, SalesPeriod } from '@/types/dashboard';
+import type { DashboardActivity, DemoSale, SalesPeriod } from '@/types/dashboard';
+import type { QuickAddRecord } from '@/types/quick-add';
+
+/** Copy before sorting: the full history and its source order remain untouched. */
+export function recentDashboardActivity(activity: readonly DashboardActivity[]) {
+  return [...activity].sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt)).slice(0, 3);
+}
+
+export function quickAddDashboardActivity(records: readonly QuickAddRecord[]): DashboardActivity[] {
+  return records.filter(record => !record.saleId).map(record => ({
+    id: record.id, kind: record.kind, occurredAt: record.occurredAt,
+    amountCentavos: record.originalAmountCentavos ?? record.amountCentavos,
+    // Recording credit principal is not a receipt. Cash lent and expenses leave the store.
+    direction: record.kind === 'expense' || (record.kind === 'customerDebt' && record.borrowing === 'cash') ? 'out' : 'neutral',
+    label: `${record.kind === 'customerDebt' ? 'Customer debt' : record.kind === 'storeDebt' ? 'Store debt' : 'Expense'} · ${record.name}`,
+  }));
+}
+
+export function formatActivityAmount(activity: DashboardActivity) {
+  return `${activity.amountCentavos === 0 || activity.direction === 'neutral' ? '' : activity.direction === 'in' ? '+' : '−'}${formatPesos(Math.abs(activity.amountCentavos))}`;
+}
 
 export function formatPesos(centavos: number) {
   return `₱${(centavos / 100).toLocaleString(getLocaleFormats().number, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /** Manila calendar periods, with one reference clock and Monday week starts. */
-export function summarizeDashboard(period: SalesPeriod, data: Omit<typeof dashboardDemo, 'sales'> & { sales: readonly DemoSale[] } = dashboardDemo, cashAddedCentavos = 0) {
+export function summarizeDashboard(period: SalesPeriod, data: Omit<typeof dashboardDemo, 'sales' | 'activity'> & { sales: readonly DemoSale[]; activity: readonly DashboardActivity[] } = dashboardDemo, cashAddedCentavos = 0) {
   const end = new Date(data.asOf);
   const start = new Date(end.getTime() + 8 * 60 * 60 * 1000);
   start.setUTCHours(0, 0, 0, 0);

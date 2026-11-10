@@ -60,3 +60,6 @@ example
 *.apk
 *.aab
 *.ipa
+
+/docs/designs/
+/.tmp/

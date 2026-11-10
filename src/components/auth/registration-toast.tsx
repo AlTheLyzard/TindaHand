@@ -1,5 +1,5 @@
+import { IconButton } from '@/components/ui/button';
 import { MotionRegion } from '@/components/ui/motion-content';
-import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useTranslation } from '@/i18n/use-translation';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -28,10 +28,7 @@ export function RegistrationToast({ expiresAt, onDismiss, title, message }: { ex
             <Text className="font-poppins text-[11px] leading-[16px] text-black">{title ?? t('auth.toast.title')}</Text>
             <Text className="font-poppins text-[10px] leading-[15px] text-[#28652F]">{message ?? t('auth.toast.message')}</Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={t('auth.toast.dismiss')} onPress={onDismiss}
-            className="absolute right-0 top-0 min-h-12 min-w-12 items-center justify-center rounded-[10px] active:bg-[#BCD1B7]">
-            <Text accessible={false} className="text-[20px] text-[#28652F]">×</Text>
-          </Pressable>
+          <IconButton accessibilityLabel={t('auth.toast.dismiss')} onPress={onDismiss} className="absolute right-0 top-0" icon={({ color }) => <Text accessible={false} style={{ color, fontSize: 20 }}>×</Text>} />
         </MotionRegion>
       )}
     </View>

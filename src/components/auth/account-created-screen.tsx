@@ -1,7 +1,7 @@
 import { useTranslation } from '@/i18n/use-translation';
 import { useCallback } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AuthBackground } from '@/components/auth/auth-background';
 
 import { RegistrationProgress } from '@/components/auth/registration-progress';
 import { RegistrationToast } from '@/components/auth/registration-toast';
@@ -15,7 +15,7 @@ export function AccountCreatedScreen({ completion, onContinue }: { completion: R
   const { setCompletion } = useAuthFlow();
   const dismissToast = useCallback(() => setCompletion((current) => current ? { ...current, toastExpiresAt: null } : null), [setCompletion]);
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F0F8FF' }}>
+    <AuthBackground>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
         <View className="w-full max-w-[460px] flex-1 self-center px-5 pb-5">
           <RegistrationProgress step={1} />
@@ -35,6 +35,6 @@ export function AccountCreatedScreen({ completion, onContinue }: { completion: R
           <Button onPress={onContinue}>{t('common.continue')}</Button>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </AuthBackground>
   );
 }

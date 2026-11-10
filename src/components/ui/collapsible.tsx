@@ -1,4 +1,4 @@
-import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
+import { ButtonSurface } from '@/components/ui/button';
 import { SymbolView } from 'expo-symbols';
 import { PropsWithChildren, useState } from 'react';
 import { StyleSheet } from 'react-native';
@@ -15,8 +15,8 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
 
   return (
     <ThemedView>
-      <Pressable
-        style={styles.heading}
+      <ButtonSurface variant="text" accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ expanded: isOpen }}
+        style={[styles.heading, { minHeight: 48 }]}
         onPress={() => setIsOpen((value) => !value)}>
         <ThemedView type="backgroundElement" style={styles.button}>
           <SymbolView
@@ -29,7 +29,7 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
         </ThemedView>
 
         <ThemedText type="small">{title}</ThemedText>
-      </Pressable>
+      </ButtonSurface>
       {isOpen && (
         <MotionRegion>
           <ThemedView type="backgroundElement" style={styles.content}>

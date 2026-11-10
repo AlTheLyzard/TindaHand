@@ -6,13 +6,15 @@ const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'src/constants/pos-icon-paths.ts'), 'utf8');
 const shapes = Array.from(source.matchAll(/^  (\w+): '([^']+)',/gm), ([, name, shape]) => ({ name, shape }));
 if (!shapes.length) throw Error('No outline geometry found.');
+// Quick Add's due-date affordance is one stroke unit heavier, with identical geometry.
+shapes.push({ name: 'calendarDue', shape: shapes.find(shape => shape.name === 'calendar').shape });
 const output = path.join(root, 'assets/images/pos');
 fs.mkdirSync(output, { recursive: true });
 const entries = [];
 for (const { name, shape } of shapes) {
   for (const active of [false, true]) {
     const file = `${name}${active ? '-active' : ''}.svg`;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" color="#4A607A" stroke="#4A607A" stroke-width="${active ? 2.2 : 1.6}" stroke-linecap="round" stroke-linejoin="round">${shape}</svg>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" color="#4A607A" stroke="#4A607A" stroke-width="${(active ? 2.2 : 1.6) + (name === 'calendarDue' ? 1 : 0)}" stroke-linecap="round" stroke-linejoin="round">${shape}</svg>`;
     fs.writeFileSync(path.join(output, file), svg + '\n');
   }
   entries.push(`  ${name}: { normal: require('@/assets/images/pos/${name}.svg'), active: require('@/assets/images/pos/${name}-active.svg') },`);

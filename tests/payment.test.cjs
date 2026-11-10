@@ -8,9 +8,28 @@ const context = { exports: {} };
 vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/utils/pos-payment.ts'), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS },
 }).outputText, context);
-const { parsePaymentAmount, paymentAmounts, paymentErrors, emptyPaymentDraft } = context.exports;
+const { parsePaymentAmount, paymentAmounts, paymentErrors, emptyPaymentDraft, sanitizePaymentReference, paymentConfirmationRows } = context.exports;
 const draft = patch => ({ ...emptyPaymentDraft(), ...patch });
 const valid = (total, value) => !Object.values(paymentErrors(total, value)).some(Boolean);
+
+test('reference input removes pasted punctuation and letters without losing leading zeroes', () => {
+  assert.equal(sanitizePaymentReference('00A12-3'), '00123');
+  assert.equal(sanitizePaymentReference(' 0１2\n٣A-'), '02');
+  assert.equal(sanitizePaymentReference('000'), '000');
+  assert.equal(sanitizePaymentReference('letters only'), '');
+});
+
+test('checkout summaries put the total first and include only the selected tender details', () => {
+  const rows = patch => Array.from(paymentConfirmationRows(10000, draft(patch), 'Demo Customer'), row => [row.label, row.value]);
+  const header = method => [['Order total', 10000], ['Payment method', method]];
+  assert.deepEqual(rows({ cashAmount: '120', gcashReference: 'hidden' }), [...header('Cash'), ['Cash received', 12000], ['Change', 2000]]);
+  assert.deepEqual(rows({ method: 'gcash', gcashAmount: '100', gcashReference: '00123', cashAmount: '999' }), [...header('GCash'), ['GCash amount', 10000], ['Reference number', '00123']]);
+  assert.deepEqual(rows({ method: 'split', splitCashAmount: '70', splitGcashAmount: '30', splitReference: '0009' }), [...header('Split Payment'), ['Cash amount', 7000], ['GCash amount', 3000], ['Reference number', '0009']]);
+  assert.deepEqual(rows({ method: 'split', splitCashAmount: '100', splitGcashAmount: '0', splitReference: 'hidden' }), [...header('Split Payment'), ['Cash amount', 10000], ['GCash amount', 0]]);
+  for (const partialMethod of ['cash', 'gcash']) {
+    assert.deepEqual(rows({ method: 'partial', partialMethod, partialAmount: '40', partialReference: '0001' }), [...header('Partial Payment'), ['Paid via', partialMethod === 'cash' ? 'Cash' : 'GCash'], ['Customer', 'Demo Customer'], ['Amount paid', 4000], ['Remaining debt', 6000], ...(partialMethod === 'gcash' ? [['Reference number', '0001']] : [])]);
+  }
+});
 
 test('peso parser preserves exact centavos and rejects malformed, negative and unsafe values', () => {
   for (const [input, expected] of [['83', 8300], ['100.00', 10000], ['0.29', 29], ['.50', 50], ['12.', 1200], [' 00012.30 ', 1230], ['90071992547409.91', Number.MAX_SAFE_INTEGER]]) assert.equal(parsePaymentAmount(input), expected, input);

@@ -7,17 +7,17 @@ import { motion } from '@/constants/motion';
 import { useMotionReduced } from '@/state/motion';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-type Props = Omit<PressableProps, 'style'> & { style?: StyleProp<ViewStyle>; ref?: Ref<ViewInstance>; className?: string };
+type Props = Omit<PressableProps, 'style'> & { style?: StyleProp<ViewStyle>; ref?: Ref<ViewInstance>; className?: string; fadeOnPress?: boolean };
 
 /** No wrapper or layout changes. Actions run immediately; only visual feedback animates. */
-export function MotionPressable({ style, disabled, onPressIn, onPressOut, ref, ...props }: Props) {
+export function MotionPressable({ style, disabled, onPressIn, onPressOut, ref, fadeOnPress = true, ...props }: Props) {
   const reduced = useMotionReduced();
   const pressure = useSharedValue(0);
   const base = StyleSheet.flatten(style);
   const opacity = typeof base?.opacity === 'number' ? base.opacity : 1;
   const transform = Array.isArray(base?.transform) ? base.transform : [];
   const feedback = useAnimatedStyle(() => ({
-    opacity: opacity * (1 - pressure.value * 0.14),
+    opacity: opacity * (1 - pressure.value * (fadeOnPress ? 0.14 : 0)),
     transform: [...transform, { scale: 1 - pressure.value * 0.015 }],
   }));
   useEffect(() => {

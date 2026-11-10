@@ -16,8 +16,8 @@ type Props = {
   onPress: (role: AccountRole) => void;
 };
 
-function RoleIcon({ owner }: { owner: boolean }) {
-  const color = owner ? '#FFFFFF' : '#101820';
+export function RoleIcon({ owner, color: suppliedColor }: { owner: boolean; color?: string }) {
+  const color = suppliedColor ?? (owner ? '#FFFFFF' : '#101820');
   return (
     <View accessible={false} importantForAccessibility="no-hide-descendants" style={{ width: 48, height: 48 }}>
       {owner ? (

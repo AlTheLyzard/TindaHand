@@ -1,6 +1,6 @@
-import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
+import { ButtonSurface } from '@/components/ui/button';
 import type { ReactNode } from 'react';
-import { Image, Text, View, type ImageSourcePropType } from 'react-native';
+import { Image, Text, View, useWindowDimensions, type ImageSourcePropType } from 'react-native';
 import tokens from '@/constants/design-tokens.json';
 
 export function DashboardCircle({ children, size = tokens.size.badge, backgroundColor = '#D1E2F8', borderColor }: {
@@ -29,18 +29,20 @@ export function DashboardIcon({ source, size = 32 }: { source: ImageSourcePropTy
 export function DashboardAction({ label, onPress, children, selected = false, tab = false }: {
   label: string; onPress: () => void; children: ReactNode; selected?: boolean; tab?: boolean;
 }) {
-  return <Pressable accessibilityRole={tab ? 'tab' : 'button'} accessibilityLabel={label} accessibilityState={{ selected }} aria-selected={tab ? selected : undefined}
+  return <ButtonSurface variant="text" accessibilityRole={tab ? 'tab' : 'button'} accessibilityLabel={label} accessibilityState={{ selected }} aria-selected={tab ? selected : undefined}
     onPress={onPress} style={{ minWidth: tokens.size.touchTarget, minHeight: tokens.size.touchTarget }}
     className="items-center justify-center rounded-pill focus:outline focus:outline-2 focus:outline-action">
     {children}
-  </Pressable>;
+  </ButtonSurface>;
 }
 
 export function DashboardCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
+  const { fontScale } = useWindowDimensions();
   return <View className="rounded-card bg-white px-5 pb-5 pt-5" style={{ borderWidth: 1, borderColor: tokens.color.borderOutline }}>
     <View className="mb-4 flex-row items-center justify-between gap-2">
       <Text accessibilityRole="header" className="flex-shrink font-poppins-bold text-[18px] leading-[27px] text-[#102342]">{title}</Text>
-      {action}
+      {/* Center the full touch target on the title line without increasing its top inset. */}
+      {action && <View style={{ height: 27 * fontScale, flexShrink: 0, justifyContent: 'center' }}>{action}</View>}
     </View>
     {children}
   </View>;

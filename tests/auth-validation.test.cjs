@@ -10,18 +10,27 @@ const moduleCache = new Map();
 function loadModule(relativePath) {
   if (moduleCache.has(relativePath)) return moduleCache.get(relativePath);
   const source = fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
+  if (relativePath.endsWith('.json')) {
+    const value = JSON.parse(source);
+    moduleCache.set(relativePath, value);
+    return value;
+  }
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const context = {
-    exports: {},
+    exports: {}, __DEV__: false, process: { env: {} }, setTimeout,
     require: (specifier) => {
       if (specifier === 'react-native') return require('react-native-web');
       // This static-markup check covers Button semantics; motion needs a mounted renderer.
       if (specifier === '@/components/ui/motion-pressable') return { MotionPressable: require('react-native-web').Pressable };
+      if (specifier === '@/components/ui/motion-content') {
+        const { View } = require('react-native-web');
+        return { MotionLayout: View, MotionRegion: View };
+      }
       if (specifier === 'react' || specifier === 'react/jsx-runtime') return require(specifier);
       const base = specifier.startsWith('@/') ? `src/${specifier.slice(2)}`
         : specifier.startsWith('.') ? path.join(path.dirname(relativePath), specifier).replaceAll('\\', '/') : null;
       if (!base) throw new Error('Only project modules are supported in this test loader.');
-      const resolved = [`${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find(p => fs.existsSync(path.join(__dirname, '..', p)));
+      const resolved = [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find(p => fs.existsSync(path.join(__dirname, '..', p)) && fs.statSync(path.join(__dirname, '..', p)).isFile());
       if (!resolved) throw new Error('Project module not found: ' + specifier);
       return loadModule(resolved);
     },
@@ -32,12 +41,43 @@ function loadModule(relativePath) {
 }
 
 const { parseAccountRole, validateLogin } = loadModule('src/utils/account-access.ts');
+const { formatOwnerId, editOwnerId } = loadModule('src/utils/owner-id.ts');
 const { validateRegistration } = loadModule('src/utils/registration.ts');
 const { canOpenOwnerDashboard } = loadModule('src/utils/dashboard-access.ts');
-const { summarizeDashboard, formatPesos } = loadModule('src/utils/dashboard.ts');
+const { summarizeDashboard, formatPesos, recentDashboardActivity, quickAddDashboardActivity, formatActivityAmount } = loadModule('src/utils/dashboard.ts');
 const { emptyDashboardDemo } = loadModule('src/data/content-preview.ts');
 const { cashAmountError, createCashRegisterStore } = loadModule('src/utils/cash-register.ts');
 const { dashboardDemo } = loadModule('src/data/dashboard.ts');
+
+test('recent activity sorts full timestamps without mutating history and caps only its preview', () => {
+  assert.equal(recentDashboardActivity([]).length, 0);
+  assert.equal(recentDashboardActivity(dashboardDemo.activity).length, 3);
+  const records = Array.from({ length: 7 }, (_, i) => ({ id: String(i), kind: 'payment', direction: i % 2 ? 'out' : 'in', amountCentavos: i * 100, occurredAt: `2026-11-0${i + 1}T08:30:00+08:00` }));
+  const before = JSON.stringify(records);
+  assert.equal(recentDashboardActivity(records.slice(0, 2)).length, 2);
+  assert.deepEqual(Array.from(recentDashboardActivity(records), row => row.id), ['6', '5', '4']);
+  assert.equal(records.length, 7);
+  assert.equal(JSON.stringify(records), before);
+  const zones = [{ ...records[0], id: 'later', occurredAt: '2026-11-03T04:00:00Z' }, { ...records[0], id: 'earlier', occurredAt: '2026-11-03T11:59:00+08:00' }];
+  assert.equal(recentDashboardActivity(zones)[0].id, 'later');
+});
+
+test('activity signs use recorded movement direction and debt principal remains independent of later payments', () => {
+  const row = { id: 'movement', kind: 'payment', amountCentavos: 4000, direction: 'in', occurredAt: '2026-11-03T04:00:00Z' };
+  assert.equal(formatActivityAmount(row), '+₱40.00');
+  assert.equal(formatActivityAmount({ ...row, direction: 'out' }), '−₱40.00');
+  assert.equal(formatActivityAmount({ ...row, direction: 'neutral' }), '₱40.00');
+  assert.equal(formatActivityAmount({ ...row, amountCentavos: 0 }), '₱0.00');
+  const records = quickAddDashboardActivity([
+    { ...row, id: 'cash-loan', kind: 'customerDebt', name: 'Demo Customer', borrowing: 'cash', originalAmountCentavos: 10000, amountCentavos: 6000 },
+    { ...row, id: 'products', kind: 'customerDebt', name: 'Demo Customer', borrowing: 'product' },
+    { ...row, id: 'payable', kind: 'storeDebt', name: 'Demo Creditor' },
+    { ...row, id: 'expense', kind: 'expense', name: 'Utilities' },
+    { ...row, id: 'linked', kind: 'customerDebt', saleId: 'sale-1' },
+  ]);
+  assert.deepEqual(Array.from(records, record => record.direction), ['out', 'neutral', 'neutral', 'out']);
+  assert.equal(records[0].amountCentavos, 10000);
+});
 
 test('cash adjustments validate exact centavos and consume each form only once', () => {
   const store = createCashRegisterStore();
@@ -84,7 +124,6 @@ test('first-use dashboard has zero totals and no fabricated growth or ranking in
   }
   assert.deepEqual(summarizeDashboard('daily'), reference, 'preview must not change the populated fixture');
 });
-const { createScrollDirectionTracker } = loadModule('src/utils/scroll-direction.ts');
 const { t, translate, DEFAULT_LOCALE, SUPPORTED_LOCALES, getAppLocale, setAppLocale, subscribeToLocale } = loadModule('src/i18n/index.ts');
 
 test('English is the default and reserved Filipino remains an English fallback', () => {
@@ -95,7 +134,7 @@ test('English is the default and reserved Filipino remains an English fallback',
   setAppLocale('fil');
   assert.equal(getAppLocale(), 'en');
   assert.equal(translate('fil', 'roles.owner'), 'Owner');
-  assert.equal(t('roles.cashier'), 'Cashier');
+  assert.equal(t('roles.cashier'), 'Operator');
   assert.equal(notifications, 0, 'Unavailable languages must not change active English');
   unsubscribe();
 });
@@ -107,34 +146,7 @@ test('localized interpolation preserves dynamic content and uses the requested E
   assert.equal(t('dashboard.itemCountOne', { count: 1 }), '1 item');
   assert.equal(t('fields.requiredAccessibility', { label: 'Owner ID' }), 'Owner ID, required');
   assert.equal(t('auth.progress', { step: 2 }), 'Account setup, step 2 of 3');
-  for (const [key,value] of Object.entries({ 'dashboard.cashTitle':'Cash in Register', 'dashboard.income':'Income', 'dashboard.expenses':'Expenses', 'dashboard.period.daily':'Daily', 'dashboard.period.weekly':'Weekly', 'dashboard.period.monthly':'Monthly', 'dashboard.bestSellers':'Best-Selling Items' })) assert.equal(t(key),value);
-});
-
-test('dashboard direction accumulates small movements and requires a threshold after reversal', () => {
-  const direction = createScrollDirectionTracker(8);
-  assert.equal(direction(0, 500), null);
-  assert.equal(direction(3, 500), null);
-  assert.equal(direction(6, 500), null);
-  assert.equal(direction(8, 500), 'down');
-  assert.equal(direction(8, 500), null);
-  assert.equal(direction(7, 500), null);
-  assert.equal(direction(10, 500), null);
-  assert.equal(direction(9, 500), null);
-  assert.equal(direction(2, 500), 'up');
-});
-
-test('dashboard direction ignores both edge bounces, invalid offsets and non-scrollable content', () => {
-  const direction = createScrollDirectionTracker(8);
-  assert.equal(direction(40, 500), 'down');
-  for (const y of [-20, -5, 0, 4]) assert.equal(direction(y, 500), null);
-  assert.equal(direction(8, 500), 'down');
-  assert.equal(direction(500, 500), 'down');
-  for (const y of [520, 510, 500, 496]) assert.equal(direction(y, 500), null);
-  assert.equal(direction(492, 500), 'up');
-  assert.equal(direction(NaN, 500), null);
-  assert.equal(direction(10, Infinity), null);
-  const stationary = createScrollDirectionTracker(8);
-  for (const y of [0, 10, -10, 0]) assert.equal(stationary(y, 0), null);
+  for (const [key,value] of Object.entries({ 'dashboard.cashTitle':'Cash on Hand', 'dashboard.income':'Money In', 'dashboard.expenses':'Money Out', 'dashboard.period.daily':'Daily', 'dashboard.period.weekly':'Weekly', 'dashboard.period.monthly':'Monthly', 'dashboard.bestSellers':'Top Selling Items' })) assert.equal(t(key),value);
 });
 
 test('owner dashboard requires completed onboarding, owner capability and permitted completion mode', () => {
@@ -162,7 +174,7 @@ test('dashboard derives reference totals, stock and ranking from integer-centavo
   assert.equal(formatPesos(1245000), '₱12,450.00');
 });
 const validDraft = {
-  name: 'Demo Owner', password: 'DemoStore25@!', confirmPassword: 'DemoStore25@!',
+  name: 'Demo Owner', email: 'owner@example.test', password: 'DemoStore25@!', confirmPassword: 'DemoStore25@!',
   pin: '0123', confirmPin: '0123',
 };
 
@@ -268,6 +280,27 @@ test('button default, disabled and loading states expose correct accessible inte
   assert.ok(loading.includes('role="progressbar"'));
 });
 
+test('login asterisks keep required semantics and expose field-specific errors to screen readers', () => {
+  const React = require('react');
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const { FormField } = loadModule('src/components/ui/form-field.tsx');
+  const render = (props) => renderToStaticMarkup(React.createElement(FormField, { label: 'Owner ID', value: '', requiredIndicator: 'asterisk', ...props }));
+  const initial = render({});
+  assert.match(initial, /Owner ID/);
+  assert.match(initial, /\*/);
+  assert.ok(!initial.includes('(Required)'));
+  assert.match(initial, /aria-label="Owner ID, required"/);
+  assert.ok(!initial.includes('role="alert"'));
+  const invalid = render({ error: 'Enter your Owner ID.' });
+  assert.match(invalid, /aria-label="Owner ID, required\. Enter your Owner ID\."/);
+  assert.match(invalid, /role="alert"/);
+  assert.match(invalid, /aria-live="polite"/);
+  const pin = render({ label: 'PIN', pin: true, error: 'Enter your PIN.' });
+  assert.match(pin, /aria-label="PIN, required\. Enter your PIN\."/);
+  assert.match(pin, /type="password"/);
+  assert.match(render({ requiredIndicator: 'text' }), /\(Required\)/);
+});
+
 test('login requires ID and exactly four ASCII digits, preserving leading zeroes', () => {
   assert.equal(validateLogin('TH-MA-0001', '0123').id, undefined);
   assert.equal(validateLogin('TH-MA-0001', '0123').pin, undefined);
@@ -277,10 +310,66 @@ test('login requires ID and exactly four ASCII digits, preserving leading zeroes
   }
 });
 
-test('registration preview requires all five fields and a nonblank name', () => {
+test('Owner ID typing and paste uppercase and insert each separator only once', () => {
+  for (const entry of ['thma0001', 'th-ma-0001', 'th--ma--0001']) {
+    assert.equal(formatOwnerId(entry), 'TH-MA-0001');
+    let text = '';
+    let selection = { start: 0, end: 0 };
+    for (const letter of entry) {
+      const edit = editOwnerId(text, text.slice(0, selection.start) + letter + text.slice(selection.end), selection);
+      text = edit.text;
+      selection = edit.selection;
+    }
+    assert.equal(text, 'TH-MA-0001');
+    assert.equal(selection.start, text.length);
+    assert.equal(editOwnerId('', entry, { start: 0, end: 0 }).text, 'TH-MA-0001');
+  }
+  assert.equal(formatOwnerId('th-demo-owner'), 'TH-DEMO-OWNER');
+  assert.equal(formatOwnerId('thdemoowner'), 'TH-DEMO-OWNER');
+  assert.equal(formatOwnerId('th-ma-é001'), 'TH-MA-É001');
+});
+
+test('Owner ID edits preserve the caret through separators and repeated characters', () => {
+  const previous = 'TH-MA-0001';
+  const cases = [
+    ['THMA-0001', { start: 3, end: 3 }, previous, 2],
+    ['TH-MA0001', { start: 6, end: 6 }, previous, 5],
+    ['TH-MA-001', { start: 8, end: 8 }, 'TH-MA-001', 7],
+    ['TH-mA-0001', { start: 3, end: 4 }, previous, 4],
+    ['TH-MA-0041', { start: 8, end: 9 }, 'TH-MA-0041', 9],
+    ['TH-ma-0042-0001', { start: 3, end: 5 }, 'TH-MA-00420001', 10],
+    ['', { start: 0, end: previous.length }, '', 0],
+  ];
+  for (const [next, selection, text, caret] of cases) {
+    const result = editOwnerId(previous, next, selection);
+    assert.equal(result.text, text, next);
+    assert.equal(result.selection.start, caret, next);
+    assert.equal(result.selection.end, caret, next);
+  }
+  let text = previous;
+  let selection = { start: text.length, end: text.length };
+  for (let count = 0; text && count < 20; count++) {
+    const edit = editOwnerId(text, text.slice(0, selection.start - 1) + text.slice(selection.end), selection);
+    text = edit.text; selection = edit.selection;
+  }
+  assert.equal(text, '', 'backspace must allow clearing the whole ID');
+});
+
+test('login separates missing credentials from malformed credentials', () => {
+  for (const id of ['', '  ', '-', '--']) assert.equal(validateLogin(id, '').id, 'Enter your Owner ID.');
+  assert.equal(validateLogin('', '').pin, 'Enter your PIN.');
+  for (const id of ['T', 'TH-MA', 'TH-MA-123', 'TH-MA-12345', 'TH-MA-ABCD', 'TH-KH-0001']) {
+    assert.equal(validateLogin(id, '0123').id, 'Use the Owner ID format TH-MA-0001.');
+  }
+  assert.equal(validateLogin('TH-MA-0001', '1').id, undefined);
+  assert.equal(validateLogin('TH-MA-0001', '1').pin, 'Enter exactly 4 numeric digits.');
+  assert.equal(validateLogin('TH-DEMO-OWNER', '0123').id, undefined);
+});
+
+test('registration preview requires all six fields and a nonblank name', () => {
   assert.equal(Object.keys(validateRegistration(validDraft)).length, 0);
   const emptyDraft = Object.fromEntries(Object.keys(validDraft).map((field) => [field, '']));
-  assert.equal(Object.keys(validateRegistration(emptyDraft)).length, 5);
+  assert.equal(Object.keys(validateRegistration(emptyDraft)).length, 6);
   assert.ok(validateRegistration({ ...validDraft, name: '   ' }).name);
 });
 

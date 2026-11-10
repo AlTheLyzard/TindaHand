@@ -4,7 +4,14 @@ export type InventoryProduct = PosProduct & {
   costCentavos: number;
   expirationDate: string;
   photoUri?: string;
+  /** Optional for the existing catalog contract; legacy records adapt to one batch. */
+  batches?: StockBatch[];
 };
+export type StockBatch = { id: string; quantity: number } & (
+  { noExpiry: true; expirationDate: null } | { noExpiry: false; expirationDate: string }
+);
+export type BatchDraft = { id: string; quantity: string; noExpiry: boolean; expirationDate: string };
+export type BatchErrors = Partial<Record<'quantity' | 'expirationDate', string>>;
 export type AssetClassification = 'current' | 'equipment' | 'furniture';
 export type BusinessAsset = {
   id: string;
@@ -22,6 +29,7 @@ export type RestockRecord = {
   stockDate: string;
   expirationDate: string;
   recordedAt: string;
+  batches?: StockBatch[];
 };
 export type StockStatus = 'good' | 'low' | 'critical' | 'out';
 export type InventorySort = 'name' | 'stockDesc' | 'stockAsc' | 'fast' | 'slow' | 'expiry';

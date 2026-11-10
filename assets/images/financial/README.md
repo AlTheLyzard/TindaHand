@@ -1,0 +1,3 @@
+The report outlines match the document, open book, bar chart, and pie chart motifs in the supplied Financial Statements frames. `report-background.svg` recreates the reference's pale blue and white waves as a scalable backdrop. `store-background.png` is a direct crop of the unobstructed store illustration from `docs/designs/General Journal.png` (x=1540, y=2258, width=1220, height=190). It excludes navigation and the update notice. All are bundled local assets; no remote asset fetch is required.
+
+`transaction-background.svg` recreates the pale bottom polygons in `docs/designs/TransactionHistory.png`. It contains no row surfaces, navigation, text, or device chrome; the background scales behind the live transaction list. No separate geometric source asset was available.

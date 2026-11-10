@@ -1,4 +1,8 @@
+> Current behavior (November 9, 2026): [authentication-handoff.md](authentication-handoff.md) supersedes the historical instructions below. First access/full logout uses Owner ID + password; only an authenticated device can use PIN unlock. Owner password: `DemoStore25@!`; registered demo email: `owner@example.test`. The explicit mock flag remains required. No real emails or durable accounts are created.
+
 # Development mock Owner login
+
+Owner Settings follow-up (October 31, 2026): [owner-settings.md](owner-settings.md) supersedes the historical cashier/unavailable and credential behavior below. Owner login now verifies the current in-memory Owner PIN, so after changing it in Settings, use the new PIN until reload. The chooser derives cashier availability from the shared store-scoped list. Cashier login checks Store / Owner ID + unique Cashier ID + PIN in development, then reports that its workspace is unavailable and grants no Owner access. Cashier creation and PIN resets remain in memory until reload; no real account is created.
 
 Mock login is off by default. From the project folder in PowerShell:
 

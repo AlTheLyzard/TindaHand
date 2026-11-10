@@ -25,4 +25,6 @@ export type DashboardActivity = {
   label?: string;
   occurredAt: string;
   amountCentavos: number;
+  /** Direction of the recorded money movement; debt principal can be neutral. */
+  direction: 'in' | 'out' | 'neutral';
 };

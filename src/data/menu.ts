@@ -5,12 +5,12 @@ export const ownerMenuTools = [
   {
     id: 'financial-statements', label: 'Financial Statements', icon: 'financial',
     subtitle: 'General Journal, Ledger, Income Statement, Balance Sheet',
-    temporaryMessage: 'Financial statement generation and downloads are not available in this frontend demo yet.',
+    temporaryMessage: '',
   },
   {
     id: 'transaction-history', label: 'Transaction History', icon: 'history',
-    subtitle: 'Review and manage store transactions',
-    temporaryMessage: 'Completed POS orders from this session appear below. Search, filters, and record management are not available yet.',
+    subtitle: 'Review store transactions',
+    temporaryMessage: '',
   },
   {
     id: 'store-expenses', label: 'Store Expenses', icon: 'expense',
@@ -25,7 +25,7 @@ export const ownerMenuTools = [
   },
   {
     id: 'settings', label: 'Settings', icon: 'settings',
-    temporaryMessage: 'Application, notification, and account preferences are not available in this frontend demo yet.',
+    temporaryMessage: '',
   },
 ] as const satisfies readonly OwnerTool[];
 

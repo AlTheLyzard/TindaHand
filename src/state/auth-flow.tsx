@@ -1,19 +1,25 @@
-import { createContext, useContext, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { createContext, useContext, useState, useEffect, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { AppState } from 'react-native';
 
-import type { AccountRole, MockAccounts, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues } from '@/types/auth';
+import type { AccountRole, DeviceSession, MockAccounts, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues } from '@/types/auth';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
-import { authenticateMockOwner } from '@/services/mock-auth';
-import { resolveOwnerAccess } from '@/utils/dashboard-access';
+import { authenticationService } from '@/services/authentication';
 
 const emptyDraft: RegistrationFormValues = {
-  name: '', password: '', confirmPassword: '', pin: '', confirmPin: '',
+  name: '', email: '', password: '', confirmPassword: '', pin: '', confirmPin: '',
 };
 
 type AuthFlow = {
   mockAuthEnabled: boolean;
   mockSession: MockOwnerSession | null;
   owner: OwnerIdentity | null;
-  loginMockOwner: (role: AccountRole, id: string, pin: string) => boolean;
+  deviceSession: DeviceSession | null;
+  restoring: boolean;
+  refreshSession: () => Promise<void>;
+  lock: () => Promise<void>;
+  loginToastExpiresAt: number | null;
+  dismissLoginToast: () => void;
+  notifyLogin: () => void;
   accounts: MockAccounts;
   setAccounts: Dispatch<SetStateAction<MockAccounts>>;
   draft: RegistrationFormValues;
@@ -31,13 +37,14 @@ type AuthFlow = {
 
 const AuthFlowContext = createContext<AuthFlow | null>(null);
 
-/** Ephemeral accounts, draft and opt-in mock session; credentials are never stored in session records. */
-// TODO(BACKEND): Replace in-memory access/session lifecycle with authenticated
-// identity, expiration and logout handling. Route gates are demo capabilities only;
-// clear sensitive drafts on completion. See docs/backend-handoff.md#authentication.
+/** Ephemeral identity/drafts plus service-validated device sessions. */
+// BACKEND INTEGRATION: Replace mock restoration with the agreed secure session
+// adapter; server authorization is mandatory. See docs/authentication-handoff.md.
 export function AuthFlowProvider({ children }: { children: ReactNode }) {
-  const [mockSession, setMockSession] = useState<MockOwnerSession | null>(null);
-  const [accounts, setAccounts] = useState<MockAccounts>({ owner: null, cashier: null });
+  const [deviceSession, setDeviceSession] = useState<DeviceSession | null>(null);
+  const [restoring, setRestoring] = useState(true);
+  const [loginToastExpiresAt, setLoginToastExpiresAt] = useState<number | null>(null);
+  const [accounts, setAccounts] = useState<MockAccounts>({ owner: null });
   const [draft, setDraft] = useState(emptyDraft);
   const [registrationPreview, setRegistrationPreview] = useState(false);
   const [selectedRole, setSelectedRole] = useState<AccountRole | null>(null);
@@ -45,7 +52,9 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
   const [dashboardAccess, setDashboardAccess] = useState(false);
 
   function clear() {
-    setMockSession(null);
+    void authenticationService.logout();
+    setDeviceSession(null);
+    setLoginToastExpiresAt(null);
     setDraft(emptyDraft);
     setRegistrationPreview(false);
     setSelectedRole(null);
@@ -53,19 +62,36 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
     setDashboardAccess(false);
   }
 
-  function loginMockOwner(role: AccountRole, id: string, pin: string) {
-    const session = authenticateMockOwner(role, id, pin);
-    if (!session) return false;
-    setMockSession(session);
-    setSelectedRole('owner');
-    setDashboardAccess(true);
-    setDraft(emptyDraft);
-    return true;
+  async function refreshSession() {
+    try { setDeviceSession(await authenticationService.restoreSession()); }
+    catch { setDeviceSession(null); }
+    finally { setRestoring(false); }
   }
-  const owner = resolveOwnerAccess(completion, selectedRole, dashboardAccess, __DEV__, mockSession, MOCK_AUTH_ENABLED);
+  async function lock() {
+    await authenticationService.lockSession();
+    const current = await authenticationService.restoreSession();
+    setDeviceSession(current);
+    // An unauthenticated registration can temporarily background for autofill.
+    // Preserve that draft; locking an existing authenticated device clears it.
+    if (current) setDraft(emptyDraft);
+  }
+  useEffect(() => {
+    void authenticationService.restoreSession().then(session => { setDeviceSession(session); setRestoring(false); }).catch(() => { setDeviceSession(null); setRestoring(false); });
+    const subscription = AppState.addEventListener('change', state => {
+      if (state !== 'active') void lock();
+      else void refreshSession();
+    });
+    const timer = setInterval(() => { void refreshSession(); }, 15000);
+    return () => { subscription.remove(); clearInterval(timer); };
+  }, []);
+  // SECURITY: Navigation gates only. Backend authorization is required for every
+  // read/write. Neither registration completion nor a remembered ID grants access.
+  const active = deviceSession && !deviceSession.locked;
+  const owner: OwnerIdentity | null = active && deviceSession.role === 'owner' ? { ...deviceSession.owner, mode: 'mock' } : null;
+  const mockSession: MockOwnerSession | null = owner ? { kind: 'mock', role: 'owner', owner } : null;
 
   return (
-    <AuthFlowContext.Provider value={{ mockAuthEnabled: MOCK_AUTH_ENABLED, mockSession, owner, loginMockOwner, accounts, setAccounts, draft, setDraft, registrationPreview, setRegistrationPreview, selectedRole, setSelectedRole, completion, setCompletion, dashboardAccess, setDashboardAccess, clear }}>
+    <AuthFlowContext.Provider value={{ mockAuthEnabled: MOCK_AUTH_ENABLED, mockSession, deviceSession, restoring, refreshSession, lock, loginToastExpiresAt, dismissLoginToast: () => setLoginToastExpiresAt(null), notifyLogin: () => setLoginToastExpiresAt(Date.now() + 15000), owner, accounts, setAccounts, draft, setDraft, registrationPreview, setRegistrationPreview, selectedRole, setSelectedRole, completion, setCompletion, dashboardAccess, setDashboardAccess, clear }}>
       {children}
     </AuthFlowContext.Provider>
   );

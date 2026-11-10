@@ -1,3 +1,5 @@
+> Authentication update (November 9, 2026): [authentication-handoff.md](authentication-handoff.md) supersedes historical authentication examples below. Owner ID + password authenticates a device; PIN unlock requires an existing valid session. Operator login uses Owner ID + assigned PIN, without a Cashier ID. All auth transport contracts remain proposed.
+
 # API contract notes
 
 Audited October 30, 2026. **No agreed HTTP endpoints, OpenAPI schemas or backend API contracts were found.** Everything below describes existing frontend interfaces or a **PROPOSED** transport model for discussion. No URL, HTTP method, auth mechanism, pagination format, backend framework or MySQL table schema is finalized. See [handoff](backend-handoff.md) for story references, implementation status and open decisions.
@@ -32,7 +34,13 @@ Frontend needs owner registration `{name, password, pin}` and login `{role, owne
 
 **PROPOSED response needs:** canonical owner identity `{id, name}` plus server-controlled role/store/session information once its protocol is agreed. Preserve the UI's `RegistrationResult` mapping: `{status:'confirmed', account:{id,name}}` only on confirmed creation, or `{status:'error', message, fields?}`. The `mode:'preview'|'mock'|'confirmed'` discriminator is frontend presentation/access state; it is not an authentication token.
 
-Do not return plaintext password/PIN in identity/session objects. ID generation, session/token storage, expiry, logout revocation, login throttling, multi-Kahera identity, PIN recovery/email/offline recovery and offline registration remain open. Cashier login UI uses owner ID + cashier PIN, but no working cashier session exists.
+Do not return plaintext password/PIN in identity/session objects. ID generation, session/token storage, expiry, logout revocation, login throttling, PIN recovery/email/offline recovery and offline registration remain open. The confirmed cashier identification scheme is Store / Owner ID + unique Cashier ID + PIN. The login UI checks this against in-memory demo accounts in development; no authenticated cashier session/workspace exists yet.
+
+### Owner Settings (proposed frontend contracts)
+
+`SettingsService` in `src/types/settings.ts` defines replaceable frontend operations for store-scoped cashier reads/creation, Owner PIN changes, selected Cashier PIN resets, simulated sync and simulated cache clearing. It is not a finalized HTTP schema. Cashier reads return only `{id, ownerId, name, status}`. Creation takes `{name, pin}`; `confirmPin` is UI validation only. Owner change/reset intents require the current Owner PIN plus a new PIN, with selected Cashier ID only for reset. Never request a cashier's old PIN. Cashier IDs are deterministic in the mock; production IDs come from the backend.
+
+Server responsibilities: authenticate and authorize the current Owner/store for every operation, verify the Owner PIN, limit failed attempts, securely hash PINs, audit reset events without PIN values, and invalidate the affected cashier's sessions. The frontend mock enforces none of these as production protections. Sync state/progress/pending counts are fictional; durable storage/queues, conflict resolution, retry/idempotency and permitted cache boundaries require agreed contracts. See [owner-settings.md](owner-settings.md).
 
 ## Inventory and POS
 
@@ -70,6 +78,10 @@ Validation/transaction expectations:
 - Atomically commit sale + payment + stock deduction + customer creation/link if approved + remaining debt. Enforce store/role authorization, validate aggregate amounts and concurrency, and implement durable idempotency. A timeout may follow a committed write; agree a replay/reconciliation response so retries cannot charge/deduct twice. Mock duplicate commands return false/no-op; that is not the desired network retry protocol.
 
 ## Customers and debts
+
+Accounts Receivable update (MA-AR-001–004): see [accounts-receivable.md](accounts-receivable.md). The shared inventory session now owns customer debts from AR, Quick Add and POS, plus separate confirmed payment events. `src/services/receivables.ts` handles customer debt creation/payment through atomic inventory operations. This task confirms product stock deduction exactly once on successful Save, selected-debt balance repayment, and fully settled Paid summaries. It supersedes the record-only/no-repayment/stock-effect-open customer-debt notes below. AR/Quick Add require explicit customer selection to reuse an ID; typed names create a new identity with visible UI guidance. POS retains its existing normalized-name convention. No AR HTTP endpoint, collection method/reference input or cash/accounting posting contract is defined. Existing POS GCash references are retained in history.
+
+Accounts Payable update (MA-AP-001–004): see [accounts-payable.md](accounts-payable.md). `src/types/payables.ts` now defines local creditor, debt and confirmed payment-history records. `createPayablesRepository` provides owner-scoped reads, debt creation and idempotent amount-based payment confirmation through `createQuickAddService`; `useQuickAdd` shares the ledger with both AP and Quick Add Store Debt. This supersedes the earlier “no repayment/history flow” statement below for store debts only. `QuickAddRecord.paymentStatus` now also supports `paid`, and store debts carry `creditorId`. No AP HTTP schema or payment-method/GCash contract is agreed; the remaining proposals below are unchanged.
 
 Current `Customer` is only `{id,name}` from fictional seed/session data. POS and Quick Add match normalized case/whitespace names and may create `customer-${recordId}` locally. This is a demo convention. Agree same-name persons, create/link authorization, merge policy and canonical IDs before adopting any proposed customer payload.
 

@@ -1,11 +1,22 @@
 {
-  "color": { "warningBase": "#F9A825", "surfaceSubtle": "#D9E7F4", "accentBase": "#2F6CC9", "accentContainer": "#D1E1F5", "primaryDisabled": "#B8CCE4", "borderOutline": "#B0C8E3", "navigationSurface": "#FFFFFF", "navigationActive": "#D1E2F8", "navigationBorder": "#ADC9EE", "navigationText": "#102342" },
+  "color": { "warningBase": "#F9A825", "surfaceCard": "#FFFFFF", "surfaceSubtle": "#D9E7F4", "accentBase": "#2F6CC9", "accentContainer": "#D1E1F5", "primaryDisabled": "#B8CCE4", "borderOutline": "#B0C8E3", "textPrimary": "#0C1B3C", "textSecondary": "#4A607A", "navigationSurface": "#FFFFFF", "navigationBorder": "#ADC9EE" },
+  "button": {
+    "height": 50, "radius": 5, "fontSize": 14, "lineHeight": 21,
+    "fontFamily": "Poppins_700Bold", "paddingHorizontal": 16, "paddingVertical": 12,
+    "iconSize": 20, "iconGap": 8,
+    "primary": { "default": "#245399", "hover": "#1A3E78", "pressed": "#112F6F", "disabled": "#B8CCE4", "disabledText": "#91AACB" },
+    "secondary": { "default": "#FFFFFF", "hover": "#DDE2EB", "pressed": "#CFD5E2", "disabled": "#F1F5FA", "disabledText": "#B8CCE4" },
+    "destructive": { "default": "#D32F2F", "hover": "#B71C1C", "pressed": "#9A0007", "disabled": "#FFEBEE", "disabledText": "#EFBDC2" },
+    "destructiveOutline": { "default": "#FFFFFF", "hover": "#F4DDDD", "pressed": "#EBCCCD", "disabled": "#FFFBFC", "disabledText": "#EEC9CC" },
+    "positive": { "default": "#36843B", "hover": "#2E9F35", "pressed": "#255B29", "disabled": "#D7E6D8", "disabledText": "#AFC3C6" },
+    "highlight": "inset 0 2px 4px rgba(255,255,255,0.38)",
+    "outlineHighlight": "inset 0 2px 4px rgba(115,153,204,0.35)"
+  },
   "radius": { "control": 10, "surface": 12, "card": 16, "pill": 9999 },
   "spacing": { "half": 2, "one": 4, "two": 8, "three": 16, "four": 24, "five": 32, "six": 64 },
-  "size": { "badge": 36, "iconCircle": 40, "statusIndicator": 22, "touchTarget": 48, "navigationIcon": 28 },
+  "size": { "badge": 36, "iconCircle": 40, "statusIndicator": 22, "touchTarget": 48, "navigationIcon": 22 },
   "navigation": {
-    "height": 64, "cornerRadius": 20, "maxWidth": 288, "expandedMaxWidth": 344, "expandedLift": 6,
-    "scrollThreshold": 8, "durationMs": 320,
-    "labelDurationMs": 320, "labelFontSize": 12, "labelLineHeight": 18
+    "height": 56, "durationMs": 225, "labelFontSize": 12, "labelLineHeight": 16,
+    "iconLabelGap": 2, "indicatorWidth": 28, "indicatorHeight": 3, "indicatorBottom": 4
   }
 }

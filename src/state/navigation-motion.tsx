@@ -1,11 +1,11 @@
 import { useMotionReduced } from '@/state/motion';
-import { motion } from '@/constants/motion';
 import { usePathname } from 'expo-router';
 import { createContext, useContext, useLayoutEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import { useWindowDimensions } from 'react-native';
-import { ReduceMotion, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import { Easing, ReduceMotion, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 
 import tokens from '@/constants/design-tokens.json';
+import { useAuthFlow } from '@/state/auth-flow';
+import type { AccountRole } from '@/types/auth';
 
 export const navigationItems = [
   { icon: 'home', label: 'navigation.dashboard', route: '/owner-dashboard' },
@@ -16,12 +16,9 @@ export const navigationItems = [
 
 type NavigationMotion = {
   pathname: string;
+  role: AccountRole;
   selectedIndex: number;
   selection: SharedValue<number[]>;
-  reduced: boolean;
-  height: number;
-  measurements: Record<string, number>;
-  setMeasurements: Dispatch<SetStateAction<Record<string, number>>>;
   setMenuSelection: Dispatch<SetStateAction<{ hostId: string; pathname: string } | null>>;
 };
 const NavigationMotionContext = createContext<NavigationMotion | null>(null);
@@ -30,15 +27,13 @@ const NavigationHeightContext = createContext(tokens.navigation.height);
 /** Keep one transition alive across screens, including interrupted taps and back navigation. */
 export function NavigationMotionProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { owner, selectedRole } = useAuthFlow();
+  const role = owner ? 'owner' : selectedRole ?? 'owner';
   const [menuSelection, setMenuSelection] = useState<{ hostId: string; pathname: string } | null>(null);
   const routeIndex = navigationItems.findIndex(({ route }) => pathname === route || pathname.startsWith(`${route}/`));
   const selectedIndex = menuSelection?.pathname === pathname ? navigationItems.findIndex(item => item.icon === 'menu') : routeIndex;
   const selection = useSharedValue(navigationItems.map((_, index) => Number(index === selectedIndex)));
   const reduced = useMotionReduced();
-  const [measurements, setMeasurements] = useState<Record<string, number>>({});
-  const { fontScale } = useWindowDimensions();
-  const height = Math.max(tokens.navigation.height, Math.ceil(tokens.navigation.labelLineHeight * fontScale) + tokens.spacing.two * 2);
-
 
   useLayoutEffect(() => {
     const target = navigationItems.map((_, index) => Number(index === selectedIndex));
@@ -46,20 +41,20 @@ export function NavigationMotionProvider({ children }: { children: ReactNode }) 
     selection.set(selectedIndex < 0 || selection.get().every(value => value === 0) || reduced
       ? target
       : withTiming(target, {
-        duration: motion.state,
-        easing: motion.ease,
+        duration: tokens.navigation.durationMs,
+        easing: Easing.out(Easing.cubic),
         // The live system preference above also handles enabling/disabling Reduce Motion mid-session.
         reduceMotion: ReduceMotion.Never,
       }));
   }, [reduced, selectedIndex, selection]);
 
-  const value = useMemo(() => ({ pathname, selectedIndex, selection, reduced, height, measurements, setMeasurements, setMenuSelection }), [pathname, selectedIndex, selection, reduced, height, measurements]);
-  return <NavigationHeightContext.Provider value={height}>
+  const value = useMemo(() => ({ pathname, role, selectedIndex, selection, setMenuSelection }), [pathname, role, selectedIndex, selection]);
+  return <NavigationHeightContext.Provider value={tokens.navigation.height}>
     <NavigationMotionContext.Provider value={value}>{children}</NavigationMotionContext.Provider>
   </NavigationHeightContext.Provider>;
 }
 
-/** Screen/FAB clearance only changes with text size, not on every tab switch or measurement. */
+/** Navigation area only; each host reserves the device bottom safe inset once. */
 export function useNavigationHeight() {
   return useContext(NavigationHeightContext);
 }

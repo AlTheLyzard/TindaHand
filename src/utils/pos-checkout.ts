@@ -1,3 +1,4 @@
+import { deductProductStock } from './inventory-stock';
 import { customerSeed } from '../data/customers';
 import type { CheckoutCommand, Customer, MockSale, PosLedger } from '@/types/pos';
 import type { QuickAddRecord } from '@/types/quick-add';
@@ -51,7 +52,11 @@ export function commitMockSale(state: InventoryStore, command: CheckoutCommand):
     paymentStatus: a.paidCentavos ? 'partial' : 'unpaid', occurredAt,
   } : null;
   return { ...state,
-    products: state.products.map(product => selection[product.id] ? { ...product, stock: product.stock - selection[product.id].quantity } : product),
+    receivablePayments: debt && a.paidCentavos > 0 ? [...(state.receivablePayments ?? []), {
+      id: `initial-payment-${id}`, ownerId, debtId: debt.id, amountCentavos: a.paidCentavos, occurredAt,
+      ...(a.gcashRaw !== null && a.reference.trim() ? { reference: a.reference.trim() } : {}),
+    }] : state.receivablePayments,
+    products: state.products.map(product => selection[product.id] ? deductProductStock(product, selection[product.id].quantity) : product),
     pos: { customers: customer && !ledger.customers.some(item => item.id === customer.id) ? [...ledger.customers, customer] : ledger.customers,
       sales: [sale, ...ledger.sales], debts: debt ? [debt, ...ledger.debts] : ledger.debts },
   };

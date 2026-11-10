@@ -3,6 +3,12 @@ import type { BusinessAsset, InventoryFilters, InventoryProduct, ProductDraft, R
 import type { CheckoutCommand, Customer, PosLedger, ProductCategory } from '../types/pos';
 import { parsePaymentAmount } from './pos-payment';
 import { commitMockSale, customerNameKey, emptyPosLedger } from './pos-checkout';
+import { commitCustomerDebt, commitReceivablePayment } from './receivables';
+import type { CustomerDebtCommand, ReceivablePayment, ReceivablePaymentCommand } from '@/types/receivables';
+
+import { inventoryRules } from '../constants/inventory-rules';
+import { batchStock, earliestBatchExpiry, earliestExpiry, productBatches, productExpiry, productStock, stockStatus, validDate, withBatches, todayInManila } from './inventory-stock';
+export { batchStock, earliestBatchExpiry, earliestExpiry, expiryStatus, productBatches, productExpiry, productStock, stockCategory, stockStatus, validDate, withBatches, todayInManila } from './inventory-stock';
 
 export const categoryLabels: Record<ProductCategory, string> = {
   get drinks() { return t("inventory.drinks"); }, get canned() { return t("inventory.canned.goods"); }, get snacks() { return t("inventory.snacks"); }, get coldCuts() { return t("inventory.cold.cuts"); },
@@ -11,31 +17,17 @@ export const categoryLabels: Record<ProductCategory, string> = {
 export const assetLabels = { current: t("inventory.current.asset"), equipment: t("inventory.equipment2"), furniture: t("inventory.furniture.fixtures2") } as const;
 export const stockLabels: Record<StockStatus, string> = { get good() { return t("inventory.good"); }, get low() { return t("inventory.low.stock"); }, get critical() { return t("inventory.critical.stock"); }, get out() { return t("inventory.out.of.stock"); } };
 export const sortLabels = { name: t("inventory.name.a.z"), stockDesc: t("inventory.high.to.low.stock"), stockAsc: t("inventory.low.to.high.stock"), fast: t("inventory.fast.selling"), slow: t("inventory.slow.selling"), expiry: t("inventory.expiring.soon") } as const;
-export const defaultFilters: InventoryFilters = { sort: 'name', category: 'all', letter: 'all', status: 'all' };
+export const defaultFilters: InventoryFilters = { sort: 'stockDesc', category: 'all', letter: 'all', status: 'all' };
 /** User-approved demo policy; replace with store settings when agreed with backend. */
-export const inventoryPolicy = { lowStock: 5, criticalStock: 2, expiryDays: 30 };
-export function todayInManila() {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
-  return ['year', 'month', 'day'].map(type => parts.find(part => part.type === type)?.value).join('-');
-}
-export function validDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number(value.slice(0, 4)) >= 1900
-    && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
-}
-export function stockStatus(stock: number): StockStatus {
-  return stock === 0 ? 'out' : stock <= inventoryPolicy.criticalStock ? 'critical' : stock <= inventoryPolicy.lowStock ? 'low' : 'good';
-}
-export function expiryStatus(date: string, today: string) {
-  const days = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000);
-  return days < 0 ? 'expired' : days <= inventoryPolicy.expiryDays ? 'nearExpiry' : 'fresh';
-}
+export const inventoryPolicy = inventoryRules;
 export function inventorySummary(products: readonly InventoryProduct[], today: string) {
   return products.reduce((result, product) => {
     result.total++;
-    result.valueCentavos += product.costCentavos * product.stock;
-    result[stockStatus(product.stock)]++;
-    const expiry = expiryStatus(product.expirationDate, today);
-    if (expiry !== 'fresh') result[expiry]++;
+    result.valueCentavos += product.costCentavos * productStock(product);
+    result[stockStatus(productStock(product))]++;
+    const expiry = productExpiry(product, today);
+    if (expiry.nearExpiry) result.nearExpiry++;
+    if (expiry.expired) result.expired++;
     return result;
   }, { total: 0, valueCentavos: 0, good: 0, low: 0, critical: 0, out: 0, nearExpiry: 0, expired: 0 });
 }
@@ -45,12 +37,12 @@ export function filterInventory(products: readonly InventoryProduct[], query: st
   return products.filter(p => p.name.toLowerCase().includes(query.trim().toLowerCase())
     && (filters.category === 'all' || p.category === filters.category)
     && (filters.letter === 'all' || p.name.toUpperCase().startsWith(filters.letter))
-    && (filters.status === 'all' || stockStatus(p.stock) === filters.status || (filters.status === 'low' && stockStatus(p.stock) === 'critical') || expiryStatus(p.expirationDate, today) === filters.status))
+    && (filters.status === 'all' || stockStatus(productStock(p)) === filters.status || (filters.status === 'low' && stockStatus(productStock(p)) === 'critical') || (filters.status === 'nearExpiry' && productExpiry(p, today).nearExpiry) || (filters.status === 'expired' && productExpiry(p, today).expired)))
     .sort((a, b) => {
-      const order = filters.sort === 'stockDesc' ? b.stock - a.stock : filters.sort === 'stockAsc' ? a.stock - b.stock
+      const order = filters.sort === 'stockDesc' ? productStock(b) - productStock(a) : filters.sort === 'stockAsc' ? productStock(a) - productStock(b)
         : filters.sort === 'fast' ? (sold.get(b.id) ?? 0) - (sold.get(a.id) ?? 0)
         : filters.sort === 'slow' ? (sold.get(a.id) ?? 0) - (sold.get(b.id) ?? 0)
-        : filters.sort === 'expiry' ? a.expirationDate.localeCompare(b.expirationDate) : 0;
+        : filters.sort === 'expiry' ? (earliestExpiry(a) ?? '9999-99-99').localeCompare(earliestExpiry(b) ?? '9999-99-99') : 0;
       return order || a.name.localeCompare(b.name, 'en');
     });
 }
@@ -69,16 +61,18 @@ export function validateProduct(draft: ProductDraft, mode: 'add' | 'edit' | 'res
   const selling = parsePaymentAmount(draft.sellingPrice), cost = parsePaymentAmount(draft.cost);
   if (selling === null || selling <= 0) errors.sellingPrice = t("inventory.enter.a.selling.price.greater.than.zero");
   if (cost === null || cost < 0) errors.cost = t("inventory.enter.a.cost.of.zero.or.more");
-  if (!/^\d+$/.test(draft.quantity) || !Number.isSafeInteger(Number(draft.quantity)) || Number(draft.quantity) < (mode === 'restock' ? 1 : 0) || Number(draft.quantity) > 1000000) errors.quantity = mode === 'restock' ? t("inventory.enter.an.incoming.quantity.from.1.to") : t("inventory.enter.a.whole.quantity.from.0.to");
+  if (!/^\d+$/.test(draft.quantity) || !Number.isSafeInteger(Number(draft.quantity)) || Number(draft.quantity) < (mode === 'restock' ? 1 : 0) || Number(draft.quantity) > inventoryRules.maxStock) errors.quantity = mode === 'restock' ? t("inventory.enter.an.incoming.quantity.from.1.to") : t("inventory.enter.a.whole.quantity.from.0.to");
   if (mode === 'restock' && (!validDate(draft.stockDate) || draft.stockDate > today)) errors.stockDate = t("inventory.enter.a.valid.stock.date.no.later");
   if (cost !== null && Number.isSafeInteger(Number(draft.quantity)) && !Number.isSafeInteger(cost * Number(draft.quantity))) errors.cost = t("inventory.cost.quantity.is.too.large");
   return errors;
 }
-export type InventoryStore = { products: InventoryProduct[]; assets: BusinessAsset[]; restocks: RestockRecord[]; pos?: PosLedger };
+export type InventoryStore = { products: InventoryProduct[]; assets: BusinessAsset[]; restocks: RestockRecord[]; pos?: PosLedger; receivablePayments?: ReceivablePayment[] };
 export type InventoryAction = { type: 'saveProduct'; product: InventoryProduct } | { type: 'deleteProduct'; id: string }
   | { type: 'restock'; record: RestockRecord; photoUri?: string }
   | { type: 'saveAsset'; asset: BusinessAsset } | { type: 'deleteAsset'; id: string }
   | { type: 'completeSale'; command: CheckoutCommand }
+  | { type: 'saveCustomerDebt'; command: CustomerDebtCommand }
+  | { type: 'confirmReceivablePayment'; command: ReceivablePaymentCommand }
   | { type: 'registerCustomer'; customer: Customer };
 function safeTotal(values: number[]) {
   return values.every(value => Number.isSafeInteger(value) && value >= 0) && Number.isSafeInteger(values.reduce((sum, value) => sum + value, 0));
@@ -86,6 +80,8 @@ function safeTotal(values: number[]) {
 /** Pure domain operations; services/inventory.ts is the mock data-access boundary. */
 export function inventoryReducer(state: InventoryStore, action: InventoryAction): InventoryStore {
   switch (action.type) {
+    case 'saveCustomerDebt': return commitCustomerDebt(state, action.command);
+    case 'confirmReceivablePayment': return commitReceivablePayment(state, action.command);
     case 'completeSale': return commitMockSale(state, action.command);
     case 'registerCustomer': {
       const ledger = state.pos ?? emptyPosLedger();
@@ -93,8 +89,9 @@ export function inventoryReducer(state: InventoryStore, action: InventoryAction)
       return { ...state, pos: { ...ledger, customers: [...ledger.customers, { ...action.customer }] } };
     }
     case 'saveProduct': {
-      const product = action.product;
-      if (!product.name.trim() || !Object.prototype.hasOwnProperty.call(categoryLabels, product.category) || !validDate(product.expirationDate) || !Number.isSafeInteger(product.stock) || product.stock < 0 || product.stock > 1000000 || !Number.isSafeInteger(product.unitPriceCentavos) || product.unitPriceCentavos <= 0 || !Number.isSafeInteger(product.costCentavos) || product.costCentavos < 0) return state;
+      if (action.product.batches && !validBatches(action.product.batches, false)) return state;
+      const product = action.product.batches ? withBatches(action.product, action.product.batches) : action.product;
+      if (!product.id || !product.name.trim() || !Object.prototype.hasOwnProperty.call(categoryLabels, product.category) || (!product.batches && !validDate(product.expirationDate)) || !Number.isSafeInteger(product.stock) || product.stock < 0 || product.stock > inventoryRules.maxStock || !Number.isSafeInteger(product.unitPriceCentavos) || product.unitPriceCentavos <= 0 || !Number.isSafeInteger(product.costCentavos) || product.costCentavos < 0) return state;
       const products = state.products.some(p => p.id === product.id) ? state.products.map(p => p.id === product.id ? { ...product } : p) : [...state.products, { ...product }];
       return safeTotal(products.map(p => p.costCentavos * p.stock)) ? { ...state, products } : state;
     }
@@ -109,8 +106,17 @@ export function inventoryReducer(state: InventoryStore, action: InventoryAction)
     case 'restock': {
       if (state.restocks.some(r => r.id === action.record.id)) return state;
       const product = state.products.find(p => p.id === action.record.productId);
-      if (!product || !validDate(action.record.stockDate) || !validDate(action.record.expirationDate) || !Number.isSafeInteger(action.record.quantity) || action.record.quantity <= 0 || product.stock + action.record.quantity > 1000000 || !safeTotal(state.products.map(p => (p.stock + (p.id === product.id ? action.record.quantity : 0)) * p.costCentavos))) return state;
-      return { ...state, products: state.products.map(p => p.id === product.id ? { ...p, stock: p.stock + action.record.quantity, expirationDate: action.record.expirationDate, photoUri: action.photoUri ?? p.photoUri } : p), restocks: [...state.restocks, { ...action.record }] };
+      const batches = action.record.batches ?? [{ id: action.record.id, quantity: action.record.quantity, noExpiry: false as const, expirationDate: action.record.expirationDate }];
+      if (!product || !action.record.id || !validDate(action.record.stockDate) || action.record.stockDate > todayInManila() || !validBatches(batches, true) || batchStock(batches) !== action.record.quantity || batches.some(batch => productBatches(product).some(existing => existing.id === batch.id)) || productStock(product) + action.record.quantity > inventoryRules.maxStock || !safeTotal(state.products.map(p => (productStock(p) + (p.id === product.id ? action.record.quantity : 0)) * p.costCentavos))) return state;
+      const next = withBatches({ ...product, photoUri: action.photoUri ?? product.photoUri }, [...productBatches(product), ...batches]);
+      return { ...state, products: state.products.map(p => p.id === product.id ? next : p), restocks: [...state.restocks, { ...action.record, expirationDate: earliestBatchExpiry(batches) ?? '', batches: batches.map(batch => ({ ...batch })) }] };
     }
   }
+}
+
+function validBatches(batches: readonly import('../types/inventory').StockBatch[], positive: boolean) {
+  return (!positive || batches.length > 0) && new Set(batches.map(batch => batch.id)).size === batches.length
+    && batches.every(batch => !!batch.id && Number.isSafeInteger(batch.quantity) && batch.quantity >= (positive ? 1 : 0)
+      && (batch.noExpiry ? batch.expirationDate === null : validDate(batch.expirationDate)))
+    && batchStock(batches) <= inventoryRules.maxStock;
 }

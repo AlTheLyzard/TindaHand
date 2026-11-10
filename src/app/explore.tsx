@@ -1,7 +1,8 @@
+import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/i18n/use-translation';
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Platform, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ExternalLink } from '@/components/external-link';
@@ -47,16 +48,10 @@ export default function TabTwoScreen() {
           </ThemedText>
 
           <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">{t('starter.documentation')}</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
-            </Pressable>
+            <Button variant="secondary" fullWidth={false} iconPosition="trailing"
+              icon={({ color }) => <SymbolView tintColor={color} name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }} size={12} />}>
+              {t('starter.documentation')}
+            </Button>
           </ExternalLink>
         </ThemedView>
 
@@ -140,18 +135,6 @@ const styles = StyleSheet.create({
   },
   centerText: {
     textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
   },
   sectionsWrapper: {
     gap: Spacing.five,

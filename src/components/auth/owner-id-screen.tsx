@@ -1,17 +1,15 @@
 import { useTranslation } from '@/i18n/use-translation';
-import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AuthBackground } from '@/components/auth/auth-background';
 
 import { RegistrationProgress } from '@/components/auth/registration-progress';
 import { Button } from '@/components/ui/button';
 import type { RegistrationCompletion } from '@/types/auth';
 
-export function OwnerIdScreen({ completion, onSkip }: { completion: RegistrationCompletion; onSkip: () => void }) {
+export function OwnerIdScreen({ completion, onSkip, onSetup }: { completion: RegistrationCompletion; onSkip: () => void; onSetup: () => void }) {
   const { t } = useTranslation();
-  const [notice, setNotice] = useState(false);
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F0F8FF' }}>
+    <AuthBackground>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
         <View className="w-full max-w-[460px] flex-1 self-center px-5 pb-5">
           <RegistrationProgress step={2} />
@@ -35,14 +33,13 @@ export function OwnerIdScreen({ completion, onSkip }: { completion: Registration
             <Text className="mt-2 text-justify font-poppins text-[13px] leading-5 text-text-secondary">{t('auth.details.reminder')}</Text>
           </View>
           <View className="min-h-3 flex-1" />
-          {notice ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" className="mt-4 font-poppins text-[12px] leading-[18px] text-text-secondary">{t('auth.details.setupUnavailable')}</Text> : null}
           <Text className="mb-3 mt-3 text-center font-poppins-bold text-[12px] leading-[18px] text-brand">{t('auth.details.next')}</Text>
           <View className="gap-3">
-            <Button onPress={() => setNotice(true)}>{t('auth.details.continueSetup')}</Button>
+            <Button onPress={onSetup}>{t('auth.details.continueSetup')}</Button>
             <Button variant="secondary" onPress={onSkip}>{t('auth.details.skip')}</Button>
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </AuthBackground>
   );
 }

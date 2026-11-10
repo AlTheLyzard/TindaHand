@@ -1,5 +1,7 @@
 # Quick Add layout refinement
 
+Latest follow-up: the shared shell is now **90% of available height, capped at 600 points**, with 8-point vertical padding/body gaps and a fixed action footer. This supersedes the full-height/750-point sizing below. The existing compact ChoiceChip variant is used below 360 points so normal-text tabs fit in one row; accessibility text can still scroll horizontally. Quick Add discard footer buttons now split the inner width evenly, stretch to the same height and use an 8-point gap. See `dashboard-refinements.md` for the changed files, current browser measurements and native validation limits.
+
 This presentation-only follow-up supersedes the per-form dimensions and outer scrolling described in `quick-add-visual-refinement.md`. Colors, Poppins typography, fields, validation, dirty-draft confirmations, product selection, and save logic are retained.
 
 ## Requirements reviewed

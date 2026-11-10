@@ -1,11 +1,11 @@
-import { Image, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useTranslation } from '@/i18n/use-translation';
 
-export function RegistrationProgress({ step }: { step: 1 | 2 }) {
+export function RegistrationProgress({ step }: { step: 1 | 2 | 3 }) {
   const { t } = useTranslation();
   return (
     <View className="items-center pt-4">
-      <Image source={require('@/assets/images/brand/tindahand-mark.png')} style={{ width: 40, height: 40 }} resizeMode="contain" accessible={false} />
+      <Text className="font-poppins-bold text-[22px] leading-[32px] text-brand">TindaHand</Text>
       <View accessible accessibilityLabel={t('auth.progress', { step })} className="mt-3 flex-row items-center">
         {[1, 2, 3].map((item) => (
           <View key={item} className="flex-row items-center">

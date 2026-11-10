@@ -1,3 +1,4 @@
+import { IconButton } from '@/components/ui/button';
 import type { ViewInstance } from 'react-native';
 import { useOverlayTransition } from '@/hooks/use-overlay-transition';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
@@ -25,6 +26,8 @@ export function DashboardQuickAdd({ onSelect }: { onSelect: (action: QuickAddAct
   const insets = useSafeAreaInsets();
   const navigationHeight = useNavigationHeight();
   const [open, setOpen] = useState(false);
+  const [triggerPressed, setTriggerPressed] = useState(false);
+  const [triggerHovered, setTriggerHovered] = useState(false);
   const [placement, setPlacement] = useState<{ right: number; bottom: number; width: number; maxHeight: number } | null>(null);
   const trigger = useRef<ViewInstance>(null);
   const modalHost = useRef<ViewInstance>(null);
@@ -42,8 +45,7 @@ export function DashboardQuickAdd({ onSelect }: { onSelect: (action: QuickAddAct
   const surface = useAnimatedStyle(() => ({ opacity: motion.progress.value,
     transform: [{ translateY: motion.reduced ? 0 : 12 * (1 - motion.progress.value) }] }));
   const toggleStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${motion.reduced ? 45 : motion.progress.value * 45}deg` }] }));
-  // Reserve the expanded navigation's highest position, even while it animates.
-  const clearance = navigationHeight + tokens.spacing.two + tokens.navigation.expandedLift + tokens.spacing.three;
+  const clearance = navigationHeight + tokens.spacing.three;
   const close = () => { restoreFocus.current = true; menuOpen.current = false; setOpen(false); };
   function measurePlacement() {
     modalHost.current?.measureInWindow((originX, originY, hostWidth, hostHeight) => {
@@ -67,13 +69,14 @@ export function DashboardQuickAdd({ onSelect }: { onSelect: (action: QuickAddAct
     setPlacement(null);
     setOpen(true);
   }
-  const toggle = (expanded: boolean) => <Pressable ref={expanded ? undefined : trigger}
+  const toggle = (expanded: boolean) => <IconButton variant="primary" ref={expanded ? undefined : trigger}
     accessibilityRole="button" accessibilityLabel={t(expanded ? 'dashboard.quick.close' : 'dashboard.quick.open')}
     accessibilityState={{ expanded }} onPress={expanded ? close : expand}
-    style={styles.trigger} className="focus:outline focus:outline-2 focus:outline-action">
-    {expanded ? <Animated.View style={toggleStyle}><PosIcon name="plus" size={32} color="#FFFFFF" active /></Animated.View>
-      : <PosIcon name="plus" size={32} color="#FFFFFF" active />}
-  </Pressable>;
+    onPressIn={() => setTriggerPressed(true)} onPressOut={() => setTriggerPressed(false)}
+    onHoverIn={() => setTriggerHovered(true)} onHoverOut={() => setTriggerHovered(false)}
+    style={[styles.trigger, { backgroundColor: triggerPressed ? tokens.button.primary.pressed : triggerHovered ? tokens.button.primary.hover : tokens.color.textPrimary }]}
+    icon={({ color }) => expanded ? <Animated.View style={toggleStyle}><PosIcon name="plus" size={32} color={color} active /></Animated.View>
+      : <PosIcon name="plus" size={32} color={color} active />} />;
 
   return <>
     <View pointerEvents={motion.presented ? "none" : "box-none"} accessibilityElementsHidden={motion.presented} importantForAccessibility={motion.presented ? "no-hide-descendants" : "auto"} className="absolute w-full max-w-[460px] self-center"
@@ -120,11 +123,10 @@ export function DashboardQuickAdd({ onSelect }: { onSelect: (action: QuickAddAct
 const styles = StyleSheet.create({
   actionButton: {
     width: tokens.size.touchTarget, height: tokens.size.touchTarget, flexShrink: 0,
-    borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: '#2F6CC9',
-    boxShadow: '0 3px 6px rgba(16,35,66,0.24)',
+    borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.button.primary.default,
+    boxShadow: tokens.button.highlight,
   },
   trigger: {
     width: 56, height: 56, borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#102342', boxShadow: '0 3px 6px rgba(16,35,66,0.24)',
   },
 });

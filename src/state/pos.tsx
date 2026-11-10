@@ -15,13 +15,21 @@ function usePosState() {
   const [selection, setSelection] = useState<ProductSelection>({});
   const [paymentDraft, setPaymentDraft] = useState(emptyPaymentDraft);
   const [toastExpiresAt, setToastExpiresAt] = useState<number | null>(null);
+  const [checkoutDebtId, setCheckoutDebtId] = useState<string | null>(null);
+  const feedbackConsumed = useRef(false);
   const [orderId, setOrderId] = useState(newOrderId);
   const completed = useRef(new Set<string>());
   return {
     selection, paymentDraft, toastExpiresAt, customers: pos?.customers ?? [],
     hasStockConflict: stockConflicts(selection, products).length > 0,
     updatePayment(patch: Partial<PaymentDraft>) { setPaymentDraft(previous => ({ ...previous, ...patch })); },
-    dismissPreviewToast() { setToastExpiresAt(null); },
+    dismissPreviewToast() {
+      if (feedbackConsumed.current) return null;
+      feedbackConsumed.current = true;
+      setToastExpiresAt(null);
+      setCheckoutDebtId(null);
+      return checkoutDebtId;
+    },
     completeOrder() {
       // TODO(BACKEND): Success currently means one local inventory service commit.
       // Make this flow async and keep the draft until the server confirms the
@@ -36,6 +44,8 @@ function usePosState() {
         return false;
       }
       if (!saved) { completed.current.delete(orderId); return false; }
+      feedbackConsumed.current = false;
+      setCheckoutDebtId(paymentDraft.method === 'partial' ? `debt-${orderId}` : null);
       setSelection({});
       setPaymentDraft(emptyPaymentDraft());
       setOrderId(newOrderId());
@@ -51,7 +61,7 @@ function usePosState() {
       if (product) setSelection(previous => setSelectedQuantity(previous, product, delta === -1 ? Math.min(product.stock, (previous[productId]?.quantity ?? 0) - 1) : (previous[productId]?.quantity ?? 0) + 1));
     },
     remove(productId: string) { setSelection(previous => removeSelectedProduct(previous, productId)); },
-    clear() { completed.current.add(orderId); setSelection({}); setPaymentDraft(emptyPaymentDraft()); setToastExpiresAt(null); setOrderId(newOrderId()); },
+    clear() { completed.current.add(orderId); setSelection({}); setPaymentDraft(emptyPaymentDraft()); setToastExpiresAt(null); setCheckoutDebtId(null); feedbackConsumed.current = true; setOrderId(newOrderId()); },
   };
 }
 
@@ -64,8 +74,8 @@ function SessionPos({ children }: { children: ReactNode }) {
 }
 
 export function PosProvider({ children }: { children: ReactNode }) {
-  const { owner, selectedRole, dashboardAccess } = useAuthFlow();
-  return <SessionPos key={`${owner?.id ?? 'signed-out'}:${selectedRole}:${dashboardAccess}`}>{children}</SessionPos>;
+  const { deviceSession } = useAuthFlow();
+  return <SessionPos key={deviceSession?.id ?? 'signed-out'}>{children}</SessionPos>;
 }
 
 export function usePos() {

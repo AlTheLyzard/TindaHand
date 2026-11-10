@@ -1,5 +1,7 @@
 # Owner More Tools / Menu
 
+Current transaction follow-up: [Transaction History](transaction-history.md) replaces the placeholder with read-only shared-ledger history, search and staged filters. The current task also supersedes the historical all-neutral drawer rule below: the active destination is highlighted when the drawer reopens.
+
 Current expense follow-up: [Store Expenses](store-expenses.md) replaces its temporary destination with the owner-only history and add form. Drawer selection still waits for dismissal before navigation. The expense-history exclusion and placeholder notes below describe the original sidebar task.
 
 Implemented More Tools as a shared sidebar over the current Owner screen. Opening or closing it does not navigate or reset the underlying screen. Full financial statements, transaction history, expense history, debt management, profile editing, and settings workflows remain outside this task.

@@ -21,11 +21,41 @@ const { selectProduct } = load('src/utils/pos.ts');
 const { dashboardWithSales } = load('src/utils/pos-records.ts');
 const { dashboardDemo } = load('src/data/dashboard.ts');
 const { summarizeDashboard } = load('src/utils/dashboard.ts');
+const { receivableLists } = load('src/utils/receivables.ts');
 const fresh = () => ({ products: inventoryProducts.map(p => ({ ...p })), assets: [], restocks: [], pos: emptyPosLedger() });
 const product = inventoryProducts.find(p => p.id === 'demo-argentina-corned-beef');
 const order = () => selectProduct({}, product);
 const command = (patch = {}) => ({ id: 'sale-1', ownerId: 'owner-1', occurredAt: '2026-10-30T04:00:00.000Z', selection: order(), draft: { ...emptyPaymentDraft(), cashAmount: '50' }, ...patch });
 const save = (state, cmd) => inventoryReducer(state, { type: 'completeSale', command: cmd });
+
+test('a 100 peso May Kulang sale with 40 paid appears as its own 60 peso unpaid receivable exactly once', () => {
+  for (const existingCustomer of [false, true]) {
+    const state = fresh();
+    const customer = state.pos.customers[0];
+    const milk = state.products.find(p => p.id === 'demo-bear-brand-powder');
+    const sugar = state.products.find(p => p.id === 'demo-brown-sugar');
+    const selection = selectProduct(selectProduct(selectProduct(order(), product), milk), sugar);
+    const draft = { ...emptyPaymentDraft(), method: 'partial', partialMethod: 'cash', partialAmount: '40',
+      customerId: existingCustomer ? customer.id : null, customerName: existingCustomer ? customer.name : 'POS Sixty Demo' };
+    const cmd = command({ selection, draft });
+    const next = save(state, cmd);
+    assert.equal(next.pos.sales[0].totalCentavos, 10000);
+    assert.equal(next.pos.sales[0].remainingCentavos, 6000);
+    for (let n = 0; n < 20; n++) assert.equal(save(next, cmd), next);
+    const lists = receivableLists(next.pos.debts, next.receivablePayments, '', '2026-11-04');
+    assert.equal(lists.partial.length, 1);
+    assert.equal(lists.partial[0].debt.name, draft.customerName);
+    assert.equal(lists.partial[0].paidCentavos, 4000);
+    assert.equal(lists.partial[0].remainingCentavos, 6000);
+    assert.equal(lists.outstandingCentavos, 6000);
+    const second = save(next, command({ id: 'sale-2', selection, draft }));
+    assert.equal(second.pos.sales.length, 2);
+    assert.equal(second.pos.debts.length, 2);
+    assert.equal(second.pos.debts[0].customerId, second.pos.debts[1].customerId);
+    assert.notEqual(second.pos.debts[0].id, second.pos.debts[1].id);
+    assert.equal(receivableLists(second.pos.debts, second.receivablePayments, '', '2026-11-04').outstandingCentavos, 12000);
+  }
+});
 
 test('one commit saves immutable sale/payment snapshots and deducts inventory once', () => {
   const state = fresh(), cmd = command();
@@ -75,6 +105,11 @@ test('Partial Payment links an existing customer, sale, tender and remaining deb
   assert.equal(debt.paymentStatus, 'partial');
   assert.equal(debt.dueDate, null, 'no invented deadline');
   assert.equal(debt.items[product.id].unitPriceCentavos, 3200);
+  const data = dashboardWithSales(dashboardDemo, [sale]);
+  const activity = data.activity.find(row => row.id === sale.id);
+  assert.equal(activity.direction, 'in');
+  assert.equal(activity.amountCentavos, 1200, 'activity shows collected funds, excluding unpaid principal');
+  assert.equal(summarizeDashboard('daily', data).totalSalesCentavos, 3200, 'revenue keeps the full sale value');
 });
 
 test('new customers are created only on success, normalized names reuse records and zero/full payments are rejected', () => {

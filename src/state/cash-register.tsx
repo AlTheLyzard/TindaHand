@@ -21,8 +21,8 @@ function SessionCashRegister({ children }: { children: ReactNode }) {
 
 /** Same lifecycle as inventory: survives navigation, resets when the owner session changes. */
 export function CashRegisterProvider({ children }: { children: ReactNode }) {
-  const { owner, selectedRole, dashboardAccess } = useAuthFlow();
-  return <SessionCashRegister key={`${owner?.id ?? 'signed-out'}:${selectedRole}:${dashboardAccess}`}>{children}</SessionCashRegister>;
+  const { deviceSession } = useAuthFlow();
+  return <SessionCashRegister key={deviceSession?.id ?? 'signed-out'}>{children}</SessionCashRegister>;
 }
 
 export function useCashRegister() {

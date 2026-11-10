@@ -4,7 +4,7 @@ import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { useTranslation } from '@/i18n/use-translation';
 import { router } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Image, ScrollView, Text, View } from 'react-native';
+import { Image, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BestSellersCard, CashCard, RecentActivityCard, SalesCard, StockCard } from '@/components/dashboard/dashboard-cards';
@@ -15,12 +15,11 @@ import { Button } from '@/components/ui/button';
 import tokens from '@/constants/design-tokens.json';
 import { getDashboardData } from '@/services/dashboard';
 import { growthPreview } from '@/data/growth-preview';
-import { useDashboardNavigation } from '@/hooks/use-dashboard-navigation';
 import { useNavigationHeight } from '@/state/navigation-motion';
 import { getLocaleFormats, type NavigationLabelKey } from '@/i18n';
 import type { OwnerIdentity } from '@/types/auth';
-import type { SalesPeriod } from '@/types/dashboard';
-import { formatPesos, summarizeDashboard } from '@/utils/dashboard';
+import type { DashboardActivity, SalesPeriod } from '@/types/dashboard';
+import { quickAddDashboardActivity, summarizeDashboard } from '@/utils/dashboard';
 import { useInventory } from '@/state/inventory';
 import { inventorySummary, todayInManila } from '@/utils/inventory';
 import { useContentPreview } from '@/components/ui/content-state';
@@ -29,6 +28,7 @@ import { AddCashModal } from '@/components/dashboard/add-cash-modal';
 import { RegistrationToast } from '@/components/auth/registration-toast';
 import { useCashRegister } from '@/state/cash-register';
 import { useQuickAdd } from '@/state/quick-add';
+import { isInitialSaleReceipt } from '@/utils/transactions';
 import { QuickAddModal } from '@/components/dashboard/quick-add-modal';
 import type { QuickAddKind } from '@/types/quick-add';
 
@@ -38,14 +38,18 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   const data = preview.empty ? emptyDashboardDemo : getDashboardData(pos?.sales ?? []);
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const navigation = useDashboardNavigation();
+  const { width } = useWindowDimensions();
   const navigationHeight = useNavigationHeight();
   const [period, setPeriod] = useState<SalesPeriod>('daily');
   const [notice, setNotice] = useState<NavigationLabelKey | QuickAddAction | null>(null);
   const [cashOpen, setCashOpen] = useState(false);
   const [quickKind, setQuickKind] = useState<QuickAddKind | null>(null);
   const quickAdd = useQuickAdd();
-  const quickActivity = quickAdd.records.filter(record => !record.saleId).map(record => ({ id: record.id, kind: record.kind, occurredAt: record.occurredAt, amountCentavos: record.amountCentavos, label: `${record.kind === 'customerDebt' ? 'Customer debt' : record.kind === 'storeDebt' ? 'Store debt' : 'Expense'} · ${record.name}` }));
+  const quickActivity: DashboardActivity[] = preview.empty ? [] : [
+    ...quickAddDashboardActivity(quickAdd.records),
+    ...quickAdd.receivablePayments.filter(payment => !isInitialSaleReceipt(payment, quickAdd.records, pos?.sales ?? [])).map((payment): DashboardActivity => ({ id: payment.id, kind: 'payment', direction: 'in', label: 'Customer payment', occurredAt: payment.occurredAt, amountCentavos: payment.amountCentavos })),
+    ...quickAdd.payables.payments.map((payment): DashboardActivity => ({ id: payment.id, kind: 'payment', direction: 'out', label: 'Store debt payment', occurredAt: payment.occurredAt, amountCentavos: payment.amountCentavos })),
+  ];
   const [cashToastExpiresAt, setCashToastExpiresAt] = useState<number | null>(null);
   const dismissCashToast = useCallback(() => setCashToastExpiresAt(null), [setCashToastExpiresAt]);
   const { addedCentavos } = useCashRegister();
@@ -76,8 +80,8 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
         </DashboardAction>
       </View>
     </View>
-    <ScrollView ref={scroll} onScroll={navigation.onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: navigationHeight + insets.bottom + tokens.spacing.two + tokens.spacing.three + tokens.navigation.expandedLift + 56 + tokens.spacing.three }}>
-      <View className="w-full max-w-[460px] self-center px-6 pt-4">
+    <ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: navigationHeight + insets.bottom + tokens.spacing.three + 56 + tokens.spacing.three }}>
+      <View className="w-full max-w-[460px] self-center pt-4" style={{ paddingHorizontal: width < 360 ? 16 : 24 }}>
         <Text accessibilityRole="header" className="font-poppins-bold text-[22px] leading-[33px] text-[#28549A]">{t('dashboard.greeting', { name: owner.name.trim().split(/\s+/)[0] })}</Text>
         <View className="mt-0.5 flex-row flex-wrap gap-2">
           <Text className="rounded-pill bg-[#D1E2F8] px-2 py-1 font-poppins text-[10px] leading-[15px] text-[#102342]">{t('roles.owner')}</Text>
@@ -90,20 +94,12 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
           <CashCard summary={summary} loading={preview.loading} onCashAction={() => { preview.reset(); dismissCashToast(); setCashOpen(true); }} />
           <SalesCard summary={summary} period={period} onPeriod={setPeriod} growthMetrics={growthMetrics} loading={preview.loading} empty={summary.saleCount === 0} />
           <StockCard summary={{ ...summary, outOfStock: stock.out, lowStock: stock.low + stock.critical }} loading={preview.loading} empty={preview.empty || !products.length} onInventory={() => { preview.reset(); router.navigate('/owner-inventory'); }} onSelect={status => router.navigate({ pathname: '/owner-inventory', params: { status } })} />
-          <BestSellersCard summary={summarizeDashboard('daily', data)} loading={preview.loading} onBrowse={() => { preview.reset(); router.navigate('/owner-pos'); }} />
-          {quickAdd.records.length > 0 && <View className="gap-2 rounded-card border border-[#B0C8E3] bg-white p-5">
-            <Text accessibilityRole="header" className="font-poppins-bold text-[16px] text-brand">Quick Add Records</Text>
-            <Text className="font-poppins text-[12px] text-text-secondary">Current demo session</Text>
-            {(['customerDebt', 'storeDebt', 'expense'] as const).map(kind => <View key={kind} className="flex-row flex-wrap justify-between gap-2">
-              <Text className="font-poppins text-[12px] text-brand">{kind === 'customerDebt' ? 'Customer debts' : kind === 'storeDebt' ? 'Store debts' : 'Expenses'}</Text>
-              <Text className="font-poppins-bold text-[14px] text-brand">{formatPesos(quickAdd.totals[kind])}</Text>
-            </View>)}
-          </View>}
+          <BestSellersCard summary={summarizeDashboard('daily', data)} products={products} loading={preview.loading} onBrowse={() => { preview.reset(); router.navigate('/owner-pos'); }} />
           <RecentActivityCard activity={[...quickActivity, ...data.activity]} loading={preview.loading} onViewAll={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'transaction-history' } })} />
         </MotionContent>
       </View>
     </ScrollView>
-    <DashboardNavigation bottomInset={insets.bottom} expanded={navigation.expanded} onHome={() => scroll.current?.scrollTo({ y: 0, animated: true })} onPos={() => router.navigate('/owner-pos')} onUnavailable={unavailable} />
+    <DashboardNavigation onHome={() => scroll.current?.scrollTo({ y: 0, animated: true })} onPos={() => router.navigate('/owner-pos')} onUnavailable={unavailable} />
     <DashboardQuickAdd onSelect={action => { preview.reset(); setQuickKind(action === 'dashboard.quick.customerDebt' ? 'customerDebt' : action === 'dashboard.quick.storeDebt' ? 'storeDebt' : 'expense'); }} />
     {quickKind && <QuickAddModal initialKind={quickKind} onClose={() => setQuickKind(null)} />}
     {cashToastExpiresAt !== null && <View pointerEvents="box-none" className="absolute left-0 right-0 items-center px-4" style={{ top: insets.top + 56 }}>

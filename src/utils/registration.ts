@@ -3,9 +3,15 @@ import type { RegistrationErrors, RegistrationFormValues } from '@/types/auth';
 
 export const PASSWORD_HELP_KEY = 'validation.passwordHelp' as const;
 
+export function validateEmail(value: string) {
+  return !value?.trim() ? 'Enter your email address.' : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? undefined : 'Enter a valid email address.';
+}
+
 export function validateRegistration(values: RegistrationFormValues): RegistrationErrors {
   const errors: RegistrationErrors = {};
   if (!values.name.trim()) errors.name = t('validation.requiredFields');
+  const emailError = validateEmail(values.email);
+  if (emailError) errors.email = emailError;
   if (!values.password) {
     errors.password = t('validation.passwordRequired', { help: t(PASSWORD_HELP_KEY) });
   } else if (

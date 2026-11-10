@@ -5,6 +5,8 @@ export type QuickAddDraft = {
   kind: QuickAddKind;
   borrowing: 'cash' | 'product';
   name: string;
+  creditorId?: string;
+  customerId?: string;
   amount: string;
   category: string;
   details: string;
@@ -24,7 +26,8 @@ export type QuickAddRecord = {
   dueDate: string | null;
   borrowing: 'cash' | 'product' | null;
   items: ProductSelection;
-  paymentStatus: 'unpaid' | 'partial' | null;
+  paymentStatus: 'unpaid' | 'partial' | 'paid' | null;
+  creditorId?: string;
   customerId?: string;
   saleId?: string;
   originalAmountCentavos?: number;

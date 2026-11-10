@@ -5,7 +5,7 @@ import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useEffect, useRef, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button } from '@/components/ui/button';
+import { Button, IconButton } from '@/components/ui/button';
 import { ConfirmationContent } from '@/components/ui/confirmation-content';
 import { FormField } from '@/components/ui/form-field';
 import { useCashRegister } from '@/state/cash-register';
@@ -65,10 +65,10 @@ export function AddCashModal({ onClose, onSaved }: { onClose: () => void; onSave
             <View accessibilityViewIsModal className="w-full max-w-[412px] gap-5 self-center rounded-control bg-canvas p-5" style={{ boxShadow: '0 3px 6px #00000040' }}>
               <View className="flex-row items-center pr-8">
                 <Text accessibilityRole="header" className="flex-1 font-poppins-bold text-[18px] text-brand">Add Cash to Register</Text>
-                <Pressable disabled={!!confirmation} accessibilityRole="button" accessibilityLabel="Close Add Cash to Register" onPress={close} className="absolute -right-3 -top-3 min-h-12 min-w-12 items-center justify-center"><Text className="text-[20px] text-[#102342]">×</Text></Pressable>
+                <IconButton disabled={!!confirmation} accessibilityLabel="Close Add Cash to Register" onPress={close} className="absolute -right-3 -top-3" icon={({ color }) => <Text accessible={false} style={{ color, fontSize: 20 }}>×</Text>} />
               </View>
               <FormField label="Amount" placeholder="₱0.00" prefix={value ? '₱' : undefined} errorVariant="registration" keyboardType="decimal-pad" inputMode="decimal" returnKeyType="done" value={value} editable={!confirmation} tabIndex={confirmation ? -1 : 0}
-                onChangeText={text => { setValue(text); setTouched(true); setSaveError(''); }}
+                onChangeText={text => { setValue(text); setSaveError(''); }}
                 onBlur={() => {
                   const amount = parsePaymentAmount(value);
                   if (amount !== null && amount > 0) setValue(`${Math.floor(amount / 100)}.${String(amount % 100).padStart(2, '0')}`);
@@ -76,7 +76,7 @@ export function AddCashModal({ onClose, onSaved }: { onClose: () => void; onSave
                 onSubmitEditing={Keyboard.dismiss} error={saveError || (touched ? error ?? undefined : undefined)} />
               <View className="flex-row flex-wrap gap-3">
                 <View className="min-w-[100px] flex-1"><Button disabled={!!confirmation} variant="secondary" onPress={() => { Keyboard.dismiss(); if (value.length) setConfirmation('clear'); else clear(); }}>Clear</Button></View>
-                <View className="min-w-[100px] flex-1"><Button onPress={add} disabled={!!error || !!confirmation}>Add</Button></View>
+                <View className="min-w-[100px] flex-1"><Button onPress={add} disabled={!!confirmation}>Add</Button></View>
               </View>
             </View>
           </ScrollView>
@@ -84,7 +84,7 @@ export function AddCashModal({ onClose, onSaved }: { onClose: () => void; onSave
         <MotionOverlay visible={!!confirmation}>{confirmation && <>
           <ScrollView pointerEvents="box-none" keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
             <Pressable testID="cash-confirmation-backdrop" accessible={false} focusable={false} tabIndex={-1} onPress={() => setConfirmation(null)} style={StyleSheet.absoluteFill} />
-            <ConfirmationContent title={confirmation === 'clear' ? 'Clear All Fields?' : 'Discard Changes?'}
+            <ConfirmationContent balancedActions={confirmation === 'discard'} title={confirmation === 'clear' ? 'Clear All Fields?' : 'Discard Changes?'}
               message={confirmation === 'clear' ? 'Are you sure you want to clear all information? This action cannot be undone.' : 'You have unsaved changes. Are you sure you want to close without saving?'}
               cancelLabel={confirmation === 'clear' ? 'Cancel' : 'Keep Editing'} confirmLabel={confirmation === 'clear' ? 'Clear' : 'Discard Changes'}
               onCancel={() => setConfirmation(null)} onConfirm={() => { const discard = confirmation === 'discard'; clear(); if (discard) dismiss(); }} />

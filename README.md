@@ -1,6 +1,6 @@
 ﻿# TindaHand
 
-Expo/React Native coursework app for sari-sari store owners (May-Ari) and cashiers (Kahera), targeting **Android and iOS** from one codebase. This repository currently implements owner frontend flows with local demo data. It has no backend, database, real authentication, or agreed network API. Cashier access is not implemented.
+Expo/React Native coursework app for sari-sari store owners (May-Ari) and cashiers (Kahera), targeting **Android and iOS** from one codebase. This repository currently implements owner frontend flows with local demo data, including [Owner Settings](docs/owner-settings.md) and multiple-cashier setup/PIN management. It has no backend, database, real authentication, or agreed network API. Cashier login can verify demo credentials; the Cashier workspace is not implemented.
 
 Start with [Backend handoff](docs/backend-handoff.md) for actual screen status, mock behavior and integration tasks, then [API contract notes](docs/api-contract.md) for frontend data needs and explicitly **PROPOSED** contracts. [Source requirements](docs/requirements/README.md) remain the baseline; [frontend-plan.md](docs/frontend-plan.md) is a proposal, not a completion checklist.
 

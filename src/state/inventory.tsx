@@ -5,7 +5,7 @@ import { type InventoryAction, type InventoryStore } from '@/utils/inventory';
 import { customerNameKey } from '@/utils/pos-checkout';
 import type { Customer } from '@/types/pos';
 
-const InventoryContext = createContext<{ store: InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void } | null>(null);
+const InventoryContext = createContext<{ store: InventoryStore; getStore: () => InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void } | null>(null);
 function SessionInventory({ children }: { children: ReactNode }) {
   const auth = useAuthFlow();
   const [store, setStore] = useState<InventoryStore>(loadMockInventory);
@@ -27,11 +27,12 @@ function SessionInventory({ children }: { children: ReactNode }) {
     const customer = { id, name: name.trim().replace(/\s+/g, ' ') };
     return dispatch({ type: 'registerCustomer', customer }) ? customer : null;
   }
-  return <InventoryContext.Provider value={{ store, dispatch, ensureCustomer, feedback, setFeedback }}>{children}</InventoryContext.Provider>;
+  return <InventoryContext.Provider value={{ store, getStore: () => current.current, dispatch, ensureCustomer, feedback, setFeedback }}>{children}</InventoryContext.Provider>;
 }
 export function InventoryProvider({ children }: { children: ReactNode }) {
-  const { owner, selectedRole, dashboardAccess } = useAuthFlow();
-  return <SessionInventory key={`${owner?.id ?? 'signed-out'}:${selectedRole}:${dashboardAccess}`} >{children}</SessionInventory>;
+  const { deviceSession } = useAuthFlow();
+  // Locking retains this session's demo state; full logout/removal clears it.
+  return <SessionInventory key={deviceSession?.id ?? 'signed-out'} >{children}</SessionInventory>;
 }
 export function useInventory() {
   const value = useContext(InventoryContext);

@@ -1,3 +1,9 @@
+> Authentication update (November 9, 2026): [authentication-handoff.md](authentication-handoff.md) supersedes historical auth behavior below, including Cashier-ID login, PIN-only first access, registration preview and chooser-on-skip instructions.
+
+## Owner Settings follow-up — October 31, 2026
+
+[owner-settings.md](owner-settings.md) supersedes historical cashier-unavailable behavior below. Availability is now derived from the shared store-scoped cashier list. Add Cashier is reached through an Owner session; Cashier Login requires Store / Owner ID, unique Cashier ID and PIN. Demo credential verification does not grant Owner access or claim a working Cashier workspace.
+
 ## Account visual polish follow-up
 
 This supersedes earlier sizing notes: the welcome mark is now 180 x 180 points with its existing centered layout and aspect ratio. The success toast uses a 300-point maximum width (280 available at a 320-point viewport), 8-point vertical/left padding, a 52-point minimum height, an 11/16 title and the existing 10/15 message. Its 48 x 48 dismiss target, completion deadline and measured dismissal slot are retained. Text remains scalable and unrestricted in line count.

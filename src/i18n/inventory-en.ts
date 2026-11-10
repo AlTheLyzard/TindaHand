@@ -157,7 +157,7 @@ export const inventoryEnglish = {
   "inventory.good": "Good",
   "inventory.low.stock": "Low stock",
   "inventory.critical.stock": "Critical stock",
-  "inventory.out.of.stock": "Out of stock",
+  "inventory.out.of.stock": "Out of Stock",
   "inventory.name.a.z": "Name A–Z",
   "inventory.high.to.low.stock": "High-to-Low Stock",
   "inventory.low.to.high.stock": "Low-to-High Stock",

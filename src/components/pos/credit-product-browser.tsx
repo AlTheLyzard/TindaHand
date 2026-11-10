@@ -1,11 +1,10 @@
 import type { ScrollViewInstance } from 'react-native';
-import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useEffect, useRef, useState } from 'react';
 import { Image, Keyboard, ScrollView, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { AlphabetIndex } from './alphabet-index';
 import { PosIcon } from './pos-icon';
-import { Button } from '@/components/ui/button';
+import { Button, IconButton } from '@/components/ui/button';
 import { QuickAddField } from '@/components/dashboard/quick-add-ui';
 import { useInventory } from '@/state/inventory';
 import { useAuthFlow } from '@/state/auth-flow';
@@ -47,15 +46,15 @@ export function CreditProductBrowser({ name, onName, selection, onChange, onRetu
     </View>
     <View className="w-full max-w-[460px] flex-1 self-center" onLayout={event => { viewportHeight.value = event.nativeEvent.layout.height; }}>
       <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" onScroll={event => { scrollY.value = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back to debt form" onPress={onReturn} className="-ml-2 mt-1 min-h-12 w-12 items-center justify-center"><PosIcon name="back" size={24} color="#2675DB" /></Pressable>
+        <IconButton accessibilityLabel="Back to debt form" onPress={onReturn} className="-ml-2 mt-1 min-h-12 w-12 items-center justify-center" icon={({ color }) => <PosIcon name="back" size={24} color={color} />} />
         <Text accessibilityRole="header" className="mb-4 font-poppins-bold text-[32px] leading-[48px] text-brand">{'New Customer\nDebt'}</Text>
         <Text className="mb-6 font-poppins text-[14px] leading-[21px] text-text-secondary">Keep track of what your customers owe and when they need to pay.</Text>
         <QuickAddField label="Customer name or other identifying details" value={name} onChangeText={onName} placeholder="e.g. Arman Salon" error={nameError} />
         <View className="my-4 min-h-12 flex-row items-center justify-between gap-2"><Text accessibilityRole="header" className="flex-1 font-poppins-bold text-[18px] text-[#102342]">Products</Text><Text className="font-poppins-bold text-[12px] text-text-secondary">{visible.length} {visible.length === 1 ? 'Product' : 'Products'}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Search products" accessibilityState={{ expanded: searchOpen }} onPress={() => setSearchOpen(value => !value)} className="min-h-12 min-w-12 items-center justify-center"><PosIcon name="search" size={20} color="#4A607A" /></Pressable>
+          <IconButton accessibilityLabel="Search products" accessibilityState={{ expanded: searchOpen }} onPress={() => setSearchOpen(value => !value)} className="min-h-12 min-w-12 items-center justify-center" icon={({ color }) => <PosIcon name="search" size={20} color={color} />} />
         </View>
         {searchOpen && <View className="mb-4"><QuickAddField label="Search products" required={false} value={query} onChangeText={setQuery} placeholder="Enter product name" returnKeyType="search" onSubmitEditing={Keyboard.dismiss} /></View>}
-        <View className="pr-5" onLayout={event => { gridOffset.current = event.nativeEvent.layout.y; gridStart.value = event.nativeEvent.layout.y; }}>
+        <View className="pr-6" onLayout={event => { gridOffset.current = event.nativeEvent.layout.y; gridStart.value = event.nativeEvent.layout.y; }}>
           {visible.length === 0 && <Text className="py-6 font-poppins text-[12px] text-text-secondary">No products match your search.</Text>}
           {letters.map(letter => <View key={letter} className="mb-5" onLayout={event => { sections.current[letter] = event.nativeEvent.layout.y; }}>
             <Text accessibilityRole="header" className="mb-2 font-poppins-bold text-[12px] text-[#102342]">{letter}</Text>
@@ -71,7 +70,7 @@ export function CreditProductBrowser({ name, onName, selection, onChange, onRetu
                     <Text className="font-poppins text-[12px] text-[#102342]">{formatPesos(product.unitPriceCentavos)}</Text>
                   </View>
                   <View className="my-2 rounded-control border px-2 py-1" style={{ backgroundColor: remaining ? '#E7F3E8' : '#FDEEEF', borderColor: remaining ? '#36833C' : '#CC333B' }}><Text className="font-poppins-bold text-[11px]" style={{ color: remaining ? '#286B2C' : '#B4232C' }}>{remaining} in stock</Text></View>
-                  <Button visualVariant="quickAdd" disabled={!remaining} accessibilityLabel={`Add ${product.name}, ${formatPesos(product.unitPriceCentavos)}, ${remaining} available`} onPress={() => onChange(previous => selectProduct(previous, product))}>{count ? `+ Add · ${count} selected` : '+ Add'}</Button>
+                  <Button disabled={!remaining} accessibilityLabel={`Add ${product.name}, ${formatPesos(product.unitPriceCentavos)}, ${remaining} available`} onPress={() => onChange(previous => selectProduct(previous, product))}>{count ? `+ Add · ${count} selected` : '+ Add'}</Button>
                 </View>;
               })}
             </View>
@@ -81,7 +80,7 @@ export function CreditProductBrowser({ name, onName, selection, onChange, onRetu
       <AlphabetIndex letters={letters} active={active} gridStart={gridStart} scrollY={scrollY} viewportHeight={viewportHeight} onPick={letter => { setActive(letter); Keyboard.dismiss(); scroll.current?.scrollTo({ y: letter ? gridOffset.current + (sections.current[letter] ?? 0) : 0, animated: false }); }} />
     </View>
     <View className="rounded-t-[24px] bg-white px-4 pb-3 pt-4">
-      <View className="w-full max-w-[428px] flex-row gap-3 self-center"><View className="flex-1"><Button visualVariant="quickAdd" variant="secondary" onPress={onReturn}>Cancel</Button></View><View className="flex-1"><Button visualVariant="quickAdd" onPress={onReturn}>Review Debt</Button></View></View>
+      <View className="w-full max-w-[428px] flex-row gap-3 self-center"><View className="flex-1"><Button variant="secondary" onPress={onReturn}>Cancel</Button></View><View className="flex-1"><Button onPress={onReturn}>Review Debt</Button></View></View>
       <Text accessibilityLiveRegion="polite" className="my-2 text-center font-poppins text-[11px] text-text-secondary">{summary.quantity} selected · {formatPesos(summary.totalCentavos)}</Text>
       {!keyboardVisible && <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden className="min-h-[72px] w-full max-w-[330px] flex-row items-center justify-around self-center rounded-pill border border-[#ADC9EE] bg-white" style={{ boxShadow: '0 4px 12px #10234230' }}>
         {(['home', 'cart', 'inventory', 'menu'] as const).map(icon => <View key={icon} className="h-14 w-14 items-center justify-center rounded-pill" style={{ backgroundColor: icon === 'menu' ? '#D1E2F8' : 'transparent' }}><PosIcon name={icon} size={30} color="#4A607A" /></View>)}

@@ -1,3 +1,9 @@
+> Current behavior (November 9, 2026): [authentication-handoff.md](authentication-handoff.md) supersedes historical notes below. Registration now includes required Email; the explicit development mock can create an ephemeral account. Skip for Now goes directly to the Owner Dashboard. Operator setup uses Owner ID + assigned unique PIN, with no Cashier ID login field. Production registration remains unavailable until integrated.
+
+## Owner Settings follow-up — October 31, 2026
+
+Initial Cashier setup now reuses the Add Cashier form and shared store-scoped service documented in [owner-settings.md](owner-settings.md). Development registration preview clears credentials on completion and initializes its mock Owner PIN in the service closure. Normal Owner registration is still unavailable. These changes supersede historical setup-unavailable/draft-retention notes below.
+
 ## Owner frontend refinements ? October 26, 2026
 
 This follow-up supersedes earlier notes about submission-only errors, placeholder toast copy, and Skip for Now opening the dashboard. The main workbook role sheets remain the baseline; its copy sheet's dashboard shortcut and differing success/ID sequence are not merged. The user's current instructions explicitly choose the account chooser and the new toast wording.

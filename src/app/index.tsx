@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { Image, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AuthBackground } from '@/components/auth/auth-background';
 
 import { Button } from '@/components/ui/button';
 
@@ -14,7 +14,7 @@ function handleExistingAccount() {
 
 export default function WelcomeScreen() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F0F8FF' }}>
+    <AuthBackground headerWave>
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ flexGrow: 1 }}
@@ -45,14 +45,14 @@ export default function WelcomeScreen() {
           <View className="gap-2">
             <Button
               onPress={handleGetStarted}
-              accessibilityHint="Opens the Create May-Ari Account form.">
+              accessibilityHint="Opens the Create Owner Account form.">
               Get Started
             </Button>
             <Button
               variant="secondary"
               onPress={handleExistingAccount}
               accessibilityLabel="I Have an Account"
-              accessibilityHint="Opens account selection for May-Ari or Kahera login.">
+              accessibilityHint="Opens account selection for Owner or Operator login.">
               I have an account
             </Button>
           </View>
@@ -61,6 +61,6 @@ export default function WelcomeScreen() {
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </AuthBackground>
   );
 }

@@ -12,7 +12,7 @@ export function ActivityTile({ children }: { children: ReactNode }) {
     onHoverIn={Platform.OS === 'web' ? () => setHovered(true) : undefined}
     onHoverOut={Platform.OS === 'web' ? () => setHovered(false) : undefined}
     onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)}
-    className="min-h-[70px] flex-row items-center gap-3 rounded-surface px-4 py-3"
+    className="min-h-[70px] flex-row items-center gap-3 rounded-surface py-3"
     style={{ backgroundColor: pressed ? tokens.color.accentContainer : hovered ? tokens.color.surfaceSubtle : 'transparent' }}>
     {children}
   </Pressable>;

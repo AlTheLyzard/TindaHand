@@ -1,5 +1,37 @@
 import type { PaymentDraft, ProductSelection } from '@/types/pos';
 
+/** References are identifiers, so retain leading zeroes and accept ASCII digits only. */
+export function sanitizePaymentReference(value: string) {
+  return value.replace(/[^0-9]/g, '');
+}
+
+export const paymentMethodLabels: Record<PaymentDraft['method'], string> = {
+  cash: 'Cash', gcash: 'GCash', split: 'Split Payment', partial: 'Partial Payment',
+};
+
+export function paymentConfirmationRows(totalCentavos: number, draft: PaymentDraft, customerName: string) {
+  const amounts = paymentAmounts(totalCentavos, draft);
+  const rows: { label: string; value: string | number }[] = [
+    { label: 'Order total', value: totalCentavos },
+    { label: 'Payment method', value: paymentMethodLabels[draft.method] },
+  ];
+  if (draft.method === 'partial') {
+    rows.push({ label: 'Paid via', value: draft.partialMethod === 'cash' ? 'Cash' : 'GCash' },
+      { label: 'Customer', value: customerName },
+      { label: 'Amount paid', value: amounts.paidCentavos },
+      { label: 'Remaining debt', value: amounts.remainingCentavos });
+  } else if (draft.method === 'cash') {
+    rows.push({ label: 'Cash received', value: amounts.cash ?? 0 }, { label: 'Change', value: amounts.changeCentavos });
+  } else if (draft.method === 'gcash') {
+    rows.push({ label: 'GCash amount', value: amounts.gcash ?? 0 });
+  } else {
+    rows.push({ label: 'Cash amount', value: amounts.cash ?? 0 }, { label: 'GCash amount', value: amounts.gcash ?? 0 });
+    if (amounts.changeCentavos > 0) rows.push({ label: 'Change', value: amounts.changeCentavos });
+  }
+  if (amounts.needsReference) rows.push({ label: 'Reference number', value: amounts.reference });
+  return rows;
+}
+
 export function emptyPaymentDraft(): PaymentDraft {
   return { method: 'cash', cashAmount: '', gcashAmount: '', gcashReference: '',
     splitCashAmount: '', splitGcashAmount: '', splitReference: '',
