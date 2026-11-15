@@ -1,20 +1,11 @@
+import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { DashboardNavigation } from "@/components/dashboard/dashboard-navigation";
-import { PosIcon } from "@/components/pos/pos-icon";
-import { IconButton } from "@/components/ui/button";
+import { BackButton } from "@/components/ui/back-button";
 import tokens from "@/constants/design-tokens.json";
 import { useNavigationHeight } from "@/state/navigation-motion";
 import { router, useFocusEffect, type Href } from "expo-router";
 import { useCallback, type ReactNode } from "react";
-import {
-  BackHandler,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { BackHandler, Image, Keyboard, Platform, Text, View } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -86,11 +77,9 @@ export function SettingsFrame({
               className={`flex-row items-center gap-2 ${landing ? "mb-1" : "mb-8"}`}
             >
               {!landing && (
-                <IconButton
+                <BackButton
                   accessibilityLabel="Go back"
                   onPress={back}
-                  className="-ml-3 min-h-12 min-w-12 items-center justify-center"
-                  icon={({ color }) => <PosIcon name="back" color={color} />}
                 />
               )}
               <Text

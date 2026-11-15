@@ -1,5 +1,5 @@
 import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
-import { applyInventoryAction, loadMockInventory } from '@/services/inventory';
+import { applyInventoryAction, applyOperatorPosAction, loadMockInventory } from '@/services/inventory';
 import { useAuthFlow } from '@/state/auth-flow';
 import { type InventoryAction, type InventoryStore } from '@/utils/inventory';
 import { customerNameKey } from '@/utils/pos-checkout';
@@ -12,7 +12,11 @@ function SessionInventory({ children }: { children: ReactNode }) {
   const current = useRef(store);
   const [feedback, setFeedback] = useState('');
   function dispatch(action: InventoryAction) {
-    const next = applyInventoryAction(current.current, auth.owner, action);
+    const next = auth.owner
+      ? applyInventoryAction(current.current, auth.owner, action)
+      : auth.deviceSession?.role === 'operator' && action.type === 'completeSale'
+        ? applyOperatorPosAction(current.current, auth.deviceSession, action)
+        : current.current;
     if (next === current.current) return false;
     current.current = next;
     setStore(next);

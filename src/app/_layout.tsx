@@ -9,6 +9,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import { NavigationBar } from "expo-navigation-bar";
 import { useEffect } from "react";
 
 import { AuthFlowProvider } from "@/state/auth-flow";
@@ -43,6 +44,7 @@ function RootNavigation() {
             <PosProvider>
             <NavigationMotionProvider>
               <StatusBar style="dark" />
+              <NavigationBar hidden={false} style="dark" />
               <Stack
                 screenOptions={{
                   ...stackMotion,

@@ -1,10 +1,11 @@
 import { demoOwner } from './mock-auth';
+import { mockCreditors } from './creditors';
 import type { PayablesLedger } from '@/types/payables';
 
 const ownerId = demoOwner.id;
 /** Fictional examples from the supplied AP frames, with consistent arithmetic. */
 export const payablesSeed: PayablesLedger = {
-  creditors: ['Coca Cola Bottlers', 'Mang Arthuro', 'Yorme', 'Boy bunda', 'Kuya', 'Carmina', 'Anne', 'Arman Salon', 'Arthur Nery', 'Azalea', 'Binay', 'Bini Rha', 'Cheska', 'Camote Cue'].map((name, index) => ({ id: `demo-creditor-${index + 1}`, ownerId, name })),
+  creditors: [...mockCreditors, ...['Coca Cola Bottlers', 'Mang Arthuro', 'Yorme', 'Boy bunda', 'Kuya', 'Carmina', 'Anne', 'Arman Salon', 'Arthur Nery', 'Azalea', 'Binay', 'Bini Rha', 'Cheska', 'Camote Cue'].map((name, index) => ({ id: `demo-creditor-${index + 1}`, ownerId, name }))],
   debts: [
     { id: 'demo-payable-cola', ownerId, creditorId: 'demo-creditor-1', name: 'Coca Cola Bottlers', originalAmountCentavos: 450000, dueDate: '2026-11-10', details: 'Beverage delivery', occurredAt: '2026-10-26T02:00:00Z' },
     { id: 'demo-payable-arthuro', ownerId, creditorId: 'demo-creditor-2', name: 'Mang Arthuro', originalAmountCentavos: 120000, dueDate: '2026-11-12', details: 'Store supplies', occurredAt: '2026-10-02T02:00:00Z' },

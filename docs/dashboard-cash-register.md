@@ -1,19 +1,95 @@
-# Cash in Register additions
+﻿# Cash in Register and Dashboard period chips
 
-The Dashboard card's + opens the English Add Cash to Register form using `docs/designs/MA-DASH-002.png`. Quick Add keeps its existing independent behavior. The modal uses shared form fields/buttons, a reusable confirmation body, established colors/radii, safe areas, scrollable content and keyboard avoidance. Clear and close confirmations retain the draft until confirmed; the covered form is hidden from accessibility, disabled and removed from keyboard tab order. Close, backdrop and Modal `onRequestClose` use the same discard rules. Back/close on a confirmation returns to editing.
+The Cash in Register card's + opens AddCashModal, now a bottom sheet using the same
+ResizableSheet, MotionModal, gesture root and backdrop as Customer Debt, Store
+Debt and Record Expense. It retains the existing white sheet surface, Poppins,
+shared input/buttons and close icon. Its full-width option removes the width cap
+and reserves horizontal safe insets inside the surface. The cash form selects a
+shorter compact height; other sheets retain their defaults. The handle supports
+dragging, snapping, accessibility adjustment and guarded dismissal.
 
-Baseline: MAY-ARI MODULE MA-DASH-002 requires recorded cash inflows/outflows and current cash to update. MA-DASH-003 bases sales reporting on sales transactions. Neither specifies an amount cap or an adjustment activity schema. Copy of MAY-ARI MODULE adds an unresolved note asking where additional capital belongs; it is not merged into the baseline. This task explicitly supplies the Dashboard entry point and confirmation/success wording. The image repeats the original balance after saving; the requested immediate balance update takes precedence.
+The user confirmed the updated docs/designs/MA-DASH-002.png as the intended
+reference (requested as MA-DASH-002(3).png). No Figma file/node URL is supplied in
+the workspace or task, so a newer live frame could not be checked. Explicit
+English wording, the shared sheet surface and the drag-handle requirement take
+precedence over Filipino wording and the omitted handle in the export. The named
+MAY-ARI MODULE stories MA-DASH-002 and MA-DASH-003 remain the baseline: cash
+movements update cash while sales analytics derive from recorded sales. Copy of
+MAY-ARI MODULE's additional-capital placement and growth-formula remarks remain
+unresolved; no accounting category or formula was introduced.
 
-Amounts use the existing peso parser with an additional strictly-positive check: at most two decimals, no signs, exponents, grouping separators, or rounding. Decimal drafts (including `1500.` and `.01`) remain editable; blur pads valid values to two decimals without floating-point conversion. The peso symbol is a separate input prefix. Untouched and confirmed-cleared forms have no validation feedback. Add accepts an attempted submission so invalid input can display the required inline error; after that attempt, feedback updates as the value is corrected. Invalid submissions never call the cash service. Safe-integer checks protect exact centavos and the resulting balance; this is a numeric precision guard, not a business cap.
+The amount field keeps its raw text during typing, pasting, selection edits and
+blur. The existing parser validates positive integer-centavo amounts with up to
+two decimals without rounding. Decimal drafts such as 1500. and .01 are accepted;
+signs, exponents, separators, malformed input, zero and unsafe precision are
+rejected. Add is disabled while invalid or pending. Validation starts on editing,
+not opening. Clear resets amount and feedback. The keyboard's final action only
+dismisses it. Submission requires tapping Add.
 
-`CashRegisterProvider` follows the session-scoped inventory context pattern. Adjustments survive Dashboard remounts/navigation and reset on logout or owner-session changes. It never mutates seed fixtures. Each opening receives a single-use token consumed synchronously, with an additional immediate submission lock in the form. Identical amounts may be added intentionally from separate new forms. Cash on hand and Money In share the same adjustment total across all reporting periods. Sales, growth, outflows and existing activity records remain unchanged. No unsupported transaction fields, backend calls, persistent storage, revenue or profit entries are introduced. Development empty/loading previews remain display overrides; opening the form resets the preview to the normal demo dataset.
+Clear and discard use shared confirmation content and an overlay in the same
+native modal window, with stacked destructive and outlined actions. Cancel/Keep
+Editing preserve the draft. Close, backdrop, handle dismissal, accessibility
+escape and Android Modal back requests share the discard guard. Back on a
+confirmation returns to editing. The covered form is disabled, hidden from
+assistive technology and inert on web. Untouched forms close directly; Clear is
+disabled when empty. Keyboard avoidance, a scroll body and actions that join the
+scroll body in constrained space keep the form reachable. Bottom padding reserves
+the system gesture inset below the actions.
 
-Success uses the existing RegistrationToast surface, success mark, close control and 15-second expiry with supplied title/message. Its default registration content remains unchanged.
+CashRegisterProvider remains session-scoped and separate from seed fixtures. The
+typed mock service now exposes a promise boundary for pending/error handling. Its
+synchronous single-use token and immediate form lock prevent duplicate increments.
+Failures preserve the amount and unlock retry. Success resets/closes before
+showing the shared green RegistrationToast with "Cash added successfully."
+Confirmed adjustment totals update the existing Dashboard projection. Sales,
+growth, expenses and transaction snapshots remain unaffected. Backend comments
+identify submission, durable idempotency, authoritative cash refresh and safe
+error mapping; no endpoints or persistence schema are invented.
 
-Files: new `src/components/dashboard/add-cash-modal.tsx`, `src/components/ui/confirmation-content.tsx`, `src/state/cash-register.tsx`, `src/utils/cash-register.ts`; updated Dashboard screen/card, root provider composition, shared FormField (optional prefix), RegistrationToast (optional copy), English action label, Dashboard summary and `tests/auth-validation.test.cjs`.
+Only Dashboard Daily/Weekly/Monthly chips change size. Visible surfaces use
+12-point horizontal and 4-point vertical padding around one-line labels, retaining
+the existing selected/unselected colors. Separate 48-point touch wrappers preserve
+accessible targets and shared pressed feedback. Selection does not alter geometry
+or filtering.
 
-Verification: `npm run lint`, `npm run typecheck`, and `node --test tests/*.test.cjs` pass (42 tests). Added domain tests cover invalid/positive amounts, exact centavos, single-use tokens, overflow, all-period cash/Money In reconciliation and unchanged sales/fixtures. Chrome browser checks cover untouched/empty forms, invalid edits, clear/cancel/reset, discard/keep editing, successful save/reset, repeated submissions, toast dismissal, period changes, balance persistence through Inventory navigation, backdrop discard and Tab focus isolation. Form screenshots at 320, 360, 390 and 430 px widths have no horizontal overflow and were visually inspected. Browser script/screenshots/results are local ignored artifacts in `.expo/cash-register-check/`.
+Changed files: src/components/dashboard/add-cash-modal.tsx,
+src/components/dashboard/dashboard-cards.tsx,
+src/components/dashboard/owner-dashboard-screen.tsx,
+src/components/ui/resizable-sheet.tsx, src/utils/sheet.ts,
+src/services/cash-register.ts, src/state/cash-register.tsx,
+tests/handoff-services.test.cjs, tests/sheet.test.cjs, and this document.
+Review screenshots and their scope are in docs/validation/dashboard-cash/.
 
-The browser check exposed RN Web's Modal trap programmatically focusing covered controls even with `tabIndex=-1`. A narrow web-only `inert` assignment prevents this; native platforms use accessibility hiding, disabled controls and modal focus semantics. This is not a substitute for native assistive-technology testing. Automatic toast expiry reuses the existing hook and duration; the browser pass explicitly exercises manual dismissal.
+## Verification
 
-Android runtime: not tested; no connected Android device/emulator available. iOS runtime: not tested; no iOS simulator available on Windows. Native keyboard avoidance, Back handling, safe-area values, text scaling and TalkBack/VoiceOver focus require separate platform validation. No native build or bundle compilation is claimed.
+- Shared: npm run typecheck, npm run lint, and all 33 targeted tests in
+  auth-validation.test.cjs, sheet.test.cjs and handoff-services.test.cjs pass.
+  Coverage includes valid/invalid amounts, exact centavos, overflow retry,
+  concurrent duplicates, session isolation, unchanged sales/fixtures, compact
+  height and dismissal calculations.
+- Browser: the actual CashCard, SalesCard, AddCashModal, shared controls and mock
+  cash service pass component-fixture checks for empty/invalid/valid input,
+  middle-of-value insertion/deletion, decimal drafts, no Enter submission,
+  clear/cancel, discard/keep editing, confirmation focus isolation, touch dragging,
+  service rejection, thrown failure, pending duplicate taps and successful reset.
+  Adding 1500.25 produces 13950.25 register cash while sales stay at 12450.00.
+  Widths 320/360/390/430/768 have full-width sheets and stable one-line chips:
+  visible height 28 points, touch height 48 points. A 300-point-height viewport
+  verifies scroll access to actions as a keyboard-space proxy. Separate fixtures
+  inject iOS 47/34, Android 24/24 and landscape 44-point side insets and verify
+  actions remain above bottom insets. These do not simulate native system UI.
+  SDK 58 web routing/export module-resolution failures prevented a clean final
+  full-app browser run; the fixture uses a local provider scaffold and service
+  hook adapter, with the source components and cash service unchanged.
+  Local scripts/results are in .tmp/dashboard-cash-{review,layout}.cjs and
+  .tmp/dashboard-cash-evidence/. No app configuration or dependencies were changed.
+- Android bundle: npx expo export --platform android --platform ios --output-dir
+  .tmp/dashboard-cash-native-export successfully exports the Android bundle.
+- iOS bundle: the same command successfully exports the iOS bundle.
+- Android runtime: not tested. ADB enumeration is blocked by local permissions
+  (Cannot mkdir '\.android': Permission denied). No native runtime is validated.
+- iOS runtime: not tested. This Windows environment has no iOS simulator.
+
+Bundle export is not a native build or runtime check. Native keyboard appearance,
+system Back, TalkBack/VoiceOver, home/gesture bars, text scaling and touch physics
+still require independent Android and iOS device validation.

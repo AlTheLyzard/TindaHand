@@ -2,6 +2,8 @@
 
 # API contract notes
 
+Current profile/account-management proposals are documented in [Owner Profile](owner-profile.md). `AuthenticationService.profile` adds credential-free profile reads, request-only PIN reauthentication and a pending-email lifecycle. Operator capability/status mutations use stable internal IDs and authenticated Owner context. These are adapter contracts, not agreed HTTP endpoints.
+
 Audited October 30, 2026. **No agreed HTTP endpoints, OpenAPI schemas or backend API contracts were found.** Everything below describes existing frontend interfaces or a **PROPOSED** transport model for discussion. No URL, HTTP method, auth mechanism, pagination format, backend framework or MySQL table schema is finalized. See [handoff](backend-handoff.md) for story references, implementation status and open decisions.
 
 ## Existing local interfaces

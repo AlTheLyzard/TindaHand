@@ -1,6 +1,7 @@
+import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { useCallback, useState } from 'react';
 import { Redirect, router, useFocusEffect } from 'expo-router';
-import { BackHandler, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { BackHandler, Platform, Text, View } from 'react-native';
 import { AuthBackground } from './auth-background';
 import { RegistrationProgress } from './registration-progress';
 import { RegistrationToast } from './registration-toast';
@@ -8,18 +9,20 @@ import { SuccessMark } from './success-mark';
 import { CredentialForm } from '@/components/settings/credential-form';
 import { OwnerStoreCard } from '@/components/settings/settings-ui';
 import { Button } from '@/components/ui/button';
+import { useLeaveOnce } from '@/hooks/use-leave-once';
 import { useAuthFlow } from '@/state/auth-flow';
 import { authenticationService } from '@/services/authentication';
 import type { Cashier } from '@/types/settings';
 
 export function OperatorSetupScreen() {
   const { owner, completion } = useAuthFlow();
+  const leave = useLeaveOnce();
   const [created, setCreated] = useState<Cashier | null>(null);
   const [toast, setToast] = useState<number | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
-  const dashboard = () => { router.dismissAll(); router.replace('/owner-dashboard'); };
+  const dashboard = () => leave(() => { if (router.canDismiss()) router.dismissAll(); router.replace('/owner-dashboard'); });
   useFocusEffect(useCallback(() => {
-    const listener = BackHandler.addEventListener('hardwareBackPress', () => { router.dismissAll(); router.replace('/owner-dashboard'); return true; });
+    const listener = BackHandler.addEventListener('hardwareBackPress', () => { if (router.canDismiss()) router.dismissAll(); router.replace('/owner-dashboard'); return true; });
     return () => listener.remove();
   }, []));
   if (!owner || !completion) return <Redirect href="/choose-account" />;
@@ -35,7 +38,7 @@ export function OperatorSetupScreen() {
         </View>
       </> : <>
         <RegistrationToast expiresAt={toast} onDismiss={dismiss} />
-        <View className="mt-4"><SuccessMark animate /></View>
+        <View className="mt-4"><SuccessMark animate eventKey={created.id} /></View>
         <Text accessibilityRole="header" className="my-6 font-poppins-bold text-[30px] leading-[42px] text-brand">Operator Account Created Successfully!</Text>
         <View className="gap-3 rounded-[16px] bg-white p-5">
           <Text className="font-poppins text-[12px] text-brand">Operator Name</Text>

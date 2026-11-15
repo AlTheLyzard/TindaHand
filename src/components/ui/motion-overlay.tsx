@@ -5,9 +5,11 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { RetainedContent } from '@/components/ui/motion-modal';
 import { motion } from '@/constants/motion';
 import { useOverlayTransition } from '@/hooks/use-overlay-transition';
+import { PresentationContext, usePresentationVisible } from '@/state/presentation';
 
 /** Inline confirmations share the active native window and release touches as soon as closed. */
 export function MotionOverlay({ visible, children }: { visible: boolean; children: ReactNode }) {
+  const parentVisible = usePresentationVisible();
   const transition = useOverlayTransition(visible, undefined, motion.state, false);
   const host = useRef<ViewInstance>(null);
   const backdrop = useAnimatedStyle(() => ({ opacity: transition.progress.value }));
@@ -21,7 +23,9 @@ export function MotionOverlay({ visible, children }: { visible: boolean; childre
     accessibilityElementsHidden={!visible} importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}>
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.30)' }, backdrop]} />
     <Animated.View style={[{ flex: 1 }, surface]}>
-      <RetainedContent visible={visible}>{children}</RetainedContent>
+      <PresentationContext.Provider value={parentVisible && visible && transition.opened}>
+        <RetainedContent visible={visible}>{children}</RetainedContent>
+      </PresentationContext.Provider>
     </Animated.View>
   </View>;
 }

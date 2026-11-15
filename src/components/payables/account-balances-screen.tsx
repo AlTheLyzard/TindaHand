@@ -1,3 +1,4 @@
+import { StatusText } from '@/components/ui/status-text';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -42,7 +43,7 @@ function PayableBalancesScreen() {
     <SegmentedSelector options={[{ label: 'Receivable', value: 'receivable' }, { label: 'Payable', value: 'payable' }]}
       value={payable ? 'payable' : 'receivable'} onChange={section => { router.setParams({ section, status: 'unpaid' }); setExpanded(null); }} />
     <>
-      {!!payableFeedback && <MotionRegion><Pressable accessibilityRole="button" accessibilityLabel={`${payableFeedback} Dismiss`} onPress={dismissPayableFeedback} className="rounded-control bg-[#E8F5E9] p-3"><Text accessibilityRole="status" className="font-poppins text-[12px] text-[#1D5D21]">{payableFeedback}</Text></Pressable></MotionRegion>}
+      {!!payableFeedback && <MotionRegion><Pressable accessibilityRole="button" accessibilityLabel={`${payableFeedback} Dismiss`} onPress={dismissPayableFeedback} className="rounded-control bg-[#E8F5E9] p-3"><StatusText className="font-poppins text-[12px] text-[#1D5D21]">{payableFeedback}</StatusText></Pressable></MotionRegion>}
       {!paid && <>
         <BalancePanel title="Total Amount to Pay" amount={formatPesos(lists.outstandingCentavos)} caption={`${lists.creditorCount} ${lists.creditorCount === 1 ? 'Creditor' : 'Creditors'}`} />
         <View className="py-3"><Button onPress={() => push(`${balancesRoot}/new`)}>Record Debt</Button></View>
@@ -59,7 +60,7 @@ function PayableBalancesScreen() {
       {paid && <BalancePanel title="Total Amount Paid" amount={formatPesos(lists.paidCentavos)} paid />}
       <MotionContent changeKey={paid ? 'paid' : 'unpaid'}>
         {!rows.length ? <View className="rounded-card border border-[#B0C8E3] bg-white p-5">
-          <Text accessibilityRole="status" className="font-poppins-semibold text-[16px] text-brand">{query.trim() ? 'No matching debts' : paid ? 'No paid debts yet' : 'No unpaid debts'}</Text>
+          <StatusText className="font-poppins-semibold text-[16px] text-brand">{query.trim() ? 'No matching debts' : paid ? 'No paid debts yet' : 'No unpaid debts'}</StatusText>
           <Text className="mt-2 font-poppins text-[12px] leading-[18px] text-text-secondary">{query.trim() ? 'Try another creditor name or clear your search.' : paid ? 'Fully settled debts will appear here.' : 'Record a business debt to track what your store owes.'}</Text>
         </View> : <View className="gap-5">{groups.filter(group => group.rows.length).map(group => <View key={group.title} className={paid ? 'gap-3' : 'gap-3 rounded-surface p-4'} style={{ backgroundColor: paid ? undefined : group.partial ? payableColors.partialGroup : payableColors.pendingGroup }}>
           {!!group.title && <View className="flex-row flex-wrap items-center gap-2">

@@ -1,0 +1,3 @@
+# Owner Profile browser evidence
+
+Chrome 156, primarily 390 × 844; `edit-320-actions.png` uses 320 × 568. These captures show React Native Web with the explicit development mock, not a native emulator/simulator. The source references remain in `docs/designs/MA-PRO-001.png` through `MA-PRO-005.png`; artwork is extracted separately as live app assets. See [Owner Profile](../../owner-profile.md) for checked flows, service contracts, source conflicts and platform limitations. Some frames retain the Expo development indicator. Scrolling exposes content/actions below the viewport; these are responsive layouts, not fixed-height screenshot copies.

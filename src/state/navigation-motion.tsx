@@ -14,11 +14,18 @@ export const navigationItems = [
   { icon: 'menu', label: 'navigation.menu', route: '/owner-menu' },
 ] as const;
 
+const operatorNavigationRoutes = [
+  { icon: 'cart', route: '/operator-pos' },
+  { icon: 'inventory', route: '/operator-inventory' },
+  { icon: 'menu', route: '/operator-more' },
+] as const;
+
 type NavigationMotion = {
   pathname: string;
   role: AccountRole;
   selectedIndex: number;
   selection: SharedValue<number[]>;
+  centers: SharedValue<Record<AccountRole, number[]>>;
   setMenuSelection: Dispatch<SetStateAction<{ hostId: string; pathname: string } | null>>;
 };
 const NavigationMotionContext = createContext<NavigationMotion | null>(null);
@@ -27,12 +34,18 @@ const NavigationHeightContext = createContext(tokens.navigation.height);
 /** Keep one transition alive across screens, including interrupted taps and back navigation. */
 export function NavigationMotionProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { owner, selectedRole } = useAuthFlow();
-  const role = owner ? 'owner' : selectedRole ?? 'owner';
+  const { owner, deviceSession, selectedRole } = useAuthFlow();
+  const role = owner ? 'owner' : deviceSession?.role === 'operator' ? 'cashier' : selectedRole ?? 'owner';
   const [menuSelection, setMenuSelection] = useState<{ hostId: string; pathname: string } | null>(null);
-  const routeIndex = navigationItems.findIndex(({ route }) => pathname === route || pathname.startsWith(`${route}/`));
+  const routeIndex = role === 'owner'
+    ? navigationItems.findIndex(({ route }) => pathname === route || pathname.startsWith(`${route}/`))
+    : operatorNavigationRoutes.reduce((selected, item) => pathname === item.route || pathname.startsWith(`${item.route}/`)
+      ? navigationItems.findIndex(value => value.icon === item.icon) : selected, -1);
   const selectedIndex = menuSelection?.pathname === pathname ? navigationItems.findIndex(item => item.icon === 'menu') : routeIndex;
   const selection = useSharedValue(navigationItems.map((_, index) => Number(index === selectedIndex)));
+  // Cache actual slot measurements across retained route hosts, so a new host
+  // continues the in-flight underline instead of showing an unmeasured frame.
+  const centers = useSharedValue<Record<AccountRole, number[]>>({ owner: navigationItems.map(() => -1), cashier: navigationItems.map(() => -1) });
   const reduced = useMotionReduced();
 
   useLayoutEffect(() => {
@@ -48,7 +61,7 @@ export function NavigationMotionProvider({ children }: { children: ReactNode }) 
       }));
   }, [reduced, selectedIndex, selection]);
 
-  const value = useMemo(() => ({ pathname, role, selectedIndex, selection, setMenuSelection }), [pathname, role, selectedIndex, selection]);
+  const value = useMemo(() => ({ pathname, role, selectedIndex, selection, centers, setMenuSelection }), [pathname, role, selectedIndex, selection, centers]);
   return <NavigationHeightContext.Provider value={tokens.navigation.height}>
     <NavigationMotionContext.Provider value={value}>{children}</NavigationMotionContext.Provider>
   </NavigationHeightContext.Provider>;

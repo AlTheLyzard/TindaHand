@@ -2,6 +2,7 @@ import { createContext, useContext, useRef, useState, type ReactNode } from 'rea
 
 import { useInventory } from '@/state/inventory';
 import { useAuthFlow } from '@/state/auth-flow';
+import { hasCapability } from '@/utils/operator-access';
 import type { PaymentDraft, ProductSelection } from '@/types/pos';
 import { removeSelectedProduct, selectProduct, setSelectedQuantity, stockConflicts } from '@/utils/pos';
 import { emptyPaymentDraft } from '@/utils/pos-payment';
@@ -11,7 +12,7 @@ const newOrderId = () => `pos-${Date.now()}-${++orderSequence}`;
 
 function usePosState() {
   const { store: { products, pos }, dispatch } = useInventory();
-  const { owner } = useAuthFlow();
+  const { deviceSession } = useAuthFlow();
   const [selection, setSelection] = useState<ProductSelection>({});
   const [paymentDraft, setPaymentDraft] = useState(emptyPaymentDraft);
   const [toastExpiresAt, setToastExpiresAt] = useState<number | null>(null);
@@ -34,11 +35,14 @@ function usePosState() {
       // TODO(BACKEND): Success currently means one local inventory service commit.
       // Make this flow async and keep the draft until the server confirms the
       // atomic sale; reconcile retries/conflicts. See docs/backend-handoff.md#inventory-and-pos.
-      if (!owner || completed.current.has(orderId)) return false;
+      if (!deviceSession || !hasCapability(deviceSession, 'pos')
+        || (paymentDraft.method === 'partial' && !hasCapability(deviceSession, 'receivables'))
+        || completed.current.has(orderId)) return false;
       completed.current.add(orderId);
       let saved = false;
       try {
-        saved = dispatch({ type: 'completeSale', command: { id: orderId, ownerId: owner.id, occurredAt: new Date().toISOString(), selection, draft: paymentDraft } });
+        const ownerId = deviceSession.role === 'operator' ? deviceSession.ownerId : deviceSession.owner.id;
+        saved = dispatch({ type: 'completeSale', command: { id: orderId, ownerId, occurredAt: new Date().toISOString(), selection, draft: paymentDraft } });
       } catch {
         completed.current.delete(orderId);
         return false;

@@ -1,1 +1,1 @@
-export { AddCashierScreen as default } from '@/components/settings/cashier-screens';
+export { AddOperatorScreen as default } from '@/components/profile/operator-screens';

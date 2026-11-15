@@ -102,15 +102,15 @@ export function ExpenseFormScreen() {
     </MotionModal>}>
     <Text className="font-poppins text-[14px] leading-[21px] text-text-secondary">Record and track your store’s expenses.</Text>
     <View onLayout={event => { formTop.current = event.nativeEvent.layout.y; }} pointerEvents={saving || leaving ? 'none' : 'auto'} style={{ gap: 24 }}>
-      <View onLayout={event => { positions.current.category = event.nativeEvent.layout.y; }}>
+      <View onLayout={event => { positions.current.category = event.nativeEvent.layout.y; }} style={{ zIndex: categoryOpen ? 20 : 0 }}>
         <ExpenseCategoryField triggerRef={categoryInput} value={draft.category} onChange={category => update({ category })} error={error('category')} open={categoryOpen} onOpenChange={setCategoryOpen} />
       </View>
       <View onLayout={event => { positions.current.amount = event.nativeEvent.layout.y; }}>
         <QuickAddField ref={amountInput} label="Amount" money large value={draft.amount} onChangeText={amount => update({ amount })} error={error('amount')} placeholder="0.00" inputMode="decimal" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => detailsInput.current?.focus()} />
       </View>
-      <InvField inputRef={detailsInput} label="Other details (Optional)" value={draft.details} onChangeText={details => update({ details })} placeholder="e.g. Electricity bill for this month" multiline textAlignVertical="top" style={{ minHeight: 150 }} returnKeyType="default" />
+      <InvField inputRef={detailsInput} label="Other details" value={draft.details} onChangeText={details => update({ details })} placeholder="e.g. Electricity bill for this month" multiline textAlignVertical="top" style={{ minHeight: 150 }} returnKeyType="default" />
       <View onLayout={event => { positions.current.expenseDate = event.nativeEvent.layout.y; }}>
-        <InvDateField compact inputRef={dateInput} label="Expense date (Required)" value={draft.expenseDate} onChange={expenseDate => update({ expenseDate })} error={error('expenseDate')} />
+        <InvDateField compact inputRef={dateInput} label="Expense date" value={draft.expenseDate} onChange={expenseDate => update({ expenseDate })} error={error('expenseDate')} />
       </View>
       {!!failure && <MotionRegion><Text accessibilityRole="alert" className="font-poppins text-[12px] text-[#972020]">{failure}</Text></MotionRegion>}
       <View className="mt-6 gap-4">

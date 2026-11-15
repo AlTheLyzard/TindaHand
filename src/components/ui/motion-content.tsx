@@ -1,5 +1,5 @@
 import { cssInterop } from 'nativewind';
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Platform, StyleSheet, View, type ViewProps, type TextProps, type ViewInstance } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { motion } from '@/constants/motion';
@@ -17,14 +17,14 @@ export function MotionRegion({ children, ...props }: ViewProps & { children?: Re
 }
 cssInterop(MotionRegion, { className: 'style' });
 
-export function MotionLayout(props: ViewProps) {
+export function MotionLayout(props: ViewProps & { ref?: Ref<ViewInstance> }) {
   const reduced = useMotionReduced();
   return <Animated.View {...props} collapsable={false} layout={reduced ? undefined : layout} />;
 }
 cssInterop(MotionLayout, { className: 'style' });
 
 /** Keep children mounted (including focused inputs); fade only when the semantic state changes. */
-export function MotionContent({ changeKey, style, ...props }: ViewProps & { changeKey: string | boolean }) {
+export function MotionContent({ changeKey, slide = false, style, ...props }: ViewProps & { changeKey: string | boolean; slide?: boolean }) {
   const reduced = useMotionReduced();
   const opacity = useSharedValue(1);
   const previous = useRef(changeKey);
@@ -36,9 +36,10 @@ export function MotionContent({ changeKey, style, ...props }: ViewProps & { chan
     previous.current = changeKey;
     if (reduced) { opacity.set(1); return; }
     opacity.set(0.65);
-    opacity.set(withTiming(1, { duration: motion.state, easing: motion.ease }));
+    opacity.set(withTiming(1, { duration: motion.state, easing: motion.ease, reduceMotion: ReduceMotion.Never }));
   }, [changeKey, opacity, reduced]);
-  const fade = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const fade = useAnimatedStyle(() => ({ opacity: opacity.value,
+    transform: [{ translateY: slide && !reduced ? (1 - opacity.value) * 64 : 0 }] }));
   return <Animated.View {...props} style={[style, fade]} />;
 }
 cssInterop(MotionContent, { className: 'style' });

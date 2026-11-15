@@ -1,12 +1,12 @@
-import { Button, IconButton } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/button';
 import type { ViewInstance } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { AccessibilityInfo, Platform, Text, View } from 'react-native';
 import { PosIcon } from '@/components/pos/pos-icon';
-import tokens from '@/constants/design-tokens.json';
+import { ConfirmationActions } from './confirmation-actions';
 
 /** Content only: render inside the active modal to avoid stacking native Modal windows. */
-export function ConfirmationContent({ title, message, cancelLabel, confirmLabel, onCancel, onConfirm, variant = 'default', balancedActions = false, stackedActions = false }: {
+export function ConfirmationContent({ title, message, cancelLabel, confirmLabel, onCancel, onConfirm, variant = 'default', balancedActions = false, stackedActions = true }: {
   title: string; message: string; cancelLabel: string; confirmLabel: string;
   onCancel: () => void; onConfirm: () => void;
   variant?: 'default' | 'quickAdd';
@@ -26,10 +26,7 @@ export function ConfirmationContent({ title, message, cancelLabel, confirmLabel,
       <IconButton ref={close} accessibilityLabel="Close confirmation" onPress={onCancel} className="absolute -right-4 -top-4 min-h-12 min-w-12 items-center justify-center" icon={({ color }) => <PosIcon name="close" size={20} color={color} />} />
     </View>
     <Text className="mb-4 font-poppins text-[14px] leading-[21px] text-[#102342]">{message}</Text>
-    <View style={{ flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', gap: tokens.spacing.two }}>
-      <Button fullWidth={false} variant="destructiveOutline" onPress={onCancel} style={{ minWidth: 0, flex: 1, paddingHorizontal: tokens.spacing.two }}>{cancelLabel}</Button>
-      <Button fullWidth={false} variant="destructive" onPress={onConfirm} style={{ minWidth: 0, flex: 1, paddingHorizontal: tokens.spacing.two }}>{confirmLabel}</Button>
-    </View>
+    <ConfirmationActions destructive cancelVariant="destructiveOutline" confirmLabel={confirmLabel} cancelLabel={cancelLabel} onConfirm={onConfirm} onCancel={onCancel} />
   </View>;
   return <View accessibilityViewIsModal className="w-full max-w-[412px] self-center rounded-control bg-white p-5" style={{ boxShadow: '0 3px 6px #00000040' }}>
     <View className="mb-3 flex-row items-center gap-2 border-b border-[#ADC9EE] pb-3 pr-8">
@@ -38,10 +35,6 @@ export function ConfirmationContent({ title, message, cancelLabel, confirmLabel,
       <IconButton ref={close} accessibilityLabel="Close confirmation" onPress={onCancel} className="absolute -right-3 -top-3" icon={({ color }) => <Text accessible={false} style={{ color, fontSize: 20 }}>×</Text>} />
     </View>
     <Text className="mb-5 font-poppins text-[14px] leading-[22px] text-[#102342]">{message}</Text>
-    <View style={{ flexDirection: stackedActions ? 'column' : 'row', flexWrap: stackedActions || balancedActions ? 'nowrap' : 'wrap', alignItems: 'stretch', justifyContent: 'center', gap: tokens.spacing.two + (balancedActions ? 0 : tokens.spacing.one) }}>
-      {stackedActions && <Button variant="destructive" onPress={onConfirm}>{confirmLabel}</Button>}
-      <Button fullWidth={stackedActions} variant="destructiveOutline" onPress={onCancel} style={{ minWidth: balancedActions || stackedActions ? 0 : 120, flex: stackedActions ? undefined : 1, ...(balancedActions ? { paddingHorizontal: tokens.spacing.two } : {}) }}>{cancelLabel}</Button>
-      {!stackedActions && <Button fullWidth={false} variant="destructive" onPress={onConfirm} style={{ minWidth: balancedActions ? 0 : 120, flex: 1, ...(balancedActions ? { paddingHorizontal: tokens.spacing.two } : {}) }}>{confirmLabel}</Button>}
-    </View>
+    <ConfirmationActions stacked={stackedActions && !balancedActions} confirmLabel={confirmLabel} cancelLabel={cancelLabel} onConfirm={onConfirm} onCancel={onCancel} />
   </View>;
 }

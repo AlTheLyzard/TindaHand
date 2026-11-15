@@ -83,7 +83,7 @@ export function DashboardQuickAdd({ onSelect }: { onSelect: (action: QuickAddAct
       style={{ opacity: motion.presented && placement ? 0 : 1, bottom: insets.bottom + clearance, paddingHorizontal: tokens.spacing.three, alignItems: 'flex-end' }}>
       {toggle(false)}
     </View>
-    <Modal visible={motion.presented} transparent animationType="none" onRequestClose={close}
+    <Modal visible={motion.presented} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={close}
       onShow={() => { measurePlacement(); motion.onShow(); }} onDismiss={motion.onDismiss}>
       <View ref={modalHost} collapsable={false} onLayout={measurePlacement} className="flex-1">
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.30)' }, backdrop]} />

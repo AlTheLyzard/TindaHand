@@ -4,6 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const test = require('node:test');
 const ts = require('typescript');
+const authStorage = require('./helpers/auth-storage.cjs')();
 
 function modules(development, flag) {
   const cache = new Map();
@@ -13,6 +14,8 @@ function modules(development, flag) {
     const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
     const context = { exports: {}, __DEV__: development, setTimeout, process: { env: { EXPO_PUBLIC_ENABLE_MOCK_AUTH: flag } },
       require(specifier) {
+        if (specifier === '@/services/auth-record-storage') return { authRecordStorage: authStorage.recordStorage };
+        if (specifier === '@/services/auth-secret-storage') return { authSecretStorage: authStorage.secretStorage };
         const base = specifier.startsWith('@/') ? `src/${specifier.slice(2)}` : path.join(path.dirname(file), specifier);
         const target = [`${base}.ts`, `${base}/index.ts`].find(p => fs.existsSync(path.join(__dirname, '..', p)));
         if (!target) throw new Error('Unexpected module: ' + specifier);

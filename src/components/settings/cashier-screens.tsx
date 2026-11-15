@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { RegistrationToast } from '@/components/auth/registration-toast';
 import { SuccessMark } from '@/components/auth/success-mark';
 import { Button } from '@/components/ui/button';
+import { useLeaveOnce } from '@/hooks/use-leave-once';
 import { EmptyState } from '@/components/ui/content-state';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useAuthFlow } from '@/state/auth-flow';
@@ -11,6 +12,7 @@ import { useSettings } from '@/state/settings';
 import { SettingsFrame, settingsRoot } from './settings-frame';
 import { CashierIdentity, OwnerStoreCard, SettingsCard, SettingsDescription, SettingsNotice } from './settings-ui';
 import { CredentialForm } from './credential-form';
+import { authenticationService } from '@/services/authentication';
 
 export function CashierListScreen({ pinManagement = false }: { pinManagement?: boolean }) {
   const { owner } = useAuthFlow();
@@ -27,7 +29,7 @@ export function CashierListScreen({ pinManagement = false }: { pinManagement?: b
     </View>}
     {cashiers.length === 0 ? <EmptyState title="No Operators yet" description="Add an Operator to this store to manage their access PIN." icon="profile" action="Add Operator" onAction={() => router.navigate(`${settingsRoot}/add-cashier`)} />
       : <View className="gap-3">{cashiers.map(cashier => pinManagement ? <View key={cashier.id} className="rounded-control border border-[#B0C8E3] bg-white p-4">
-        <Pressable accessibilityRole="button" accessibilityLabel={`Select ${cashier.name}, ${cashier.id}, Active`} accessibilityState={{ expanded: selected === cashier.id }} onPress={() => setSelected(cashier.id)} className="min-h-12 justify-center">
+        <Pressable accessibilityRole="button" accessibilityLabel={`Select ${cashier.name}, ${cashier.id}, ${cashier.status === 'active' ? 'Active' : 'Inactive'}`} accessibilityState={{ expanded: selected === cashier.id }} onPress={() => setSelected(cashier.id)} className="min-h-12 justify-center">
           <CashierIdentity cashier={cashier} />
         </Pressable>
         {selected === cashier.id && <View className="mt-4 border-t border-[#ADC9EE] pt-4"><Button onPress={() => router.navigate({ pathname: '/owner-menu/settings/reset-cashier-pin', params: { cashierId: cashier.id } })}>Reset Operator PIN</Button></View>}
@@ -49,7 +51,7 @@ export function ChangePinScreen({ cashier = false }: { cashier?: boolean }) {
       <SettingsDescription>{cashier ? 'Verify with your Owner PIN, then enter a new four-digit Operator PIN.' : 'Enter your current Owner PIN and choose a new four-digit PIN.'}</SettingsDescription>
       {expiresAt && <RegistrationToast expiresAt={expiresAt} onDismiss={dismiss} title="PIN updated" message={success} />}
       <CredentialForm key={cashier ? selected!.id : 'owner'} mode={cashier ? 'cashier' : 'owner'}
-        onSave={values => cashier ? service.resetCashierPin(owner, selected!.id, values).then(result => result.ok ? { ok: true as const, value: undefined } : result) : service.changeOwnerPin(owner, values)}
+        onSave={values => cashier ? authenticationService.resetOperatorPin({ ...values, operatorId: selected!.id }).then(result => result.ok ? { ok: true as const, value: undefined } : result) : service.changeOwnerPin(owner, values)}
         onSuccess={() => { setSuccess(selected ? `PIN reset for ${selected.name} (${selected.id}).` : 'Your Owner PIN has been changed.'); setExpiresAt(Date.now() + 15000); }} />
       <Text className="mt-2 font-poppins text-[11px] leading-4 text-text-secondary">Demo only. PIN changes are held in memory for this app session.</Text>
     </>}
@@ -67,6 +69,7 @@ export function AddCashierScreen() {
   </SettingsFrame>;
 }
 export function CashierCreatedScreen() {
+  const leave = useLeaveOnce();
   const { owner } = useAuthFlow();
   const service = useSettings();
   const { cashierId } = useLocalSearchParams<{ cashierId?: string }>();
@@ -75,9 +78,9 @@ export function CashierCreatedScreen() {
   const dismiss = useCallback(() => setExpiresAt(null), []);
   if (!owner) return null;
   return <SettingsFrame title="User Management" parent={`${settingsRoot}/users`}>
-    {!cashier ? <EmptyState title="Account details unavailable" description="The cashier may belong to another store, or this demo session has ended." action="Back to User Management" onAction={() => router.dismissTo(`${settingsRoot}/users`)} /> : <>
+    {!cashier ? <EmptyState title="Account details unavailable" description="The Operator may belong to another store, or this demo session has ended." action="Back to User Management" onAction={() => router.dismissTo(`${settingsRoot}/users`)} /> : <>
       <RegistrationToast expiresAt={expiresAt} onDismiss={dismiss} title="Account created" message={`${cashier.name} has been added to your demo store.`} />
-      <View className="mb-6 mt-5 gap-4"><SuccessMark /><Text accessibilityRole="header" className="font-poppins-bold text-[30px] leading-[42px] text-brand">Operator Account Created Successfully!</Text></View>
+      <View className="mb-6 mt-5 gap-4"><SuccessMark animate eventKey={cashier.id} /><Text accessibilityRole="header" className="font-poppins-bold text-[30px] leading-[42px] text-brand">Operator Account Created Successfully!</Text></View>
       <SettingsCard>
         <CashierIdentity cashier={cashier} />
         <View className="my-4 border-t border-[#ADC9EE]" />
@@ -88,7 +91,7 @@ export function CashierCreatedScreen() {
       </SettingsCard>
       <SettingsNotice>Demo account only. These details are not saved after the app reloads.</SettingsNotice>
       <View className="min-h-6 flex-1" /><View className="gap-4 pt-4">
-        <Button onPress={() => router.dismissTo('/owner-dashboard')}>Go to Dashboard</Button>
+        <Button onPress={() => leave(() => router.dismissTo('/owner-dashboard'))}>Go to Dashboard</Button>
       </View>
     </>}
   </SettingsFrame>;

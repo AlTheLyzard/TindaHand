@@ -1,3 +1,4 @@
+import { StatusText } from '@/components/ui/status-text';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Keyboard, Text, View, type TextInputInstance } from 'react-native';
@@ -53,7 +54,7 @@ export function PayablePaymentScreen() {
   }
   return <InventoryFrame title="Record Payment" back inlineTitle onBack={() => back()} onNavigate={action => { if (!busy.current) action(); }}>
     {!debt || !balance || outstanding === 0 ? <View className="gap-4 rounded-card bg-white p-5">
-      <Text accessibilityRole="status" className="font-poppins text-[14px] text-brand">{debt ? 'This debt is fully paid.' : 'This debt is not available.'}</Text>
+      <StatusText className="font-poppins text-[14px] text-brand">{debt ? 'This debt is fully paid.' : 'This debt is not available.'}</StatusText>
       <Button onPress={() => back(debt ? 'paid' : 'unpaid')}>Back to Account Balances</Button>
     </View> : <View className="gap-6" pointerEvents={saving ? 'none' : 'auto'}>
       <View className="mt-5 gap-5 rounded-control border border-[#2F6CC9] bg-brand p-5">

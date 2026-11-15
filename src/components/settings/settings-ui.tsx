@@ -7,6 +7,7 @@ import type { Cashier } from '@/types/settings';
 import type { OwnerIdentity } from '@/types/auth';
 import tokens from '@/constants/design-tokens.json';
 import { RoleIcon } from '@/components/auth/account-role-card';
+import { ProfileAvatar } from '@/components/profile/profile-avatar';
 
 export function SettingsDescription({ children }: { children: ReactNode }) {
   return <Text className="mb-5 font-poppins text-[14px] leading-[22px] text-text-secondary">{children}</Text>;
@@ -17,11 +18,12 @@ export function SettingsSection({ children }: { children: string }) {
 export function SettingsCard({ children }: { children: ReactNode }) {
   return <View className="rounded-control border bg-white p-4" style={{ borderColor: tokens.color.borderOutline }}>{children}</View>;
 }
-export function SettingsRow({ title, description, icon, onPress }: {
+export function SettingsRow({ title, description, icon, onPress, inCard = false }: {
   title: string; description: string; icon: ComponentProps<typeof SettingsIcon>['name']; onPress: () => void;
+  inCard?: boolean;
 }) {
   return <Pressable accessibilityRole="button" onPress={onPress}
-    className="mb-3 min-h-[68px] flex-row items-center gap-3 rounded-control border bg-white px-4 py-3 active:bg-[#D9E7F4]" style={{ borderColor: tokens.color.borderOutline }}>
+    className={inCard ? 'min-h-[68px] flex-row items-center gap-3 rounded-control bg-white py-3 active:bg-[#D9E7F4]' : 'mb-3 min-h-[68px] flex-row items-center gap-3 rounded-control border bg-white px-4 py-3 active:bg-[#D9E7F4]'} style={{ borderColor: tokens.color.borderOutline }}>
     <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><SettingsIcon name={icon} /></View>
     <View className="min-w-0 flex-1 gap-1">
       <Text className="font-poppins-bold text-[14px] leading-[21px] text-[#0C1B3C]">{title}</Text>
@@ -45,13 +47,13 @@ export function OwnerStoreCard({ owner, compact = false }: { owner: OwnerIdentit
 }
 export function CashierIdentity({ cashier }: { cashier: Cashier }) {
   return <View className="flex-row flex-wrap items-center gap-3">
-    <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><PosIcon name="profile" color="#112F6F" /></View>
+    <ProfileAvatar avatarId={cashier.avatarId} size={36} />
     <View className="min-w-[120px] flex-1 gap-1">
       <Text className="font-poppins-bold text-[14px] leading-[21px] text-[#0C1B3C]">{cashier.name}</Text>
       <Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">{cashier.id}</Text>
     </View>
-    <View className="rounded-control border border-[#1D5D21] bg-[#E8F5E9] px-3 py-1">
-      <Text className="font-poppins-bold text-[10px] leading-[15px] text-[#1D5D21]">{cashier.status === 'active' ? 'Active' : 'Inactive'}</Text>
+    <View className="rounded-control border px-3 py-1" style={{ borderColor: cashier.status === 'active' ? '#1D5D21' : '#B4232C', backgroundColor: cashier.status === 'active' ? '#E8F5E9' : '#FFEBEE' }}>
+      <Text className="font-poppins-bold text-[10px] leading-[15px]" style={{ color: cashier.status === 'active' ? '#1D5D21' : '#B4232C' }}>{cashier.status === 'active' ? 'Active' : 'Inactive'}</Text>
     </View>
   </View>;
 }

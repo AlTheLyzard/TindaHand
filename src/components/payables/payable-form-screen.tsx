@@ -60,14 +60,14 @@ export function PayableFormScreen() {
   return <InventoryFrame title="New Business Debt" back inlineTitle onBack={back} onNavigate={action => { if (!busy.current) action(); }}>
     <Text className="mb-7 font-poppins text-[14px] leading-[21px] text-text-secondary">Keep track of what your business owes and when payments are due.</Text>
     <View className="gap-6" pointerEvents={saving ? 'none' : 'auto'}>
-      <CreditorNameField inputRef={nameInput} value={draft.name} onChange={name => update({ name, creditorId: undefined })} error={error('name')}
+      <CreditorNameField creditorId={draft.creditorId} onMatch={selected => update({ name: selected.name, creditorId: selected.id })} inputRef={nameInput} value={draft.name} onChange={name => update({ name, creditorId: undefined })} error={error('name')}
         onSelect={() => { Keyboard.dismiss(); push(`${balancesRoot}/creditors`); }} onSubmitEditing={() => amountInput.current?.focus()} />
       <QuickAddField ref={amountInput} label="Amount borrowed" money value={draft.amount} onChangeText={amount => update({ amount })} placeholder="0.00" inputMode="decimal" keyboardType="decimal-pad" error={error('amount')} returnKeyType="next" onSubmitEditing={() => dateInput.current?.focus()} />
       <View>
-        <InvDateField compact required={false} inputRef={dateInput} label="Due date (Optional)" value={draft.dueDate} onChange={dueDate => update({ dueDate })} error={error('dueDate')} />
+        <InvDateField compact required={false} inputRef={dateInput} label="Due date" value={draft.dueDate} onChange={dueDate => update({ dueDate })} error={error('dueDate')} />
         {!!draft.dueDate && <Button variant="text" fullWidth={false} compact onPress={() => update({ dueDate: '' })} style={{ alignSelf: 'flex-start' }}>Clear due date</Button>}
       </View>
-      <InvField inputRef={detailsInput} label="Other details (Optional)" value={draft.details} onChangeText={details => update({ details })} placeholder="e.g. Cash" multiline textAlignVertical="top" style={{ minHeight: 160 }} />
+      <InvField inputRef={detailsInput} label="Other details" value={draft.details} onChangeText={details => update({ details })} placeholder="e.g. Cash" multiline textAlignVertical="top" style={{ minHeight: 160 }} />
       <BalancePanel title="Total Debt" amount={formatPesos(quickAddTotal(draft))} caption="This amount will be recorded as accounts payable." dark />
       {!!failure && <MotionRegion><Text accessibilityRole="alert" className="font-poppins text-[12px] text-[#972020]">{failure}</Text></MotionRegion>}
       <View className="mt-3 flex-row flex-wrap gap-3">

@@ -2,7 +2,7 @@
 
 ## Owner Settings follow-up — October 31, 2026
 
-[owner-settings.md](owner-settings.md) supersedes historical cashier-unavailable behavior below. Availability is now derived from the shared store-scoped cashier list. Add Cashier is reached through an Owner session; Cashier Login requires Store / Owner ID, unique Cashier ID and PIN. Demo credential verification does not grant Owner access or claim a working Cashier workspace.
+[owner-settings.md](owner-settings.md) supersedes historical cashier-unavailable behavior below. Availability is now derived from the shared store-scoped cashier list. Add Cashier is reached through an Owner session; Cashier Login requires Store / Owner ID, unique Cashier ID and PIN. A valid Cashier/Operator session opens the POS workspace without granting Owner access; Inventory and More remain placeholders in this phase.
 
 ## Account visual polish follow-up
 

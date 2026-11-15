@@ -33,6 +33,8 @@ export function createPayablesRepository(seed: PayablesLedger = payablesSeed) {
       if (previous) return payableAsQuickAdd(ledger.debts.find(row => row.id === previous && row.ownerId === owner.id)!, ledger.payments);
       if (draft.kind !== 'storeDebt' || Object.keys(quickAddErrors(draft)).length) throw new Error('Check the highlighted fields.');
       const creditors = read(owner).creditors;
+      // Backend: resolve the selected creditor ID, or normalize/resolve a new
+      // name within this owner scope, in the same transaction as debt creation.
       let creditor = draft.creditorId ? creditors.find(row => row.id === draft.creditorId) : creditors.find(row => nameKey(row.name) === nameKey(draft.name));
       if (draft.creditorId && !creditor) throw new Error('Select an available creditor.');
       if (!creditor) creditor = { id: `creditor-${token}`, ownerId: owner.id, name: draft.name.trim() };

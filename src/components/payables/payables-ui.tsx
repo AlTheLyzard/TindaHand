@@ -1,8 +1,11 @@
+import { StatusText } from '@/components/ui/status-text';
+import { KeyboardInput as TextInput } from '@/components/ui/keyboard-aware-scroll-view';
 import { IconButton } from '@/components/ui/button';
 import { useState, type Ref } from 'react';
-import { Text, TextInput, View, type TextInputInstance } from 'react-native';
+import { Text, View, type TextInputInstance } from 'react-native';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
-import { MotionRegion } from '@/components/ui/motion-content';
+import { PartyNameField } from '@/components/ui/party-name-field';
+import { useQuickAdd } from '@/state/quick-add';
 import { PosIcon } from '@/components/pos/pos-icon';
 import tokens from '@/constants/design-tokens.json';
 import type { Creditor } from '@/types/payables';
@@ -10,23 +13,14 @@ import type { Creditor } from '@/types/payables';
 export const balancesRoot = '/owner-menu/receivables-payables' as const;
 export const payableColors = { blue: '#245399', blueSurface: tokens.color.surfaceSubtle, pendingGroup: '#E3F0FF', orange: '#FF861C', partialGroup: '#FAF4EF', partialSurface: '#FFF8E1', green: '#1D5D21', greenSurface: '#E8F5E9' };
 
-export function CreditorNameField({ value, onChange, onSelect, error, inputRef, onSubmitEditing, onPressField }: {
-  value: string; onChange: (name: string) => void; onSelect: () => void; error?: string; inputRef?: Ref<TextInputInstance>; onSubmitEditing?: () => void;
-  onPressField?: () => void;
+export function CreditorNameField({ value, creditorId, onChange, onMatch, onSelect, error, inputRef, onSubmitEditing, floatingSuggestions }: {
+  value: string; creditorId?: string; onChange: (name: string) => void; onMatch: (creditor: Creditor) => void;
+  onSelect: () => void; error?: string; inputRef?: Ref<TextInputInstance>; onSubmitEditing?: () => void; floatingSuggestions?: boolean;
 }) {
-  const [focused, setFocused] = useState(false);
-  return <View className="gap-1">
-    <Text className="font-poppins-semibold text-[12px] leading-[18px] text-brand">Supplier/Creditor (Name or other identifying details)</Text>
-    <View className="flex-row items-center rounded-control border" style={{ borderColor: error ? '#D32F2F' : focused ? '#2675FF' : '#FFFFFF', backgroundColor: error ? '#FFF7F8' : '#FFFFFF', boxShadow: '0 3px 3px rgba(115,153,204,0.45)' }}>
-      <TextInput ref={inputRef} accessibilityLabel="Supplier or creditor, required" accessibilityHint={error} value={value} onChangeText={onChange} showSoftInputOnFocus={!onPressField} onPressIn={onPressField}
-        placeholder="Creditor information" placeholderTextColor="#5A7394" onFocus={() => { setFocused(true); onPressField?.(); }} onBlur={() => setFocused(false)}
-        returnKeyType="next" onSubmitEditing={onSubmitEditing} autoCapitalize="words" className="min-h-12 min-w-0 flex-1 px-4 py-3 font-poppins-semibold text-[12px] leading-[18px] text-[#102342]" />
-      <IconButton accessibilityLabel="Select an existing creditor" onPress={onSelect} className="min-h-12 min-w-12 items-center justify-center" icon={({ color }) => <PosIcon name="customerDebt" size={22} color={color} />} />
-    </View>
-    {!!error && <MotionRegion><Text accessibilityRole="alert" className="font-poppins text-[10px] leading-[15px] text-[#972020]">{error}</Text></MotionRegion>}
-  </View>;
+  const { payables } = useQuickAdd();
+  return <PartyNameField kind="creditor" label="Supplier/Creditor (Name or other identifying details)" value={value} selectedId={creditorId}
+    records={payables.creditors} onChange={onChange} onMatch={onMatch} onSelect={onSelect} error={error} inputRef={inputRef} onNext={onSubmitEditing} floatingSuggestions={floatingSuggestions} />;
 }
-
 export function CreditorSearch({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return <View className="min-h-12 flex-row items-center gap-3 rounded-control border border-white bg-white px-4" style={{ boxShadow: '0 2px 3px #B0C8E3' }}>
     <PosIcon name="search" size={20} color="#5A7394" />
@@ -42,7 +36,7 @@ export function CreditorList({ creditors, onSelect }: { creditors: readonly Cred
   return <View className="gap-4">
     <Text className="font-poppins text-[14px] leading-[21px] text-text-secondary">Choose a supplier or creditor for this business debt.</Text>
     <CreditorSearch value={query} onChange={setQuery} />
-    {!rows.length && <Text accessibilityRole="status" className="py-5 font-poppins text-[14px] text-text-secondary">{query.trim() ? 'No creditors match your search.' : 'No creditors yet. Return to enter a new creditor.'}</Text>}
+    {!rows.length && <StatusText className="py-5 font-poppins text-[14px] text-text-secondary">{query.trim() ? 'No creditors match your search.' : 'No creditors yet. Return to enter a new creditor.'}</StatusText>}
     {rows.map((creditor, index) => {
       const letter = creditor.name.charAt(0).toLocaleUpperCase();
       const initials = creditor.name.split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join('').toLocaleUpperCase();

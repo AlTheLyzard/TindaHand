@@ -84,7 +84,7 @@ export function CredentialForm<T>({ mode, onSave, onSuccess, onCancel, fieldsCar
           errorVariant="registration" editable={!busy} maxLength={name ? 120 : 4} keyboardType={name ? 'default' : 'number-pad'}
           autoCapitalize={name ? 'words' : 'none'} autoComplete="off" textContentType="none"
           returnKeyType={index === fields.length - 1 ? 'done' : 'next'} submitBehavior={index === fields.length - 1 ? 'blurAndSubmit' : 'submit'}
-          onSubmitEditing={() => index === fields.length - 1 ? void submit() : inputs.current[fields[index + 1]]?.focus()} />;
+          onSubmitEditing={() => index === fields.length - 1 ? Keyboard.dismiss() : inputs.current[fields[index + 1]]?.focus()} />;
       })}
     </View>
     {notice ? <SettingsNotice error>{notice}</SettingsNotice> : null}

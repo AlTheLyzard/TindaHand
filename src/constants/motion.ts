@@ -5,6 +5,7 @@ export const motion = {
   press: 140,
   state: 210,
   transition: 280,
+  quickAddSheet: 360,
   ease: Easing.bezier(0.22, 0, 0.18, 1),
   colorEase: cubicBezier(0.22, 0, 0.18, 1),
 } as const;

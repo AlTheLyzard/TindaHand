@@ -2,6 +2,8 @@
 
 # Owner Settings
 
+Profile follow-up: [Owner Profile and Operator management](owner-profile.md) now provides the shared destination for Settings → User Management, account creation/details, independent permissions, PIN reset and deactivate/reactivate. The historical exclusions below no longer describe these features. Current login remains Owner ID + assigned Operator PIN as specified by the authentication handoff.
+
 Implemented against `docs/designs/Settings 1.png`–`Settings 6.png`, the existing sticker sheet, and the named MAY-ARI / KAHERA workbook sheets. This is a frontend implementation with in-memory services, not production authentication, synchronization, or offline storage. No dependencies or native build configuration changed.
 
 ## Routes and shared state
@@ -16,7 +18,7 @@ Owner PIN change and Cashier PIN reset are separate operations using a shared fo
 
 Cashier creation shows the current Owner/store identity and updates both lists immediately. The confirmation contains name, Cashier ID and Owner/store ID without the entered PIN. It offers Back to User Management and Go to Dashboard. Initial account setup reuses this form instead of a separate registration implementation. Development registration preview initializes only the session's mock Owner PIN and clears its draft. Real Owner registration remains unavailable until its backend exists.
 
-Cashier login now requires Store / Owner ID + unique Cashier ID + PIN, using the existing login UI. In development it verifies against the same in-memory accounts/PIN resets. The Cashier workspace and authenticated Cashier session are still unavailable: a successful mock credential check says so explicitly and grants no Owner access. Existing Owner mock login remains opt-in and accepts the current in-memory Owner PIN after a change. Reload restores seeds and the initial demo Owner PIN `0123`.
+Cashier login now requires Store / Owner ID + unique Cashier ID + PIN, using the existing login UI. In development it verifies against the same in-memory accounts/PIN resets. A successful Cashier/Operator session opens the shared POS flow and three-item navigation without granting Owner access; Inventory and More remain placeholders. Existing Owner mock login remains opt-in and accepts the current in-memory Owner PIN after a change. Reload restores seeds and the initial demo Owner PIN `0123`.
 
 ## Sync and cache behavior
 
@@ -45,7 +47,7 @@ npm start
 - KH-LOG-002 and the charter describe Owner ID + Cashier PIN without a unique cashier identifier. The confirmed identification scheme adds Cashier ID. Source requirements need formal revision; originals are unchanged.
 - The Copy of MAY-ARI MODULE adds a confirmation PIN field and Owner identity to setup, and removes the baseline's Add Another option. It also differs on Owner registration/ID page wording and sequencing. These copy-sheet differences were not merged as requirements. The confirmed task independently requires confirmation PIN and Owner identity.
 - Screenshot errors that disclose an old cashier PIN, call Tagalog available, describe exports/durable offline changes, or say Account Created after sync are corrected by the confirmed decisions.
-- Permission editing, deactivation/deletion, notification preferences, translation and Cashier workspace implementation remain outside scope. Help copy is unavailable.
+- Permission editing, deactivation/deletion, notification preferences, translation and the remaining Operator features remain outside scope. Help copy is unavailable.
 
 ## Backend responsibilities
 

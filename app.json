@@ -26,8 +26,20 @@
     "plugins": [
       "expo-router",
       [
+        "expo-navigation-bar",
+        {
+          "hidden": false,
+          "style": "dark",
+          "enforceContrast": true
+        }
+      ],
+      [
         "expo-image-picker",
-        { "photosPermission": "Choose a product photo for your inventory.", "cameraPermission": false, "microphonePermission": false }
+        {
+          "photosPermission": "Choose a product photo for your inventory.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ],
       [
         "expo-splash-screen",
@@ -37,7 +49,12 @@
           "imageWidth": 76,
           "resizeMode": "contain"
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-font",
+      "expo-sharing",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

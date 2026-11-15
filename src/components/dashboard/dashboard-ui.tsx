@@ -26,11 +26,12 @@ export function DashboardIcon({ source, size = 32 }: { source: ImageSourcePropTy
   return <Image source={source} style={{ width: size, height: size }} resizeMode="contain" accessible={false} />;
 }
 
-export function DashboardAction({ label, onPress, children, selected = false, tab = false }: {
+export function DashboardAction({ label, onPress, children, selected = false, tab = false, interactionBackgroundColor }: {
   label: string; onPress: () => void; children: ReactNode; selected?: boolean; tab?: boolean;
+  interactionBackgroundColor?: string;
 }) {
   return <ButtonSurface variant="text" accessibilityRole={tab ? 'tab' : 'button'} accessibilityLabel={label} accessibilityState={{ selected }} aria-selected={tab ? selected : undefined}
-    onPress={onPress} style={{ minWidth: tokens.size.touchTarget, minHeight: tokens.size.touchTarget }}
+    onPress={onPress} interactionBackgroundColor={interactionBackgroundColor} style={{ minWidth: tokens.size.touchTarget, minHeight: tokens.size.touchTarget }}
     className="items-center justify-center rounded-pill focus:outline focus:outline-2 focus:outline-action">
     {children}
   </ButtonSurface>;

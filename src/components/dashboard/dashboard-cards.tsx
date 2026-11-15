@@ -149,13 +149,15 @@ export function SalesCard({
   const metricStyle = { minHeight: 94 * Math.max(1, fontScale), paddingVertical: tokens.spacing.two, flex: 1, minWidth: 0 };
   return (
     <DashboardCard title={t("dashboard.salesTitle")}>
-      <View className="mb-3 flex-row items-stretch gap-2">
+      <View testID="dashboard-period-chips" className="mb-3 flex-row items-center gap-1">
         {periods.map(([value, label]) => (
           <View key={value} style={{ flex: 1, minWidth: 0 }}>
             <Metric loading={loading}>
               <Pressable disabled={loading} accessibilityRole="button" accessibilityLabel={t(label)} accessibilityState={{ selected: period === value, disabled: loading }} onPress={() => onPeriod(value)}
-                style={{ minHeight: fontScale > 1.3 ? 36 * fontScale + 20 : 48, paddingHorizontal: 4, paddingVertical: 10, borderWidth: 1, borderColor: 'transparent', borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: period === value ? '#28549A' : tokens.color.surfaceSubtle }}>
-                <Text className="font-poppins-bold text-[12px] leading-[18px] text-center" style={{ color: period === value ? '#FFFFFF' : '#102342' }}>{t(label)}</Text>
+                style={{ minHeight: tokens.size.touchTarget, minWidth: tokens.size.touchTarget, alignItems: 'stretch', justifyContent: 'center' }}>
+                <View testID={`dashboard-period-${value}`} pointerEvents="none" style={{ paddingHorizontal: tokens.spacing.two, paddingVertical: tokens.spacing.one, borderWidth: 1, borderColor: 'transparent', borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: period === value ? '#28549A' : tokens.color.surfaceSubtle }}>
+                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} className="font-poppins-bold text-[12px] leading-[18px] text-center" style={{ color: period === value ? '#FFFFFF' : '#102342' }}>{t(label)}</Text>
+                </View>
               </Pressable>
             </Metric>
           </View>

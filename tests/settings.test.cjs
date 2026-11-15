@@ -4,6 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const test = require('node:test');
 const ts = require('typescript');
+const authStorageForModule = require('./helpers/auth-storage.cjs')();
 
 function modules(development = true) {
   const cache = new Map();
@@ -11,6 +12,8 @@ function modules(development = true) {
     if (cache.has(file)) return cache.get(file);
     const context = { exports: {}, __DEV__: development, process: { env: { EXPO_PUBLIC_ENABLE_MOCK_AUTH: 'true' } }, setTimeout, Date,
       require(specifier) {
+        if (specifier === '@/services/auth-record-storage') return { authRecordStorage: authStorageForModule.recordStorage };
+        if (specifier === '@/services/auth-secret-storage') return { authSecretStorage: authStorageForModule.secretStorage };
         const base = specifier.startsWith('@/') ? `src/${specifier.slice(2)}` : path.join(path.dirname(file), specifier);
         const target = [`${base}.ts`, `${base}/index.ts`].find(p => fs.existsSync(p));
         if (!target) throw new Error('Unexpected module: ' + specifier);
@@ -25,6 +28,9 @@ function modules(development = true) {
 }
 const load = modules();
 const { createMockSettingsService } = load('src/services/settings.ts');
+function makeSettingsService(options = {}) {
+  return createMockSettingsService({ ...require('./helpers/auth-storage.cjs')(), ...options });
+}
 const { validateCashier, validatePinChange, canClearCache } = load('src/utils/settings.ts');
 const { syncFixtures } = load('src/data/settings.ts');
 const owner = { id: 'TH-DEMO-OWNER', name: 'Demo Owner', mode: 'mock' };
@@ -40,7 +46,7 @@ test('PIN forms reject required, nonnumeric, length and mismatch states while re
 });
 
 test('creation has deterministic unique IDs, concurrent write protection and credential-free store-scoped reads', async () => {
-  const service = createMockSettingsService({ empty: true, delayMs: 0 });
+  const service = makeSettingsService({ empty: true, delayMs: 0 });
   let notifications = 0;
   const unsubscribe = service.subscribe(() => notifications++);
   const values = { name: '  Fictional Cashier  ', pin: '0001', confirmPin: '0001' };
@@ -56,15 +62,15 @@ test('creation has deterministic unique IDs, concurrent write protection and cre
   assert.equal(second.value.id, 'TH-KH-0004');
   assert.equal(service.cashiers(owner.id).length, 2);
   assert.equal(service.cashiers('other-store').length, 0);
-  assert.deepEqual(Object.keys(first.value).sort(), ['id', 'name', 'ownerId', 'status']);
+  assert.deepEqual(Object.keys(first.value).sort(), ['avatarId', 'id', 'name', 'ownerId', 'status']);
   assert.equal(service.verifyCashier(owner.id, first.value.id, '0001').id, first.value.id);
   assert.equal(service.verifyCashier('other-store', first.value.id, '0001'), null);
   assert.equal(notifications, 2); unsubscribe();
-  assert.equal(createMockSettingsService({ empty: true }).cashiers(owner.id).length, 0);
+  assert.equal(makeSettingsService({ empty: true }).cashiers(owner.id).length, 0);
 });
 
 test('Owner verification and reset target only the selected cashier without receiving their old PIN', async () => {
-  const service = createMockSettingsService({ delayMs: 0 });
+  const service = makeSettingsService({ delayMs: 0 });
   const [first, second] = service.cashiers(owner.id);
   const denied = await service.resetCashierPin(owner, first.id, { ...pin, ownerPin: '1423' });
   assert.equal(denied.ok, false); assert.ok(denied.fields.ownerPin);
@@ -82,7 +88,7 @@ test('Owner verification and reset target only the selected cashier without rece
 });
 
 test('failed and invalid saves leave lists and credentials unchanged, then permit retry', async () => {
-  const service = createMockSettingsService({ failNext: 'create', delayMs: 0 });
+  const service = makeSettingsService({ failNext: 'create', delayMs: 0 });
   const before = JSON.stringify(service.cashiers(owner.id));
   const values = { name: 'New Cashier', pin: '0056', confirmPin: '0056' };
   assert.equal((await service.createCashier(owner, values)).ok, false);
@@ -99,7 +105,7 @@ test('failed and invalid saves leave lists and credentials unchanged, then permi
 });
 
 test('all sync states enforce cache restrictions; failed sync retries through progress to complete', async () => {
-  const service = createMockSettingsService({ scenario: 'offline', failNext: 'sync', delayMs: 0 });
+  const service = makeSettingsService({ scenario: 'offline', failNext: 'sync', delayMs: 0 });
   for (const [status, state] of Object.entries(syncFixtures)) {
     assert.equal(canClearCache(state), status === 'up-to-date' || status === 'complete');
   }
@@ -121,7 +127,7 @@ test('all sync states enforce cache restrictions; failed sync retries through pr
 });
 
 test('cache confirmation rechecks after opening, never changes records, and permits failure retry', async () => {
-  const service = createMockSettingsService({ delayMs: 5 });
+  const service = makeSettingsService({ delayMs: 5 });
   const records = JSON.stringify(service.cashiers(owner.id));
   const request = service.clearCache(owner);
   service.preview(owner.id, 'offline');
@@ -139,7 +145,7 @@ test('production, uninitialized and confirmed real identities cannot invoke the 
   const service = production({ delayMs: 0 });
   assert.equal((await service.changeOwnerPin(owner, pin)).ok, false);
   assert.equal((await service.synchronize(owner)).ok, false);
-  const development = createMockSettingsService({ delayMs: 0 });
+  const development = makeSettingsService({ delayMs: 0 });
   for (const actor of [null, { ...owner, mode: 'confirmed' }, { ...owner, id: 'unknown' }]) {
     assert.equal((await development.clearCache(actor)).ok, false);
   }

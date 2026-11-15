@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
-import { useState } from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
 import tokens from '@/constants/design-tokens.json';
@@ -21,49 +20,61 @@ const icons = {
   menu: { normal: require('@/assets/images/navigation/menu.svg'), active: require('@/assets/images/navigation/menu-active.svg') },
 };
 
-/** Fixed geometry shared by route chrome and its decorative copy in More Tools. */
-export function BottomNavigation({ role, bottomInset, selectedIndex, selection, menuOpen = false, decorative = false, onPress }: {
+/** One measured underline shares the icon/label clock, including interrupted transitions. */
+export function BottomNavigation({ role, bottomInset, selectedIndex, selection, centers, menuOpen = false, onPress }: {
   role: AccountRole; bottomInset: number; selectedIndex: number; selection: SharedValue<number[]>;
-  menuOpen?: boolean; decorative?: boolean; onPress: (icon: NavigationIcon) => void;
+  centers: SharedValue<Record<AccountRole, number[]>>;
+  menuOpen?: boolean; onPress: (icon: NavigationIcon) => void;
 }) {
-  const { width, fontScale } = useWindowDimensions();
-  const [barWidth, setBarWidth] = useState(width);
-  const [pressedIcon, setPressedIcon] = useState<NavigationIcon | null>(null);
+  const { fontScale } = useWindowDimensions();
   const items = bottomNavigationItems.filter(item => role === 'owner' || item.icon !== 'home');
-  const slotWidth = barWidth / items.length;
   // Large text keeps the same touch slots and full accessible labels. Give the label
   // the icon's space, wrap to two lines, and fit within the fixed navigation area.
   const largeText = fontScale > 1.25;
   const indicatorStyle = useAnimatedStyle(() => {
     let position = 0;
     let visible = 0;
-    items.forEach((item, index) => {
-      const weight = selection.value[bottomNavigationItems.findIndex(value => value.icon === item.icon)];
-      position += index * weight;
+    let measured = true;
+    items.forEach(item => {
+      const index = bottomNavigationItems.findIndex(value => value.icon === item.icon);
+      const center = centers.value[role][index];
+      if (center < 0) measured = false;
+      const weight = selection.value[index];
+      position += center * weight;
       visible += weight;
     });
     return {
-      transform: [{ translateX: slotWidth * (position + 0.5) - tokens.navigation.indicatorWidth / 2 }],
-      opacity: visible * (pressedIcon === bottomNavigationItems[selectedIndex]?.icon ? 0.65 : 1),
+      transform: [{ translateX: position - tokens.navigation.indicatorWidth / 2 }],
+      opacity: measured ? visible : 0,
     };
   });
-  return <View testID={decorative ? 'dashboard-navigation-drawer' : 'dashboard-navigation'}
-    accessibilityLabel="Main navigation" style={[styles.surface, { paddingBottom: bottomInset }]}
-    onLayout={({ nativeEvent }) => setBarWidth(nativeEvent.layout.width)}>
+  return <View testID="dashboard-navigation"
+    accessibilityLabel="Main navigation" style={[styles.surface, { paddingBottom: bottomInset }]}>
     <View style={styles.items}>
       {items.map(({ icon, label }) => <NavigationItem key={icon} icon={icon} label={label}
         index={bottomNavigationItems.findIndex(item => item.icon === icon)} selectedIndex={selectedIndex}
-        selection={selection} menuOpen={menuOpen} largeText={largeText} decorative={decorative}
-        onPress={() => onPress(icon)} onPressedChange={pressed => setPressedIcon(pressed ? icon : null)} />)}
+        selection={selection} menuOpen={menuOpen} largeText={largeText}
+        onLayout={({ nativeEvent: { layout } }) => {
+          const index = bottomNavigationItems.findIndex(item => item.icon === icon);
+          const measuredCenter = layout.x + layout.width / 2;
+          // Layout events arrive together on native. Merge on the UI runtime so
+          // queued writes cannot overwrite another item's measurement.
+          centers.modify(previous => {
+            'worklet';
+            return { ...previous,
+              [role]: previous[role].map((center, slot) => slot === index ? measuredCenter : center),
+            };
+          });
+        }} onPress={() => onPress(icon)} />)}
       <Animated.View testID="navigation-active-indicator" pointerEvents="none" style={[styles.indicator, indicatorStyle]} />
     </View>
     <View pointerEvents="none" style={styles.border} />
   </View>;
 }
 
-function NavigationItem({ icon, label, index, selectedIndex, selection, menuOpen, largeText, decorative, onPress, onPressedChange }: {
+function NavigationItem({ icon, label, index, selectedIndex, selection, menuOpen, largeText, onPress, onLayout }: {
   icon: NavigationIcon; label: string; index: number; selectedIndex: number; selection: SharedValue<number[]>;
-  menuOpen: boolean; largeText: boolean; decorative: boolean; onPress: () => void; onPressedChange: (pressed: boolean) => void;
+  menuOpen: boolean; largeText: boolean; onPress: () => void; onLayout: (event: LayoutChangeEvent) => void;
 }) {
   const inactiveIcon = useAnimatedStyle(() => ({ opacity: 1 - selection.value[index] }));
   const activeIcon = useAnimatedStyle(() => ({ opacity: selection.value[index] }));
@@ -73,8 +84,7 @@ function NavigationItem({ icon, label, index, selectedIndex, selection, menuOpen
   return <Pressable accessibilityRole="tab" accessibilityLabel={label}
     accessibilityHint={icon === 'menu' ? 'Opens More Tools' : undefined}
     accessibilityState={icon === 'menu' ? { selected: index === selectedIndex, expanded: menuOpen } : { selected: index === selectedIndex }}
-    aria-selected={index === selectedIndex} disabled={decorative} accessible={!decorative} focusable={!decorative}
-    onPress={onPress} onPressIn={() => onPressedChange(true)} onPressOut={() => onPressedChange(false)}
+    aria-selected={index === selectedIndex} onLayout={onLayout} onPress={onPress}
     className="focus:outline focus:outline-2 focus:outline-action" style={styles.slot}>
     {({ pressed }) => <View pointerEvents="none" accessible={false} accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants" aria-hidden style={[styles.contents, { opacity: pressed ? 0.65 : 1 }]}>
@@ -93,8 +103,7 @@ const styles = StyleSheet.create({
   surface: { backgroundColor: tokens.color.navigationSurface },
   // Overlay the border so it does not add to the 56-unit height.
   border: { position: 'absolute', top: 0, left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.borderOutline },
-  // Retained stack screens may keep a previous indicator position after resizing.
-  // Clip the decorative indicator to its fixed bar, including during transitions.
+  // Keep the traveling underline inside the fixed bar during layout changes.
   items: { height: tokens.navigation.height, flexDirection: 'row', overflow: 'hidden' },
   slot: { flex: 1, minWidth: 0, height: tokens.navigation.height, justifyContent: 'flex-start', paddingTop: 5 },
   contents: { alignItems: 'center', gap: tokens.navigation.iconLabelGap },

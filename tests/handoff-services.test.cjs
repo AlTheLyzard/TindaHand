@@ -65,13 +65,21 @@ test('inventory service preserves edit/restock/delete semantics and session isol
   assert.equal(loadMockInventory().products[0].name, product.name);
 });
 
-test('cash service denies signed-out saves without consuming retry and keeps per-session totals', () => {
+test('cash service denies signed-out saves without consuming retry and keeps per-session totals', async () => {
   const service = createCashRegisterService(), token = service.begin();
-  assert.equal(service.add(null, token, '10.25'), null);
-  assert.equal(service.add(owner, token, 'invalid'), null);
-  assert.equal(service.add(owner, token, '10.25'), 1025);
-  assert.equal(service.add(owner, token, '10.25'), null);
-  assert.equal(service.add(owner, service.begin(), '1'), 1125);
+  assert.equal(await service.add(null, token, '10.25'), null);
+  assert.equal(await service.add(owner, token, 'invalid'), null);
+  assert.equal(await service.add(owner, token, '10.25'), 1025);
+  assert.equal(await service.add(owner, token, '10.25'), null);
+  assert.equal(await service.add(owner, service.begin(), '1'), 1125);
   const fresh = createCashRegisterService();
-  assert.equal(fresh.add(owner, fresh.begin(), '1'), 100);
+  assert.equal(await fresh.add(owner, fresh.begin(), '1'), 100);
+});
+
+test('concurrent cash submissions increment once and a rejected amount can be corrected', async () => {
+  const service = createCashRegisterService(), token = service.begin();
+  assert.equal(await service.add(owner, token, '90071992547409.91'), null, 'balance overflow does not consume the form');
+  const results = await Promise.all([service.add(owner, token, '.01'), service.add(owner, token, '.01')]);
+  assert.deepEqual(results, [1, null]);
+  assert.equal(await service.add(owner, service.begin(), '1.20'), 121);
 });

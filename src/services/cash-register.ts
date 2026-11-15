@@ -10,8 +10,10 @@ export function createCashRegisterService() {
   const store = createCashRegisterStore();
   return {
     begin: () => store.begin(),
-    add(owner: OwnerIdentity | null, token: number, value: string): number | null {
+    async add(owner: OwnerIdentity | null, token: number, value: string): Promise<number | null> {
       if (!owner) return null;
+      // TODO(BACKEND): Submit with durable idempotency, then refresh authoritative
+      // register cash here. Propagate failures for retry; never post this as a sale.
       return store.add(token, value, summarizeDashboard('daily', getDashboardData()).cashCentavos);
     },
   };

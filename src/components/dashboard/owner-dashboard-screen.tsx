@@ -1,5 +1,6 @@
 import type { ScrollViewInstance } from 'react-native';
 import { MotionContent } from '@/components/ui/motion-content';
+import { FocusRise } from '@/components/ui/focus-rise';
 import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { useTranslation } from '@/i18n/use-translation';
 import { router } from 'expo-router';
@@ -8,7 +9,8 @@ import { Image, ScrollView, Text, View, useWindowDimensions } from 'react-native
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BestSellersCard, CashCard, RecentActivityCard, SalesCard, StockCard } from '@/components/dashboard/dashboard-cards';
-import { DashboardAction, DashboardCircle, DashboardIcon, dashboardIcons } from '@/components/dashboard/dashboard-ui';
+import { DashboardAction, DashboardIcon, dashboardIcons } from '@/components/dashboard/dashboard-ui';
+import { OwnerAvatar } from '@/components/profile/profile-ui';
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
 import { DashboardQuickAdd, type QuickAddAction } from '@/components/dashboard/dashboard-quick-add';
 import { Button } from '@/components/ui/button';
@@ -76,7 +78,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
         <Text className="flex-1 font-poppins-bold text-[20px] leading-[30px] text-brand">TindaHand</Text>
         <DashboardAction label={t('navigation.settings')} onPress={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'settings' } })}><DashboardIcon source={dashboardIcons.settings} size={26} /></DashboardAction>
         <DashboardAction label={t('navigation.profile')} onPress={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'profile' } })}>
-          <DashboardCircle><Text className="font-poppins-bold text-[14px] text-action">{owner.name.trim().charAt(0).toUpperCase()}</Text></DashboardCircle>
+          <OwnerAvatar />
         </DashboardAction>
       </View>
     </View>
@@ -91,11 +93,21 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
         {onLogout && <View className="mb-4"><Button variant="secondary" onPress={onLogout}>{t('auth.mock.logout')}</Button></View>}
         <MotionContent changeKey={preview.mode} className="gap-card-gap">
           {preview.control}
-          <CashCard summary={summary} loading={preview.loading} onCashAction={() => { preview.reset(); dismissCashToast(); setCashOpen(true); }} />
-          <SalesCard summary={summary} period={period} onPeriod={setPeriod} growthMetrics={growthMetrics} loading={preview.loading} empty={summary.saleCount === 0} />
-          <StockCard summary={{ ...summary, outOfStock: stock.out, lowStock: stock.low + stock.critical }} loading={preview.loading} empty={preview.empty || !products.length} onInventory={() => { preview.reset(); router.navigate('/owner-inventory'); }} onSelect={status => router.navigate({ pathname: '/owner-inventory', params: { status } })} />
-          <BestSellersCard summary={summarizeDashboard('daily', data)} products={products} loading={preview.loading} onBrowse={() => { preview.reset(); router.navigate('/owner-pos'); }} />
-          <RecentActivityCard activity={[...quickActivity, ...data.activity]} loading={preview.loading} onViewAll={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'transaction-history' } })} />
+          <FocusRise index={0} testID="dashboard-card-cash">
+            <CashCard summary={summary} loading={preview.loading} onCashAction={() => { preview.reset(); dismissCashToast(); setCashOpen(true); }} />
+          </FocusRise>
+          <FocusRise index={1} testID="dashboard-card-sales">
+            <SalesCard summary={summary} period={period} onPeriod={setPeriod} growthMetrics={growthMetrics} loading={preview.loading} empty={summary.saleCount === 0} />
+          </FocusRise>
+          <FocusRise index={2} testID="dashboard-card-stock">
+            <StockCard summary={{ ...summary, outOfStock: stock.out, lowStock: stock.low + stock.critical }} loading={preview.loading} empty={preview.empty || !products.length} onInventory={() => { preview.reset(); router.navigate('/owner-inventory'); }} onSelect={status => router.navigate({ pathname: '/owner-inventory', params: { status } })} />
+          </FocusRise>
+          <FocusRise index={3} testID="dashboard-card-best-sellers">
+            <BestSellersCard summary={summarizeDashboard('daily', data)} products={products} loading={preview.loading} onBrowse={() => { preview.reset(); router.navigate('/owner-pos'); }} />
+          </FocusRise>
+          <FocusRise index={4} testID="dashboard-card-activity">
+            <RecentActivityCard activity={[...quickActivity, ...data.activity]} loading={preview.loading} onViewAll={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'transaction-history' } })} />
+          </FocusRise>
         </MotionContent>
       </View>
     </ScrollView>
@@ -103,7 +115,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     <DashboardQuickAdd onSelect={action => { preview.reset(); setQuickKind(action === 'dashboard.quick.customerDebt' ? 'customerDebt' : action === 'dashboard.quick.storeDebt' ? 'storeDebt' : 'expense'); }} />
     {quickKind && <QuickAddModal initialKind={quickKind} onClose={() => setQuickKind(null)} />}
     {cashToastExpiresAt !== null && <View pointerEvents="box-none" className="absolute left-0 right-0 items-center px-4" style={{ top: insets.top + 56 }}>
-      <View pointerEvents="box-none" className="w-full max-w-[460px]"><RegistrationToast expiresAt={cashToastExpiresAt} onDismiss={dismissCashToast} title="Amount Saved!" message="Cash has been added successfully." /></View>
+      <View pointerEvents="box-none" className="w-full max-w-[460px]"><RegistrationToast expiresAt={cashToastExpiresAt} onDismiss={dismissCashToast} title="Amount Saved!" message="Cash added successfully." /></View>
     </View>}
     {cashOpen && <AddCashModal onClose={() => setCashOpen(false)} onSaved={() => { setCashOpen(false); setCashToastExpiresAt(Date.now() + 15000); }} />}
     <Modal visible={!!notice} onRequestClose={() => setNotice(null)}>
