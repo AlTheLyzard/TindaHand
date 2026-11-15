@@ -1,12 +1,14 @@
+import { MoneyInput } from '@/components/ui/money-input';
+import { KeyboardInput as TextInput, KeyboardField } from '@/components/ui/keyboard-aware-scroll-view';
 import { MotionPressable } from '@/components/ui/motion-pressable';
 import { IconButton } from '@/components/ui/button';
-import { MotionLayout, MotionRegion } from '@/components/ui/motion-content';
+import { MotionRegion } from '@/components/ui/motion-content';
 import { useRef, useState, type Ref } from 'react';
-import { StyleSheet, Text, TextInput, View, useWindowDimensions, type TextInputProps, type TextInputInstance } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions, type TextInputProps, type TextInputInstance } from 'react-native';
 import { PosIcon } from '@/components/pos/pos-icon';
 import tokens from '@/constants/design-tokens.json';
 import type { QuickAddKind } from '@/types/quick-add';
-import { parsePaymentAmount } from '@/utils/pos-payment';
+import { FieldLabel, fieldLabel } from '@/components/ui/field-label';
 import { formatCalendarDate } from '@/utils/date';
 
 export const quickAddLabels: Record<QuickAddKind, string> = { customerDebt: 'Customer Debt', storeDebt: 'Store Debt', expense: 'Expense' };
@@ -32,31 +34,30 @@ function displayDate(value: string) {
   return formatCalendarDate(value).toUpperCase();
 }
 /** Scoped field styling avoids changing registration, inventory or POS inputs. */
-export function QuickAddField({ label, required = true, requiredIndicator = 'text', error, showError = true, money = false, large = false, date = false, dueDate = false, onPickDate, ref, ...props }: FieldProps) {
+export function QuickAddField({ label, required = true, requiredIndicator: _requiredIndicator, error, showError = true, money = false, large = false, date = false, dueDate: _dueDate, onPickDate, ref, ...props }: FieldProps) {
   const [focused, setFocused] = useState(false);
   const input = useRef<TextInputInstance | null>(null);
   const fontSize = large ? 22 : 12;
   const { fontScale } = useWindowDimensions();
   const inputHeight = Math.max(46, (large ? 30 : 18) * fontScale + (large ? 14 : 20));
-  const amount = money ? parsePaymentAmount(props.value ?? '') : null;
-  const formattedAmount = amount !== null ? `${Math.floor(amount / 100).toLocaleString('en-PH')}.${String(amount % 100).padStart(2, '0')}` : props.value;
-  const overlay = !focused && (money || date) && !!props.value;
-  return <MotionLayout style={{ gap: 4 }}>
-    <Text style={quickAddStyles.label}>{label}{required && requiredIndicator === 'asterisk' ? <Text style={{ color: '#D32F2F' }}> *</Text> : required && !date ? ' (Required)' : ''}</Text>
+  const overlay = !focused && date && !!props.value;
+  const Input = money ? MoneyInput : TextInput;
+  return <KeyboardField style={{ gap: 4 }}>
+    <FieldLabel label={label} required={required} style={quickAddStyles.label} />
     <View style={[quickAddStyles.field, { borderColor: error ? '#CC333B' : focused ? '#2675FF' : '#FFFFFF', backgroundColor: error ? '#FFF7F8' : focused ? '#F7FBFF' : '#FFFFFF' }]}>
       {money && <Text accessible={false} style={{ paddingLeft: 20, fontSize, fontFamily: 'Poppins_600SemiBold', color: props.value ? quickAddColors.ink : '#718198' }}>₱</Text>}
       <View style={{ flex: 1, minWidth: 0 }}>
-      <TextInput {...props} ref={node => { input.current = node; if (typeof ref === 'function') ref(node); else if (ref) ref.current = node; }}
-        value={overlay ? date ? displayDate(props.value ?? '') : formattedAmount : props.value}
-        accessibilityLabel={`${label}${required ? ', required' : ''}`} accessibilityHint={error || (date ? 'Enter date as YYYY-MM-DD.' : undefined)}
+      <Input {...props} ref={node => { input.current = node; if (typeof ref === 'function') ref(node); else if (ref) ref.current = node; }}
+        value={overlay ? displayDate(props.value ?? '') : props.value}
+        accessibilityLabel={`${fieldLabel(label)}${required ? ', required' : ''}`} accessibilityHint={error || (date ? 'Enter date as YYYY-MM-DD.' : undefined)}
         placeholderTextColor="#718198" autoCorrect={false} spellCheck={false}
         onFocus={event => { setFocused(true); props.onFocus?.(event); }} onBlur={event => { setFocused(false); props.onBlur?.(event); }}
-        className="web:focus:outline-none" style={{ minHeight: inputHeight, height: props.multiline ? Math.min(120 * fontScale, Math.max(inputHeight, (props.value?.split('\n').length ?? 1) * 18 * fontScale + 20)) : undefined, minWidth: 0, paddingLeft: money ? 0 : 20, paddingRight: date ? 4 : 20, paddingVertical: props.multiline ? 10 : large ? 7 : 10, fontSize, lineHeight: large ? 30 : 18, fontFamily: 'Poppins_600SemiBold', color: overlay && date && (dueDate || !onPickDate) ? '#A9BBD3' : quickAddColors.ink }} />
+        className="web:focus:outline-none" style={{ minHeight: inputHeight, height: props.multiline ? Math.min(120 * fontScale, Math.max(inputHeight, (props.value?.split('\n').length ?? 1) * 18 * fontScale + 20)) : undefined, minWidth: 0, paddingLeft: money ? 0 : 20, paddingRight: date ? 4 : 20, paddingVertical: props.multiline ? 10 : large ? 7 : 10, fontSize, lineHeight: large ? 30 : 18, fontFamily: 'Poppins_600SemiBold', color: tokens.color.textPrimary }} />
       </View>
-      {date && <IconButton accessibilityLabel={onPickDate ? `Choose ${label.toLowerCase()}` : 'Edit due date'} onPress={onPickDate ?? (() => input.current?.focus())} className="min-h-12 min-w-12 items-center justify-center" icon={({ color }) => <PosIcon name={dueDate ? 'calendarDue' : 'calendar'} size={18} color={color} />} />}
+      {date && <IconButton accessibilityLabel={onPickDate ? `Choose ${label.toLowerCase()}` : 'Edit due date'} onPress={onPickDate ?? (() => input.current?.focus())} className="min-h-12 min-w-12 items-center justify-center" icon={({ color }) => <PosIcon name="calendarDue" size={18} color={color} />} />}
     </View>
     {!!error && showError && <MotionRegion><Text accessibilityRole="alert" style={quickAddStyles.error}>{error}</Text></MotionRegion>}
-  </MotionLayout>;
+  </KeyboardField>;
 }
 
 export const quickAddStyles = StyleSheet.create({

@@ -1,5 +1,15 @@
 # Authentication handoff — November 9, 2026
 
+November 13 refinement: [Login and PIN recovery](login-pin-recovery-refinement.md)
+adds role-scoped remembered IDs, password-first device authentication and
+verified PIN unlock. The November 15 account-flow refinement lists only stored
+Owner accounts, shows Operator Login only when an Operator record exists, and
+persists native Owner/Operator records in app storage. Passwords and PINs use
+Expo SecureStore on Android/iOS. Mock sessions and recovery requests still do
+not survive a process restart; browser preview storage remains in memory.
+
+Profile follow-up: [Owner Profile](owner-profile.md) adds draft editing, current-PIN reauthentication, pending-email verification, independent Operator capabilities and account lifecycle controls. It preserves Owner ID + assigned Operator PIN login. Profile/email adapters remain proposed development mocks. The Operator now enters the shared mock POS workspace; Inventory and More remain guarded placeholders.
+
 This is a frontend implementation with an explicit development mock, not a backend or an approved HTTP schema. This document supersedes older auth descriptions in `mock-auth.md`, `registration-screen.md`, `account-choice-screen.md`, `owner-settings.md`, `api-contract.md` and `backend-handoff.md`. Original requirements and design sheets are unchanged.
 
 ## Approved behavior and source conflicts
@@ -11,7 +21,7 @@ Reviewed every panel in MA-LOG-001–007, Buttons.png, the supplied standalone b
 | Route | Purpose |
 | --- | --- |
 | `/` | Existing approved Welcome branding/tagline, supplied wave/store backdrop |
-| `/choose-account` | Always offers Owner and Operator login, including on new devices |
+| `/choose-account` | Lists registered Owners; shows Operator Login only when a stored Operator belongs to a registered Owner; empty state links to Owner account creation |
 | `/register` | Six-field validation, live feedback after interaction, first-invalid focus/scroll, submission lock |
 | `/account-created` → `/owner-id` | Existing success/ID cards, real submitted identity, three-step progress; toast has a 15-second deadline and manual dismiss |
 | `/operator-setup` | Optional step 3 using the existing credential form; Cancel retains the Owner account, success offers only Dashboard |
@@ -22,11 +32,11 @@ Reviewed every panel in MA-LOG-001–007, Buttons.png, the supplied standalone b
 
 `src/components/auth/` contains reusable screens, background, progress, header and success feedback. The background assets are unchanged copies of the supplied `ApplicationBackground.png` and `ApplicationHeaderBackground.png` under `assets/images/auth/`; they contain decoration only. `src/components/ui/form-field.tsx` retains native secure inputs, four progressive PIN slots, independent visibility and cursor restoration. Existing Button, motion/reduced-motion infrastructure and fonts are reused. Dashboard content/navigation is preserved; `src/app/owner-dashboard.tsx` adds only the login toast and full-logout behavior.
 
-`src/state/auth-flow.tsx` consumes the service session, clears sensitive drafts, restores on activation, locks on background, refreshes validity, and exposes full logout separately. Inventory/POS/cash providers are keyed by the service session ID, retaining demo state through locking while clearing it on full logout/session removal. The locked login also offers Log Out and Use Password. Existing Owner-only route guards use `owner`, derived only from an unlocked service session. Registration completion, account availability, selected role and remembered ID alone cannot establish access. `src/components/settings/preferences-screens.tsx` exposes Lock App with the distinction from full logout. Existing Operator administration/reset components retain Owner-PIN authorization; success copy no longer requests Cashier ID at login or shows a PIN.
+`src/state/auth-flow.tsx` consumes the service session, clears sensitive drafts, restores on activation, locks on background, refreshes validity, and exposes full logout separately. Inventory/POS/cash providers are keyed by the service session ID, retaining demo state through locking while clearing it on full logout/session removal. The November 11 Owner Login refinement removes Log Out and Use Password from that screen; Change Role preserves the authenticated device session. Existing Owner-only route guards use `owner`, derived only from an unlocked service session. Registration completion, account availability, selected role and remembered ID alone cannot establish access. `src/components/settings/preferences-screens.tsx` exposes Lock App with the distinction from full logout. Existing Operator administration/reset components retain Owner-PIN authorization; success copy no longer requests Cashier ID at login or shows a PIN.
 
 ## Adapter contracts (all proposed)
 
-No existing HTTP authentication endpoints, schemas, cookie/token protocol or secure-storage implementation were found. `src/types/auth.ts` defines `AuthenticationService`, `DeviceSession`, `AuthResult<T>`, `AuthFailure`, `RecoveryReceipt`, `OperatorPermission` and the extended registration types. The previous `RegistrationService`/`RegistrationResult` and `SettingsService` shapes are existing frontend seams, not backend contracts. Internal `cashier` names/routes remain to preserve existing navigation; UI says Operator.
+No HTTP authentication endpoints, schemas or cookie/token protocol are defined. The opt-in development mock now uses app document storage for non-secret Owner/Operator records and Expo SecureStore for native credentials; this is local development persistence, not a production authentication service. `src/types/auth.ts` defines `AuthenticationService`, `DeviceSession`, `AuthResult<T>`, `AuthFailure`, `RecoveryReceipt`, `OperatorPermission` and the extended registration types. The previous `RegistrationService`/`RegistrationResult` and `SettingsService` shapes are existing frontend seams, not backend contracts. Internal `cashier` names/routes remain to preserve existing navigation; UI says Operator.
 
 Connect the API at **`src/services/authentication.ts`**, replacing the mock adapter as a unit. `src/services/registration.ts` delegates to it. Never catch a real API failure and switch to this mock.
 
@@ -45,7 +55,7 @@ Connect the API at **`src/services/authentication.ts`**, replacing the mock adap
 | `verifyRecoveryToken` | `{token}` | `AuthResult<{expiresAt:number}>` |
 | `resetOwnerPin` | `{token,pin}` | `AuthResult<undefined>` |
 
-Confirmation fields are UI-only; omit them from eventual transport/persistence. PINs remain strings. Account/list/session objects exclude passwords, PINs and recovery tokens. The current `kind:'mock'`, sequence session IDs, timestamps and in-memory state are presentation/testing details, not a production token design. Existing Settings reads/subscriptions remain at `src/services/settings.ts`; auth Operator operations delegate there so onboarding and later management share records and PIN rules.
+Confirmation fields are UI-only; omit them from eventual transport/persistence. PINs remain strings. Account/list/session objects exclude passwords, PINs and recovery tokens. Native mock credentials are stored separately through SecureStore; the current `kind:'mock'`, sequence session IDs, timestamps and in-memory sessions are presentation/testing details, not a production token design. Existing Settings reads/subscriptions remain at `src/services/settings.ts`; Operator records retain their exact `ownerId` and auth operations resolve that linked Owner from the matched record.
 
 ## Server responsibilities and exact rule locations
 
@@ -57,13 +67,13 @@ Search the services/configuration for `BACKEND INTEGRATION:`, `BACKEND RULE:`, `
 - **`authentication.ts`: request/verify/reset recovery methods** — real email delivery; neutral responses and timing; resend/attempt limits; cryptographically random, time-limited, hashed, single-use recovery tokens; atomic token consumption + PIN update; revoke affected sessions, while leaving Owner ID/password unchanged. PIN reset must not authenticate a device. The mock revokes its affected session; agree the production cross-device policy.
 - **`config/auth.ts` + `config/mock-auth.ts`** — centralized link configuration and opt-in mock gate. Never put secrets in Expo public configuration.
 
-The Settings mock retains closure-held demo credential verifiers and no credential retrieval endpoint. No AsyncStorage, database, credential persistence or logging was introduced. The public identity fixture remains separate from dev-only credential data. Production needs a secure session adapter; process restarts currently lose mock accounts, sessions and pending recovery requests.
+The Settings mock persists non-secret Operator records to the app document directory and stores Operator PINs in SecureStore on native. Owner records are stored separately from Owner passwords/PINs. The remembered login IDs remain a separate convenience file. Browser preview uses in-memory account and credential stores. Seeded demo identities remain development fixtures but are excluded from the chooser and direct login-route availability checks. Production still needs a server-owned account database, credential verification, authorization, and secure session adapter; process restarts lose mock sessions and pending recovery requests, while native mock accounts survive.
 
 ## Development configuration and scenarios
 
-Set `EXPO_PUBLIC_ENABLE_MOCK_AUTH=true` in an uncommitted `.env.local`, restart Metro and fully reload. Both the exact flag and `__DEV__` are required. With it disabled, authentication/registration/recovery fail as unavailable. No requests, real emails or real accounts are created.
+Set `EXPO_PUBLIC_ENABLE_MOCK_AUTH=true` in an uncommitted `.env.local`, restart Metro and fully reload. Both the exact flag and `__DEV__` are required. With it disabled, authentication/registration/recovery fail as unavailable. No requests or real emails are sent. User-created account records survive native process restarts; mock sessions do not. Native passwords/PINs use SecureStore. Browser preview stores accounts and credentials in memory only.
 
-Fictional seeded Owner: ID `TH-DEMO-OWNER`, password `DemoStore25@!`, email `owner@example.test`, PIN `0123`. Authenticate with password, then use **Settings → Security & Access → Lock App** to test PIN unlock. Full Log Out requires password again. Registration creates ephemeral permanent IDs such as `TH-MA-0001`; reuse the returned actual ID. Existing two seeded Operators have different PINs (`1423`, `2846`). Data lives in `src/data/mock-auth.ts`, `mock-auth-credentials.ts` (dev-only) and `settings.ts`; credential verifiers live only in the mock closures.
+Legacy fictional fixtures still exist for service regression scenarios, but the chooser filters them out and `/login` redirects when no user-created account of the requested role exists. New Owner records receive IDs such as `TH-MA-0001`; the exact ID is stored with the account record. Operator rows persist their Owner foreign key and are matched by that Owner ID plus PIN. The linked ID in the matched Operator row is authoritative when constructing the session.
 
 Recovery scenarios:
 
@@ -84,7 +94,7 @@ Existing `app.json` scheme is `tindahand`; Expo Router maps `/reset-pin`. In a d
 
 **Password recovery is unsupported**: no existing flow or approved password-recovery design/API was found. No Forgot password action is connected to PIN recovery.
 
-**Operator workspace is a pre-existing gap**: login now creates a credential-free Operator session with the matched internal ID and permissions and shows successful login feedback. Existing application routes remain Owner-only; no Operator dashboard/screens were invented and no Owner privileges are granted. Connecting authorized operational screens and transaction actor attribution requires a separate capability-aware workspace task. The internal Operator ID is retained in `DeviceSession.operator.id` for that integration.
+**Operator workspace follow-up (November 15, 2026)**: login creates a credential-free Operator session with the matched internal ID and permissions, then routes to the shared POS flow. The three-item navigation exposes POS, Inventory and More; POS sale writes check the POS capability and cannot invoke Owner-only inventory actions. Inventory and More are placeholders for later phases, and no Owner privileges are granted. The internal Operator ID remains available in `DeviceSession.operator.id`.
 
 **Production auth and durable restoration are not connected**. Replace the unavailable production adapter, choose the secure storage/session protocol, implement real email delivery/verification and rate limits, and agree wire schemas before release. No new backend or migration was created.
 

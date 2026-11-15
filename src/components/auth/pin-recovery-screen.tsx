@@ -1,7 +1,9 @@
+import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { BackHandler, KeyboardAvoidingView, Platform, ScrollView, Text, View, type TextInputInstance } from 'react-native';
+import { BackHandler, Keyboard, Platform, Text, View, type TextInputInstance } from 'react-native';
 import { useEffect, type ReactNode } from 'react';
+import { Image } from 'expo-image';
 import { AuthBackground } from './auth-background';
 import { AuthHeader } from './auth-header';
 import { RegistrationToast } from './registration-toast';
@@ -54,7 +56,7 @@ export function ForgotPinScreen() {
     try {
       const result = await authenticationService.requestPinRecovery({ email });
       if (!active.current) return;
-      if (result.ok) { setSent(true); setResendAt(result.value.resendAt); setNow(Date.now()); setToast(Date.now() + 15000); }
+      if (result.ok) { Keyboard.dismiss(); setSent(true); setResendAt(result.value.resendAt); setNow(Date.now()); setToast(Date.now() + 15000); }
       else setNotice(result.message);
     } catch { if (active.current) setNotice('Unable to request recovery. Please try again.'); }
     finally { locked.current = false; if (active.current) setBusy(false); }
@@ -63,26 +65,24 @@ export function ForgotPinScreen() {
     {!sent ? <>
       <RecoveryHeading title="Forgot PIN?">Enter your registered email address to request a PIN recovery link.</RecoveryHeading>
       <View className="mx-3 gap-3">
-        <Text className="font-poppins text-[10px] text-text-secondary">Fields marked * are required.</Text>
         <FormField ref={input} label="Email Address" requiredIndicator="asterisk" value={email} placeholder="name@gmail.com" placeholderTextColor="#A3AFBF"
           onChangeText={value => { setEmail(value); setTouched(true); setNotice(''); }} onBlur={() => setTouched(true)}
-          error={touched ? validateEmail(email) : undefined} editable={!busy} keyboardType="email-address" autoComplete="email" textContentType="emailAddress" autoCapitalize="none" returnKeyType="send" onSubmitEditing={() => void send()} />
+          error={touched ? validateEmail(email) : undefined} editable={!busy} keyboardType="email-address" autoComplete="email" textContentType="emailAddress" autoCapitalize="none" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
         {!!notice && <Notice>{notice}</Notice>}
       </View>
       <View className="mt-12 gap-3"><Button loading={busy} onPress={() => void send()}>Send Recovery Link</Button><Button variant="secondary" disabled={busy} onPress={backToLogin}>Back to Login</Button></View>
     </> : <>
-      <View className="mt-10"><RegistrationToast expiresAt={toast} onDismiss={dismiss} title="Recovery link requested" message="Check your email for the next steps." /></View>
-      <View className="mt-3 items-center px-4">
-        <View accessible={false} style={{ width: 100, height: 76, borderWidth: 4, borderColor: '#28549A', borderRadius: 9, overflow: 'hidden' }}>
-          <View style={{ width: 68, height: 68, borderWidth: 4, borderColor: '#28549A', transform: [{ rotate: '45deg' }], position: 'absolute', top: -39, left: 12 }} />
-          <View style={{ width: 68, height: 68, borderWidth: 3, borderColor: '#28549A', transform: [{ rotate: '45deg' }], position: 'absolute', top: 35, left: 12 }} />
+      <RegistrationToast expiresAt={toast} onDismiss={dismiss} title="Recovery link requested" message="Check your email for the next steps." />
+      <View testID="recovery-email-content" className="min-h-[300px] flex-1 justify-center py-6">
+        <View testID="recovery-email-group" className="items-center px-2">
+          <Image source={require('@/assets/images/auth/recovery-envelope.svg')} contentFit="contain" accessible={false}
+            style={{ width: 128, height: 128, maxWidth: '100%' }} />
+          <Text accessibilityRole="header" className="mt-6 text-center font-poppins-bold text-[28px] leading-[40px] text-brand">Check your Email</Text>
+          <Text className="mt-4 w-full max-w-[320px] text-center font-poppins text-[12px] leading-[20px] text-text-secondary">If an account matches this email, we’ll send a PIN recovery link.</Text>
         </View>
-        <Text accessibilityRole="header" className="mt-8 text-center font-poppins-bold text-[28px] leading-[40px] text-brand">Check Your Email</Text>
-        <Text className="mt-3 text-center font-poppins text-[12px] leading-[20px] text-text-secondary">If an account matches this email, we’ll send a PIN recovery link.</Text>
       </View>
       {!!notice && <Notice>{notice}</Notice>}
-      <View className="min-h-24 flex-1" />
-      <View className="mt-12 gap-3"><Button onPress={backToLogin}>Back to Login</Button><Button loading={busy} disabled={seconds > 0} variant="secondary" onPress={() => void send()}>{seconds > 0 ? `Resend Recovery Link (${seconds}s)` : 'Resend Recovery Link'}</Button></View>
+      <View className="gap-3"><Button onPress={backToLogin}>Back to Login</Button><Button loading={busy} disabled={seconds > 0} variant="secondary" onPress={() => void send()}>{seconds > 0 ? `Resend Recovery Link (${seconds}s)` : 'Resend Recovery Link'}</Button></View>
     </>}
   </RecoveryFrame>;
 }
@@ -109,20 +109,21 @@ export function ResetPinScreen() {
   }, [token]));
   const pinError = !pin ? 'Enter your new PIN.' : /^[0-9]{4}$/.test(pin) ? undefined : 'Enter exactly 4 numeric digits.';
   const confirmError = !confirmPin ? 'Confirm your new PIN.' : !/^[0-9]{4}$/.test(confirmPin) ? 'Enter exactly 4 numeric digits.' : confirmPin !== pin ? 'PINs do not match. Please enter the correct PIN.' : undefined;
-  function finish() { router.dismissAll(); router.replace({ pathname: '/login', params: { role: 'owner', pinReset: '1' } }); }
+  function finish() { if (router.canDismiss()) router.dismissAll(); router.replace({ pathname: '/login', params: { role: 'owner', pinReset: '1' } }); }
   async function save() {
     if (locked.current || status !== 'ready') return;
     setTouched({ pin: true, confirm: true });
     if (pinError) { pinInput.current?.focus(); return; }
     if (confirmError) { confirmInput.current?.focus(); return; }
     locked.current = true; setBusy(true); setNotice('');
+    let completed = false;
     try {
       const result = await authenticationService.resetOwnerPin({ token, pin });
       if (!active.current) return;
-      if (result.ok) { setPin(''); setConfirmPin(''); await flow.refreshSession(); finish(); }
+      if (result.ok) { setPin(''); setConfirmPin(''); await flow.refreshSession(); if (active.current) { completed = true; finish(); } }
       else { setNotice(result.message); if (['missing', 'invalid', 'used', 'expired'].includes(result.code)) { setStatus('invalid'); setPin(''); setConfirmPin(''); } }
     } catch { if (active.current) setNotice('Unable to save your PIN. Please try again.'); }
-    finally { locked.current = false; if (active.current) setBusy(false); }
+    finally { if (!completed) { locked.current = false; if (active.current) setBusy(false); } }
   }
   return <RecoveryFrame>
     <RecoveryHeading title="Create New PIN">Enter a new four-digit PIN for your Owner account.</RecoveryHeading>
@@ -135,7 +136,7 @@ export function ResetPinScreen() {
           keyboardType="number-pad" autoComplete="off" textContentType="none" maxLength={4} returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => confirmInput.current?.focus()} />
         <FormField ref={confirmInput} label="Confirm New PIN" requiredIndicator="asterisk" pin pinIndicators pinVisibilityToggle value={confirmPin} editable={!busy} error={touched.confirm ? confirmError : undefined}
           onChangeText={value => { setConfirmPin(value.replace(/[^0-9]/g, '').slice(0, 4)); setTouched(current => ({ ...current, confirm: true })); }} onBlur={() => setTouched(current => ({ ...current, confirm: true }))}
-          keyboardType="number-pad" autoComplete="off" textContentType="none" maxLength={4} returnKeyType="done" onSubmitEditing={() => void save()} />
+          keyboardType="number-pad" autoComplete="off" textContentType="none" maxLength={4} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
       </View>
     </>}
     {!!notice && <Notice>{notice}</Notice>}

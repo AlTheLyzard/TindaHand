@@ -7,10 +7,11 @@ import Animated, { FadeOut, LinearTransition, ReduceMotion } from 'react-native-
 
 import { PosDialog } from '@/components/pos/pos-dialog';
 import { PosBackButton } from '@/components/pos/pos-back-button';
-import { PosFrame } from '@/components/pos/pos-frame';
+import { PosFrame, posHref, type PosRouteBase } from '@/components/pos/pos-frame';
 import { PosIcon } from '@/components/pos/pos-icon';
 import { Button, IconButton } from '@/components/ui/button';
 import tokens from '@/constants/design-tokens.json';
+import { inventoryRules } from '@/constants/inventory-rules';
 import { useInventory } from '@/state/inventory';
 import { useTranslation } from '@/i18n/use-translation';
 import { usePos } from '@/state/pos';
@@ -26,7 +27,7 @@ type Confirmation = { kind: 'remove' | 'zero'; productId: string; name: string }
 const moveRow = LinearTransition.duration(200).reduceMotion(ReduceMotion.System);
 const removeRow = FadeOut.duration(160).reduceMotion(ReduceMotion.System);
 
-export function CartReviewScreen({ owner }: { owner: OwnerIdentity }) {
+export function CartReviewScreen({ owner, basePath = '/owner-pos' }: { owner: OwnerIdentity; basePath?: PosRouteBase }) {
   const push = usePushOnce();
   const metrics = usePosMetrics();
   const { store: { products } } = useInventory();
@@ -41,7 +42,7 @@ export function CartReviewScreen({ owner }: { owner: OwnerIdentity }) {
   const items = preview.empty ? [] : Object.values(selection);
   const visibleItems = expanded ? items : items.slice(0, 5);
   const summary = selectionSummary(preview.empty ? {} : selection);
-  const browse = () => router.navigate('/owner-pos');
+  const browse = () => router.navigate(posHref(basePath));
   const close = () => { pendingConfirmation.current = null; setConfirmation(null); };
   function requestConfirmation(next: Confirmation) {
     if (pendingConfirmation.current || (next.kind !== 'clear' && removed.current.has(next.productId))) return;
@@ -64,7 +65,7 @@ export function CartReviewScreen({ owner }: { owner: OwnerIdentity }) {
     : confirmation?.kind === 'remove' ? t('pos.cart.removeHelp', { name: confirmation.name })
     : 'You have unsaved changes. Are you sure you want to close without saving?';
 
-  return <PosFrame owner={owner} step="cart" onPos={browse}>
+  return <PosFrame owner={owner} basePath={basePath} step="cart" onPos={browse}>
     <ScrollView showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: tokens.spacing.four }}>
       <MotionContent changeKey={preview.mode} className="w-full max-w-[460px] self-center" style={{ paddingHorizontal: metrics.gutter }}>
@@ -76,8 +77,13 @@ export function CartReviewScreen({ owner }: { owner: OwnerIdentity }) {
         {preview.loading ? <RecordSkeleton kind="cart" count={items.length || 2} /> : <>
         <View collapsable={false}>
           {visibleItems.map(item => {
-            const stock = products.find(product => product.id === item.productId)?.stock ?? 0;
+            const product = products.find(product => product.id === item.productId);
+            const stock = product?.stock ?? 0;
             const atLimit = item.quantity >= stock;
+            const blocking = !product || stock <= 0 || item.quantity > stock;
+            const status = !product || stock <= 0 ? 'Product unavailable. Remove it from the cart.'
+              : item.quantity > stock ? `Insufficient stock. Only ${stock} available.`
+              : atLimit ? t('pos.cart.stockLimit') : stock <= inventoryRules.lowStock ? `Low stock: ${stock} available. Requested quantity is available.` : null;
             return <Animated.View key={item.productId} collapsable={false} layout={moveRow} exiting={removeRow} style={{ marginBottom: tokens.spacing.three, borderRadius: tokens.radius.card, backgroundColor: '#FFFFFF', padding: tokens.spacing.three }}>
               <View className="flex-row items-start justify-between gap-2">
                 <View className="flex-1">
@@ -101,7 +107,11 @@ export function CartReviewScreen({ owner }: { owner: OwnerIdentity }) {
                   <Text className="mt-1 font-poppins-bold text-[16px] text-brand">{formatPesos(item.quantity * item.unitPriceCentavos)}</Text>
                 </View>
               </View>
-              {atLimit && <Text className="mt-2 font-poppins-bold text-[11px] text-text-secondary">{t('pos.cart.stockLimit')}</Text>}
+              {status && <View className="mt-2 flex-row items-start gap-2" style={!atLimit && !blocking ? { backgroundColor: `${tokens.color.warningBase}20`, borderRadius: tokens.button.radius, padding: tokens.spacing.two } : undefined}>
+                {!atLimit && !blocking && <View accessible={false} style={{ marginTop: 3, width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: tokens.color.warningBase }} />}
+                <Text accessibilityRole={blocking ? 'alert' : undefined} className="flex-1 font-poppins-bold text-[11px]"
+                  style={{ color: atLimit || blocking ? tokens.color.errorBase : tokens.color.textSecondary }}>{status}</Text>
+              </View>}
             </Animated.View>;
           })}
         </View>
@@ -109,7 +119,7 @@ export function CartReviewScreen({ owner }: { owner: OwnerIdentity }) {
         {items.length > 5 && <Button variant="text" fullWidth={false} compact accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)}>
           {expanded ? 'Show less' : `View all ${items.length} products`}
         </Button>}
-        {!preview.empty && hasStockConflict && <Text accessibilityRole="alert" className="my-3 font-poppins text-[12px] text-[#972020]">{t('pos.catalogChanged')}</Text>}
+        {!preview.empty && hasStockConflict && <Text accessibilityRole="alert" className="my-3 font-poppins text-[12px]" style={{ color: tokens.color.errorBase }}>{t('pos.catalogChanged')}</Text>}
         {items.length === 0 && <EmptyState icon="cart" title={t('pos.cart.empty')} description={t('pos.cart.emptyHelp')} action={t('pos.cart.browse')} onAction={() => { preview.reset(); browse(); }} />}
         <View accessibilityLiveRegion="polite" className="mt-6 rounded-card bg-[#D1E1F5] p-5">
           <Text accessibilityRole="header" className="font-poppins-bold text-[17px] text-[#102342]">{t('pos.cart.summary')}</Text>
@@ -122,7 +132,7 @@ export function CartReviewScreen({ owner }: { owner: OwnerIdentity }) {
         </View>
         <View className="mt-6 flex-row gap-4">
           <View className="flex-1"><Button variant="secondary" disabled={items.length === 0} onPress={() => requestConfirmation({ kind: 'clear' })}>{t('pos.cart.emptyAction')}</Button></View>
-          <View className="flex-1"><Button disabled={items.length === 0 || hasStockConflict} onPress={() => push('/owner-pos/payment')}>{t('pos.cart.checkout')}</Button></View>
+          <View className="flex-1"><Button disabled={items.length === 0 || hasStockConflict} onPress={() => push(posHref(basePath, 'payment'))}>{t('pos.cart.checkout')}</Button></View>
         </View>
         </Animated.View>
         </>}

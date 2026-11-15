@@ -3,8 +3,8 @@ import { demoOwner } from './mock-auth';
 
 /** Fictional read fixtures; credentials never appear in list responses. */
 export const demoCashiers: readonly Cashier[] = [
-  { id: 'TH-KH-0001', ownerId: demoOwner.id, name: 'Maria Santos', status: 'active' },
-  { id: 'TH-KH-0002', ownerId: demoOwner.id, name: 'Jely Reyes', status: 'active' },
+  { id: 'TH-KH-0001', ownerId: demoOwner.id, name: 'Maria Santos', status: 'active', avatarId: 'avatar-11' },
+  { id: 'TH-KH-0002', ownerId: demoOwner.id, name: 'Jely Reyes', status: 'active', avatarId: 'avatar-04' },
 ];
 export const syncFixtures = {
   'up-to-date': { status: 'up-to-date', pendingRecords: 0, progress: 100, lastSyncedAt: '2026-10-31T01:00:00.000Z' },

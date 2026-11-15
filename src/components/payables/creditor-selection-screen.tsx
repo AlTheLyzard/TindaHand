@@ -1,3 +1,4 @@
+import { selectDraftCreditor } from '@/utils/creditor-selection';
 import { router } from 'expo-router';
 import { Keyboard } from 'react-native';
 import { InventoryFrame } from '@/components/inventory/inventory-ui';
@@ -11,7 +12,7 @@ export function CreditorSelectionScreen() {
   const back = () => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else router.replace(`${balancesRoot}/new`); };
   return <InventoryFrame title="Creditors" back inlineTitle onBack={back}>
     <CreditorList creditors={payables.creditors} onSelect={creditor => {
-      setDraft(previous => ({ ...previous, name: creditor.name, creditorId: creditor.id }));
+      setDraft(previous => selectDraftCreditor(previous, payables.creditors, creditor.id));
       back();
     }} />
   </InventoryFrame>;

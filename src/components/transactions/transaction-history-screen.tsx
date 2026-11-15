@@ -1,12 +1,14 @@
+import { KeyboardInput as TextInput, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { useMemo, useRef, useState } from 'react';
-import { FlatList, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { FlatList, Keyboard, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
 import { PosChip } from '@/components/pos/pos-chip';
 import { PosIcon } from '@/components/pos/pos-icon';
 import { Button, IconButton } from '@/components/ui/button';
+import { BackButton } from '@/components/ui/back-button';
 import { Skeleton, SkeletonBar } from '@/components/ui/content-state';
 import tokens from '@/constants/design-tokens.json';
 import { transactionCategories } from '@/data/transactions';
@@ -64,7 +66,7 @@ export function TransactionHistoryScreen() {
       <KeyboardAvoidingView style={{ flex: 1, paddingBottom: navigationHeight + insets.bottom }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.controls}>
           <View style={styles.heading}>
-            <IconButton accessibilityLabel="Go back" onPress={back} style={{ marginLeft: -12 }} icon={({ color }) => <PosIcon name="back" color={color} size={24} />} />
+            <BackButton accessibilityLabel="Go back" onPress={back} />
             <Text accessibilityRole="header" style={styles.title}>Transaction History</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

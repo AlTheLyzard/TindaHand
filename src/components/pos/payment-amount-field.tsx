@@ -11,7 +11,7 @@ export function PaymentAmountField({ label, value, onChange, error, inputRef, on
   inputRef?: Ref<TextInputInstance>; onNext?: () => void; onBlur?: () => void;
 }) {
   return <View className="gap-2">
-    <FormField ref={inputRef} label={label} requiredIndicator="asterisk" prefix="₱" value={value} onChangeText={onChange} placeholder="0.00" onBlur={onBlur}
+    <FormField money ref={inputRef} label={label} requiredIndicator="asterisk" prefix="₱" value={value} onChangeText={onChange} placeholder="0.00" onBlur={onBlur}
       keyboardType="decimal-pad" inputMode="decimal" returnKeyType={onNext ? 'next' : 'done'}
       onSubmitEditing={onNext ?? Keyboard.dismiss} error={error} />
     <Text className="mt-2 font-poppins-bold text-[12px] text-text-secondary">Quick Amounts</Text>

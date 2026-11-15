@@ -8,17 +8,19 @@ import { OwnerMenuDrawer } from '@/components/menu/owner-menu-drawer';
 import type { NavigationLabelKey } from '@/i18n';
 import { useAuthFlow } from '@/state/auth-flow';
 import { navigationItems, useNavigationMotion } from '@/state/navigation-motion';
+import { hasCapability } from '@/utils/operator-access';
 
 export function DashboardNavigation({ onHome, onPos, onUnavailable, onNavigate }: {
   onHome: () => void; onPos?: () => void; onUnavailable: (feature: NavigationLabelKey) => void;
   onNavigate?: (action: () => void) => void;
 }) {
-  const { owner } = useAuthFlow();
+  const { owner, deviceSession } = useAuthFlow();
+  const operator = deviceSession?.role === 'operator';
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPresented, setMenuPresented] = useState(false);
   const hostId = useId();
-  const { pathname, role, selectedIndex, selection, setMenuSelection } = useNavigationMotion();
+  const { pathname, role, selectedIndex, selection, centers, setMenuSelection } = useNavigationMotion();
   const releaseMenuSelection = useCallback(() => {
     setMenuSelection(current => current?.hostId === hostId ? null : current);
   }, [hostId, setMenuSelection]);
@@ -40,31 +42,47 @@ export function DashboardNavigation({ onHome, onPos, onUnavailable, onNavigate }
         Keyboard.dismiss();
         if (!menuOpen) setMenuSelection({ hostId, pathname });
         setMenuOpen(value => !value);
+      } else if (operator) {
+        if (selectedIndex === index) return;
+        const action = () => { Keyboard.dismiss(); router.navigate('/operator-more'); };
+        if (onNavigate) onNavigate(action); else action();
       } else onUnavailable(navigationItems[index].label);
       return;
     }
     if (icon !== 'home' && selectedIndex === index && !menuOpen && !menuPresented) return;
     setMenuOpen(false);
     const action = () => {
-      if (icon === 'home') onHome();
+      if (icon === 'home') {
+        if (pathname === '/owner-dashboard') onHome();
+        else {
+          Keyboard.dismiss();
+          // Return to the retained Dashboard so its filters and scroll survive.
+          router.dismissTo('/owner-dashboard');
+        }
+      }
       else if (icon === 'cart' && onPos) onPos();
+      else if (icon === 'inventory' && operator) {
+        const canOpenInventory = hasCapability(deviceSession, 'inventory-edit')
+          || hasCapability(deviceSession, 'restock')
+          || hasCapability(deviceSession, 'assets-read');
+        if (canOpenInventory) router.navigate('/operator-inventory');
+        else onUnavailable(navigationItems[index].label);
+      }
       else if (icon === 'inventory') router.navigate('/owner-inventory');
       else onUnavailable(navigationItems[index].label);
     };
     if (onNavigate) onNavigate(action); else action();
   }
-  const renderBar = (inDrawer = false) => <View pointerEvents={inDrawer ? 'none' : menuOpen || menuPresented ? 'none' : 'box-none'}
-    accessibilityElementsHidden={!inDrawer && (menuOpen || menuPresented)}
-    importantForAccessibility={!inDrawer && (menuOpen || menuPresented) ? 'no-hide-descendants' : 'auto'}
-    aria-hidden={!inDrawer && (menuOpen || menuPresented)}
-    style={[styles.host, { opacity: !inDrawer && (menuOpen || menuPresented) ? 0 : 1 }]}>
-    <BottomNavigation role={role} bottomInset={insets.bottom} selectedIndex={selectedIndex} selection={selection}
-      menuOpen={menuOpen} decorative={inDrawer} onPress={navigate} />
-  </View>;
   return <>
-    {renderBar()}
+    <View pointerEvents={menuOpen || menuPresented ? 'none' : 'box-none'}
+      accessibilityElementsHidden={menuOpen || menuPresented}
+      importantForAccessibility={menuOpen || menuPresented ? 'no-hide-descendants' : 'auto'}
+      aria-hidden={menuOpen || menuPresented} style={styles.host}>
+      <BottomNavigation role={role} bottomInset={insets.bottom} selectedIndex={selectedIndex} selection={selection} centers={centers}
+        menuOpen={menuOpen} onPress={navigate} />
+    </View>
     {owner && <OwnerMenuDrawer owner={owner} visible={menuOpen} onClose={() => setMenuOpen(false)}
-      navigation={renderBar(true)} onPresentationChange={onMenuPresentationChange} onNavigate={onNavigate} />}
+      onPresentationChange={onMenuPresentationChange} onNavigate={onNavigate} />}
   </>;
 }
 

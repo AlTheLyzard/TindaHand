@@ -1,1 +1,2 @@
-export { CashierListScreen as default } from '@/components/settings/cashier-screens';
+import { Redirect } from 'expo-router';
+export default function UserManagementRoute() { return <Redirect href="/owner-menu/profile/operators" />; }

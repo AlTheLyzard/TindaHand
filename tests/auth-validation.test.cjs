@@ -7,8 +7,10 @@ const ts = require('typescript');
 
 // Use the installed TypeScript compiler without a new test dependency.
 const moduleCache = new Map();
+const identityStorage = require('./helpers/identity-storage.cjs')();
 function loadModule(relativePath) {
   if (moduleCache.has(relativePath)) return moduleCache.get(relativePath);
+  if (relativePath.endsWith('.svg')) return { uri: `/${relativePath}` };
   const source = fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
   if (relativePath.endsWith('.json')) {
     const value = JSON.parse(source);
@@ -19,7 +21,14 @@ function loadModule(relativePath) {
   const context = {
     exports: {}, __DEV__: false, process: { env: {} }, setTimeout,
     require: (specifier) => {
+      if (specifier === 'nativewind') return { cssInterop() {} };
+      if (specifier === '@/services/auth-identity-storage') return { authIdentityStorage: identityStorage };
       if (specifier === 'react-native') return require('react-native-web');
+      if (specifier === 'expo-image') return { Image: require('react-native-web').Image };
+      if (specifier === '@/components/ui/keyboard-aware-scroll-view') {
+        const { View, TextInput, ScrollView } = require('react-native-web');
+        return { KeyboardField: View, KeyboardInput: TextInput, KeyboardAwareScrollView: ScrollView };
+      }
       // This static-markup check covers Button semantics; motion needs a mounted renderer.
       if (specifier === '@/components/ui/motion-pressable') return { MotionPressable: require('react-native-web').Pressable };
       if (specifier === '@/components/ui/motion-content') {
@@ -27,7 +36,8 @@ function loadModule(relativePath) {
         return { MotionLayout: View, MotionRegion: View };
       }
       if (specifier === 'react' || specifier === 'react/jsx-runtime') return require(specifier);
-      const base = specifier.startsWith('@/') ? `src/${specifier.slice(2)}`
+      const base = specifier.startsWith('@/assets/') ? specifier.slice(2)
+        : specifier.startsWith('@/') ? `src/${specifier.slice(2)}`
         : specifier.startsWith('.') ? path.join(path.dirname(relativePath), specifier).replaceAll('\\', '/') : null;
       if (!base) throw new Error('Only project modules are supported in this test loader.');
       const resolved = [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find(p => fs.existsSync(path.join(__dirname, '..', p)) && fs.statSync(path.join(__dirname, '..', p)).isFile());
@@ -295,10 +305,28 @@ test('login asterisks keep required semantics and expose field-specific errors t
   assert.match(invalid, /aria-label="Owner ID, required\. Enter your Owner ID\."/);
   assert.match(invalid, /role="alert"/);
   assert.match(invalid, /aria-live="polite"/);
-  const pin = render({ label: 'PIN', pin: true, error: 'Enter your PIN.' });
+  const pin = render({ label: 'PIN', pin: true, help: 'Enter exactly 4 numeric digits.', error: 'Enter your PIN.' });
   assert.match(pin, /aria-label="PIN, required\. Enter your PIN\."/);
+  assert.doesNotMatch(pin, /Enter exactly 4 numeric digits/);
   assert.match(pin, /type="password"/);
-  assert.match(render({ requiredIndicator: 'text' }), /\(Required\)/);
+  const pinLength = render({ label: 'PIN', pin: true, value: '1', help: 'Enter exactly 4 numeric digits.', error: 'Enter exactly 4 numeric digits.' });
+  assert.equal(pinLength.match(/Enter exactly 4 numeric digits/g)?.length, 2, 'only the input announcement and one validation message remain');
+  const validPin = render({ label: 'PIN', pin: true, value: '0123' });
+  assert.doesNotMatch(validPin, /Enter exactly 4 numeric digits/);
+  assert.doesNotMatch(validPin, /role="alert"/);
+  assert.doesNotMatch(render({ requiredIndicator: 'text' }), /\(Required\)/);
+  assert.match(render({ requiredIndicator: 'text' }), /\*/);
+});
+
+test('shared peso fields format display while numeric quantity and PIN fields stay unchanged', () => {
+  const React = require('react');
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const { FormField } = loadModule('src/components/ui/form-field.tsx');
+  const render = props => renderToStaticMarkup(React.createElement(FormField, { label: 'Amount', ...props }));
+  assert.match(render({ prefix: '\u20b1', value: '1000.5' }), /value="1,000.50"/);
+  assert.match(render({ money: true, value: '12500.50' }), /value="12,500.50"/);
+  assert.match(render({ label: 'Quantity', value: '1000', keyboardType: 'number-pad' }), /value="1000"/);
+  assert.match(render({ label: 'PIN', pin: true, value: '0123' }), /value="0123"/);
 });
 
 test('login requires ID and exactly four ASCII digits, preserving leading zeroes', () => {

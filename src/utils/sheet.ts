@@ -1,8 +1,8 @@
 export type SheetPosition = 'content' | 'compact' | 'expanded';
 
-export function sheetHeights(available: number, content: number, fixed: number) {
+export function sheetHeights(available: number, content: number, fixed: number, compactHeight = 360) {
   const expanded = Math.max(1, available);
-  const compact = Math.min(expanded, Math.max(fixed + 80, Math.min(360, expanded * 0.5)));
+  const compact = Math.min(expanded, Math.max(fixed + 80, Math.min(compactHeight, expanded * 0.5)));
   return { compact, content: Math.min(expanded, Math.max(compact, fixed + content)), expanded };
 }
 

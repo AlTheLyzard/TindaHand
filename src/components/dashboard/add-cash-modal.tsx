@@ -1,16 +1,19 @@
+import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import type { ViewInstance } from 'react-native';
 import { MotionOverlay } from '@/components/ui/motion-overlay';
 import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, IconButton } from '@/components/ui/button';
+import { Keyboard, Platform, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button } from '@/components/ui/button';
 import { ConfirmationContent } from '@/components/ui/confirmation-content';
 import { FormField } from '@/components/ui/form-field';
+import { ResizableSheet } from '@/components/ui/resizable-sheet';
+import { quickAddColors } from './quick-add-ui';
 import { useCashRegister } from '@/state/cash-register';
 import { cashAmountError } from '@/utils/cash-register';
-import { parsePaymentAmount } from '@/utils/pos-payment';
 
 /** Mounted for one form opening; drafts never enter navigation or shared seed data. */
 export function AddCashModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
@@ -21,9 +24,17 @@ export function AddCashModal({ onClose, onSaved }: { onClose: () => void; onSave
   const [token] = useState(cash.begin);
   const [value, setValue] = useState('');
   const [touched, setTouched] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [confirmation, setConfirmation] = useState<'clear' | 'discard' | null>(null);
   const submitted = useRef(false);
+  const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible());
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   const formContainer = useRef<ViewInstance>(null);
   useEffect(() => {
     // RN Web's Modal focus trap attempts programmatic focus even on tabIndex=-1
@@ -34,6 +45,7 @@ export function AddCashModal({ onClose, onSaved }: { onClose: () => void; onSave
   }, [confirmation]);
   const error = cashAmountError(value);
   function close() {
+    if (submitted.current || !open) return;
     Keyboard.dismiss();
     if (confirmation) { setConfirmation(null); return; }
     if (value.length) setConfirmation('discard');
@@ -42,49 +54,50 @@ export function AddCashModal({ onClose, onSaved }: { onClose: () => void; onSave
   function clear() {
     setValue(''); setTouched(false); setSaveError(''); setConfirmation(null);
   }
-  function add() {
-    if (submitted.current || confirmation) return;
-    setTouched(true);
-    if (error) return;
+  async function add() {
+    if (submitted.current || confirmation || !open || error) return;
     submitted.current = true;
-    if (!cash.add(token, value)) {
-      submitted.current = false;
-      setSaveError('This amount cannot be added. Enter a smaller amount and try again.');
-      return;
+    setSaving(true); setSaveError(''); Keyboard.dismiss();
+    let confirmed = false;
+    try {
+      if (!await cash.add(token, value)) {
+        setSaveError('This amount could not be added. Try a smaller amount or try again.');
+        return;
+      }
+      confirmed = true;
+      clear();
+      dismiss(onSaved);
+    } catch {
+      // TODO(BACKEND): Map submission/refresh failures to safe, retryable feedback.
+      // Keep the draft and token so an uncertain result cannot create a second addition.
+      setSaveError('Could not add cash. Your amount is preserved. Please try again.');
+    } finally {
+      setSaving(false);
+      // Remain locked through the successful closing animation.
+      if (!confirmed) submitted.current = false;
     }
-    Keyboard.dismiss();
-    clear();
-    dismiss(onSaved);
   }
-  return <Modal visible={open} onHidden={() => afterClose.current()} onRequestClose={close}>
-    <SafeAreaView className="flex-1">
+  const blocked = saving || !!confirmation || !open;
+  return <Modal visible={open} sheet backdropColor={quickAddColors.backdrop} onHidden={() => afterClose.current()} onRequestClose={close}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View ref={formContainer} style={{ flex: 1 }} pointerEvents={confirmation ? 'none' : 'auto'} aria-hidden={!!confirmation} accessibilityElementsHidden={!!confirmation} importantForAccessibility={confirmation ? 'no-hide-descendants' : 'auto'}>
-          <ScrollView pointerEvents="box-none" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
-            <Pressable testID="cash-form-backdrop" accessible={false} focusable={false} tabIndex={-1} disabled={!!confirmation} onPress={close} style={StyleSheet.absoluteFill} />
-            <View accessibilityViewIsModal className="w-full max-w-[412px] gap-5 self-center rounded-control bg-canvas p-5" style={{ boxShadow: '0 3px 6px #00000040' }}>
-              <View className="flex-row items-center pr-8">
-                <Text accessibilityRole="header" className="flex-1 font-poppins-bold text-[18px] text-brand">Add Cash to Register</Text>
-                <IconButton disabled={!!confirmation} accessibilityLabel="Close Add Cash to Register" onPress={close} className="absolute -right-3 -top-3" icon={({ color }) => <Text accessible={false} style={{ color, fontSize: 20 }}>×</Text>} />
-              </View>
-              <FormField label="Amount" placeholder="₱0.00" prefix={value ? '₱' : undefined} errorVariant="registration" keyboardType="decimal-pad" inputMode="decimal" returnKeyType="done" value={value} editable={!confirmation} tabIndex={confirmation ? -1 : 0}
-                onChangeText={text => { setValue(text); setSaveError(''); }}
-                onBlur={() => {
-                  const amount = parsePaymentAmount(value);
-                  if (amount !== null && amount > 0) setValue(`${Math.floor(amount / 100)}.${String(amount % 100).padStart(2, '0')}`);
-                }}
-                onSubmitEditing={Keyboard.dismiss} error={saveError || (touched ? error ?? undefined : undefined)} />
-              <View className="flex-row flex-wrap gap-3">
-                <View className="min-w-[100px] flex-1"><Button disabled={!!confirmation} variant="secondary" onPress={() => { Keyboard.dismiss(); if (value.length) setConfirmation('clear'); else clear(); }}>Clear</Button></View>
-                <View className="min-w-[100px] flex-1"><Button onPress={add} disabled={!!confirmation}>Add</Button></View>
-              </View>
-            </View>
-          </ScrollView>
+        <View ref={formContainer} style={{ flex: 1, minHeight: 0 }} pointerEvents={blocked ? 'none' : 'auto'} aria-hidden={!!confirmation} accessibilityElementsHidden={!!confirmation} importantForAccessibility={confirmation ? 'no-hide-descendants' : 'auto'}>
+          <ResizableSheet fullWidth compactHeight={280} testID="cash-form" title="Add Cash to Register" disabled={blocked} onClose={close}
+            footer={<View style={{ gap: 8, paddingTop: 8, paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 16) }}>
+              <Button onPress={add} disabled={blocked || !!error} loading={saving}>Add</Button>
+              <Button disabled={blocked || !value.length} variant="secondary" onPress={() => { if (submitted.current) return; Keyboard.dismiss(); setConfirmation('clear'); }}>Clear</Button>
+            </View>}>
+            <FormField money testID="cash-amount" label="Enter Amount" requiredIndicator="asterisk" placeholder="0.00" prefix="₱" keyboardType="decimal-pad" inputMode="decimal" returnKeyType="done" value={value} editable={!blocked} tabIndex={blocked ? -1 : 0}
+              onChangeText={text => { if (submitted.current) return; setValue(text); setTouched(true); setSaveError(''); }}
+              onBlur={() => { if (value.length) setTouched(true); }}
+              onSubmitEditing={Keyboard.dismiss} error={saveError || (touched ? error ?? undefined : undefined)} />
+          </ResizableSheet>
         </View>
         <MotionOverlay visible={!!confirmation}>{confirmation && <>
           <ScrollView pointerEvents="box-none" keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
             <Pressable testID="cash-confirmation-backdrop" accessible={false} focusable={false} tabIndex={-1} onPress={() => setConfirmation(null)} style={StyleSheet.absoluteFill} />
-            <ConfirmationContent balancedActions={confirmation === 'discard'} title={confirmation === 'clear' ? 'Clear All Fields?' : 'Discard Changes?'}
+            <ConfirmationContent stackedActions title={confirmation === 'clear' ? 'Clear All Fields?' : 'Discard Changes?'}
               message={confirmation === 'clear' ? 'Are you sure you want to clear all information? This action cannot be undone.' : 'You have unsaved changes. Are you sure you want to close without saving?'}
               cancelLabel={confirmation === 'clear' ? 'Cancel' : 'Keep Editing'} confirmLabel={confirmation === 'clear' ? 'Clear' : 'Discard Changes'}
               onCancel={() => setConfirmation(null)} onConfirm={() => { const discard = confirmation === 'discard'; clear(); if (discard) dismiss(); }} />
@@ -92,5 +105,6 @@ export function AddCashModal({ onClose, onSaved }: { onClose: () => void; onSave
         </>}</MotionOverlay>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </GestureHandlerRootView>
   </Modal>;
 }

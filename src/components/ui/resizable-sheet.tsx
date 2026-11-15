@@ -1,33 +1,45 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { KeyboardAwareScrollView as ScrollView } from '@/components/ui/keyboard-aware-scroll-view';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { StyleSheet, Text, View, useWindowDimensions, type ScrollViewInstance } from 'react-native';
 import { GestureDetector, usePanGesture, type PanGestureActiveEvent } from 'react-native-gesture-handler';
-import Animated, { cancelAnimation, useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, ReduceMotion, useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MotionPressable } from './motion-pressable';
 import { IconButton } from './button';
 import { PosIcon } from '@/components/pos/pos-icon';
 import tokens from '@/constants/design-tokens.json';
+import { motion } from '@/constants/motion';
 import { useMotionReduced } from '@/state/motion';
+import { usePresentationVisible } from '@/state/presentation';
 import { releaseSheet, sheetHeights, type SheetPosition } from '@/utils/sheet';
 
 /** One scroll body and a pinned footer. Only the generous handle owns resize gestures. */
-export function ResizableSheet({ title, subtitle, children, footer, onClose, disabled = false, testID = 'quick-add', onCompactChange, alwaysShowSubtitle = false }: {
+export function ResizableSheet({ title, subtitle, children, footer, onClose, disabled = false, testID = 'quick-add', onCompactChange, alwaysShowSubtitle = false, fullWidth = false, compactHeight = 360 }: {
   title: string; subtitle?: string; children: ReactNode; footer?: ReactNode | ((compact: boolean) => ReactNode);
   onClose: () => void; disabled?: boolean; testID?: string; onCompactChange?: (compact: boolean) => void;
   alwaysShowSubtitle?: boolean;
+  fullWidth?: boolean;
+  compactHeight?: number;
 }) {
   const window = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const reduced = useMotionReduced();
+  const presented = usePresentationVisible();
   const [available, setAvailable] = useState(Math.max(1, window.height - insets.top - 8));
   const [headerHeight, setHeaderHeight] = useState(112);
   const [footerHeight, setFooterHeight] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
   const [position, setPosition] = useState<SheetPosition>('content');
+  const [resizing, setResizing] = useState(false);
+  const body = useRef<ScrollViewInstance>(null);
+  useEffect(() => {
+    body.current?.scrollTo({ y: 0, animated: false });
+  }, [title]);
   const short = available < 420;
-  const heights = useMemo(() => sheetHeights(available, contentHeight, headerHeight + footerHeight), [available, contentHeight, headerHeight, footerHeight]);
-  const height = useSharedValue(available);
+  const fixedHeight = headerHeight + (footer ? footerHeight : 0);
+  const heights = useMemo(() => sheetHeights(available, contentHeight, fixedHeight, compactHeight), [available, contentHeight, fixedHeight, compactHeight]);
+  const height = useSharedValue(heights.content);
   const dragging = useSharedValue(false);
   const startHeight = useSharedValue(available);
   const startY = useSharedValue(0);
@@ -35,18 +47,28 @@ export function ResizableSheet({ title, subtitle, children, footer, onClose, dis
   const velocity = useSharedValue(0);
   const selected = useSharedValue<SheetPosition>('content');
   // In very limited keyboard/text-scaling space, scroll the actions with the fields.
-  const scrollFooter = available < headerHeight + footerHeight + 80;
+  const scrollFooter = available < fixedHeight + 80;
   useEffect(() => { onCompactChange?.(short); }, [onCompactChange, short]);
-  useAnimatedReaction(() => heights, (next, previous) => {
-    if (previous && next.compact === previous.compact && next.content === previous.content && next.expanded === previous.expanded) return;
+  useAnimatedReaction(() => ({ ...heights, title, disabled, reduced, presented }), (next, previous) => {
+    const changedSheet = previous && next.title !== previous.title;
+    const resizedViewport = !previous || next.expanded !== previous.expanded;
+    const restore = previous?.disabled && !next.disabled;
+    if (changedSheet) { selected.set('content'); scheduleOnRN(setPosition, 'content'); }
+    if (previous && !changedSheet && !restore && next.reduced === previous.reduced && next.compact === previous.compact && next.content === previous.content && !resizedViewport) return;
     cancelAnimation(height);
     if (dragging.get()) {
       height.set(Math.min(next.expanded, height.get()));
       // Keyboard/layout changes cannot reset an in-flight gesture's origin.
       startHeight.set(height.get());
       startY.set(pointerY.get());
-    } else height.set(reduced ? next[selected.get()] : withTiming(next[selected.get()], { duration: 210 }));
-  }, [heights, reduced]);
+    } else {
+      // Measure at rest during native presentation. The modal alone owns entry;
+      // keyboard avoidance alone owns viewport travel. Only content/snap changes
+      // animate height, avoiding two clocks chasing the keyboard or each other.
+      const target = next[selected.get()];
+      height.set(next.reduced || !next.presented || resizedViewport ? target : withTiming(target, { duration: motion.transition, easing: motion.ease, reduceMotion: ReduceMotion.Never }));
+    }
+  }, [heights, title, disabled, reduced, presented]);
   const followPointer = (absoluteY: number) => {
     'worklet';
     pointerY.set(absoluteY);
@@ -59,8 +81,9 @@ export function ResizableSheet({ title, subtitle, children, footer, onClose, dis
     followPointer(event.absoluteY);
   };
   const pan = usePanGesture({
-    enabled: !disabled, minDistance: 0, maxPointers: 1,
+    enabled: !disabled && presented, minDistance: 0, maxPointers: 1,
     onBegin: event => {
+      scheduleOnRN(setResizing, true);
       cancelAnimation(height);
       dragging.set(true);
       velocity.set(0);
@@ -70,23 +93,31 @@ export function ResizableSheet({ title, subtitle, children, footer, onClose, dis
     onActivate: trackPan,
     onUpdate: trackPan,
     onFinalize: event => {
+      scheduleOnRN(setResizing, false);
       dragging.set(false);
       const target = event.canceled || disabled ? selected.get() : releaseSheet(height.get(), velocity.get(), heights);
       const next = target === 'dismiss' ? selected.get() : target;
       selected.set(next);
-      height.set(reduced ? heights[next] : withTiming(heights[next], { duration: 210 }));
+      // Hold the dragged position during the host's close/discard decision.
+      // Snapping back before the exit starts causes a visible upward jump.
       if (target === 'dismiss') scheduleOnRN(onClose);
-      else scheduleOnRN(setPosition, next);
+      else {
+        height.set(reduced ? heights[next] : withTiming(heights[next], { duration: motion.transition, easing: motion.ease, reduceMotion: ReduceMotion.Never }));
+        scheduleOnRN(setPosition, next);
+      }
     },
   });
   const surface = useAnimatedStyle(() => ({ height: height.get() }));
   const footerView = <View testID={`${testID}-footer`} onLayout={event => setFooterHeight(event.nativeEvent.layout.height)} style={{ flexShrink: 0 }}>
     {typeof footer === 'function' ? footer(short) : footer}
   </View>;
+  const bodyBottom = footer ? 8 : Math.max(insets.bottom, 8);
   return <View style={{ flex: 1, minHeight: 0, paddingTop: 8, justifyContent: 'flex-end' }} onLayout={event => setAvailable(Math.max(1, event.nativeEvent.layout.height - 8))}>
-    <MotionPressable accessible={false} focusable={false} tabIndex={-1} disabled={disabled} onPress={onClose} style={StyleSheet.absoluteFill} />
+    <MotionPressable testID={`${testID}-backdrop`} accessible={false} focusable={false} tabIndex={-1} disabled={disabled} onPress={onClose} style={StyleSheet.absoluteFill} />
     <Animated.View testID={`${testID}-card`} accessibilityViewIsModal onAccessibilityEscape={onClose}
-      style={[{ width: '100%', maxWidth: 460, maxHeight: '100%', minHeight: 0, alignSelf: 'center', overflow: 'hidden', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: tokens.spacing.three, backgroundColor: tokens.color.navigationSurface, boxShadow: '0 -4px 20px rgba(16,35,66,0.12)' }, surface]}>
+      style={[{ width: '100%', maxWidth: fullWidth ? undefined : 460, maxHeight: '100%', minHeight: 0, alignSelf: 'center', overflow: 'hidden', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+        paddingLeft: Math.max(tokens.spacing.three, fullWidth ? insets.left : 0), paddingRight: Math.max(tokens.spacing.three, fullWidth ? insets.right : 0),
+        backgroundColor: tokens.color.navigationSurface, boxShadow: '0 -4px 20px rgba(16,35,66,0.12)' }, surface]}>
       <View testID={`${testID}-header`} onLayout={event => setHeaderHeight(event.nativeEvent.layout.height)} style={{ flexShrink: 0, paddingBottom: 4 }}>
         <GestureDetector gesture={pan} touchAction="none"><Animated.View testID={`${testID}-handle`} accessible accessibilityRole="adjustable" accessibilityLabel={`Resize ${title} sheet`}
           accessibilityHint="Drag up to expand, down to compact, or farther down to close."
@@ -98,7 +129,7 @@ export function ResizableSheet({ title, subtitle, children, footer, onClose, dis
             else {
               const next = event.nativeEvent.actionName === 'increment' ? 'expanded' : 'compact';
               selected.set(next); setPosition(next);
-              height.set(reduced ? heights[next] : withTiming(heights[next], { duration: 210 }));
+              height.set(reduced ? heights[next] : withTiming(heights[next], { duration: motion.transition, easing: motion.ease, reduceMotion: ReduceMotion.Never }));
             }
           }} style={{ height: 48, width: 112, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', touchAction: 'none' }}>
           <View pointerEvents="none" style={{ width: 36, height: 4, borderRadius: tokens.radius.pill, backgroundColor: '#DDE2E8' }} />
@@ -110,12 +141,12 @@ export function ResizableSheet({ title, subtitle, children, footer, onClose, dis
         </View>
         {!!subtitle && (alwaysShowSubtitle || !short) && <Text className="mt-1 font-poppins text-[12px] leading-[18px] text-text-secondary">{subtitle}</Text>}
       </View>
-      <ScrollView testID={`${testID}-body`} style={{ flex: 1, minHeight: 0 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: 8 }}>
-        <View onLayout={event => setContentHeight(event.nativeEvent.layout.height + 16)}>{children}</View>
+      <ScrollView ref={body} scrollEnabled={!resizing} keyboardScrollEnabled={!resizing && !disabled} testID={`${testID}-body`} style={{ flex: 1, minHeight: 0 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: bodyBottom }}>
+        <View onLayout={event => setContentHeight(event.nativeEvent.layout.height + 8 + bodyBottom)}>{children}</View>
         {scrollFooter && footerView}
       </ScrollView>
-      {!scrollFooter && footerView}
+      {!scrollFooter && !!footer && footerView}
     </Animated.View>
   </View>;
 }

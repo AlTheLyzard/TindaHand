@@ -1,4 +1,4 @@
-> Authentication update (November 9, 2026): use [authentication-handoff.md](authentication-handoff.md) for the current routes, adapter contracts, mock configuration and server rules. It supersedes older authentication/registration/recovery and three-part Cashier-ID notes below. The Operator workspace remains unimplemented.
+> Authentication update (November 15, 2026): use [authentication-handoff.md](authentication-handoff.md) for the current routes, adapter contracts, mock configuration and server rules. It supersedes older authentication/registration/recovery and three-part Cashier-ID notes below. The Operator POS and three-item navigation are implemented with mock data; Inventory and More are guarded placeholders.
 
 # Backend handoff
 
@@ -6,7 +6,7 @@ Accounts Payable MA-AP-001–004 now has shared in-memory creditor/debt/payment 
 
 Owner Settings now has proposed frontend service contracts and in-memory cashier/PIN/sync/cache behavior. See [owner-settings.md](owner-settings.md) for the confirmed three-part Cashier identification scheme, integration boundaries, requirements conflicts, and required authorization, Owner PIN verification, failed-attempt limits, secure PIN hashing, credential-free audit events and affected-Cashier session invalidation. No backend protections or durable sync/cache behavior are implemented by this mock.
 
-Code audit: **October 30, 2026**. This is a frontend handoff, with no network integration. Backend framework is undecided; MySQL is planned later. Read [README](../README.md) to run the demo and [API notes](api-contract.md) before choosing contracts. `TODO(BACKEND)` marks integration work in code.
+Initial code audit: **October 30, 2026**; frontend handoff updated **November 15, 2026**. This remains frontend-only, with no network integration. Backend framework is undecided; MySQL is planned later. Read [README](../README.md) to run the demo and [API notes](api-contract.md) before choosing contracts. `TODO(BACKEND)` marks integration work in code.
 
 ## Requirements and authority
 
@@ -21,8 +21,8 @@ Baseline: the **MAY-ARI MODULE** and **KAHERA MODULE** sheets of [the original w
 | Module / story or frame | Routes and main screens | UI status | Mock interaction status | Service / data boundary |
 | --- | --- | --- | --- | --- |
 | Welcome, MA-LOG-001 | `index.tsx` | Implemented | Navigation works | No data write |
-| Role selection/login, MA-LOG-005, KH-LOG-001-002 | `choose-account.tsx`, `login.tsx`; `auth/role-login-screen.tsx` | Implemented selection/forms; recovery absent | Opt-in Owner login and three-part Cashier demo credential checks; Cashier workspace unavailable | `authenticateMockOwner`, `settingsService.verifyCashier`, `state/auth-flow.tsx` |
-| Registration/confirmation/ID, MA-LOG-002-004 | `register.tsx`, `account-created.tsx`, `owner-id.tsx`; `auth/registration-screen.tsx` | Owner forms implemented; initial Cashier setup reuses Settings form | Validation/preview; normal Owner registration unavailable; in-memory Cashier creation | `registerOwner`, `utils/registration-request.ts`, `SettingsService.createCashier` |
+| Role selection/login, MA-LOG-005, KH-LOG-001-002 | `choose-account.tsx`, `login.tsx`; `auth/role-login-screen.tsx` | Owner/Operator selection, login, PIN unlock and mock PIN-recovery forms; password recovery absent | Opt-in local Owner/Operator records; native mock credentials use SecureStore; recovery is simulated and sends no email; successful Operator login opens POS | `authenticationService`, `settingsService`, `state/auth-flow.tsx`; see [Authentication handoff](authentication-handoff.md) |
+| Registration/confirmation/ID, MA-LOG-002-004 | `register.tsx`, `account-created.tsx`, `owner-id.tsx`; `auth/registration-screen.tsx` | Owner forms and optional initial Operator setup implemented | With the dev mock enabled, Owner and Operator records are created locally; server registration is unavailable | `registerOwner`, `utils/registration-request.ts`, `SettingsService.createCashier`; see [Authentication handoff](authentication-handoff.md) |
 | Dashboard, MA-DASH-001–007 | `owner-dashboard.tsx`; `dashboard/owner-dashboard-screen.tsx` | Implemented cards/navigation | Periods, stock links, activity, cash modal, Quick Add | `getDashboardData`, `createCashRegisterService().begin/add` |
 | Inventory MA-INV-001–006, assets MA-AST-001–002 | `owner-inventory/index.tsx`, `product.tsx`, `asset.tsx`; `inventory/*-screen.tsx` | Implemented owner list/detail/forms | Search/filter/rank, product/asset add/edit/delete, restock, photo selection | `loadMockInventory`, `getInventorySales`, `applyInventoryAction` through `useInventory` |
 | POS MA-POS-001–004; POS catalog/cart/payment exports | `owner-pos/index.tsx`, `cart.tsx`, `payment.tsx`; `pos/*-screen.tsx` | Implemented four payment modes | Cart, validation, confirmation, stock deduction, sale/payment/debt/customer commit | `usePos().completeOrder` → `applyInventoryAction` → `commitMockSale` |
@@ -30,10 +30,10 @@ Baseline: the **MAY-ARI MODULE** and **KAHERA MODULE** sheets of [the original w
 | Expenses MA-MT-003, MA-QA-005; Store Expense 1–3 | `owner-menu/store-expenses/index.tsx`, `new.tsx`; `expenses/*-screen.tsx` | Implemented list/add form | Search/category, derived monthly total, validation, date picker, discard and shared save | Same Quick Add service; `utils/expenses.ts` selectors |
 | More Tools and navigation MA-DASH-007 | `owner-menu.tsx` redirects Home; `owner-menu/_layout.tsx`, `[tool].tsx`; `menu/owner-menu-drawer.tsx` | Drawer implemented | Authorized destinations and modal handoff | `data/menu.ts` metadata |
 | Transactions MA-MT-002 | `owner-menu/transaction-history.tsx`; `components/transactions/*` | Read-only history; no general detail/edit/delete flow | Shared sale/collection/expense projection, search/category/date/method filtering, staged sheet, loading/empty/retry states | `services/transactions.ts`; see [Transaction History](transaction-history.md) for source gaps and validation |
-| Receivables MA-AR-001–004; payables MA-AP-001–004 | Same dynamic route, `tool=receivables-payables`; `pos/session-records.tsx` | Partial customer-debt list; full management absent | Customer balances from POS/Quick Add; debt-entry buttons. Store debt has dashboard total/activity, no payable list | `store.pos.debts` + `useQuickAdd().records` |
-| Financial statements MA-MT-001, Profile MA-PRO-001-003 | Dynamic tools `financial-statements`, `profile` | Placeholders; Profile shows identity | No reports/exports, profile editing or permissions management | No backend service yet |
+| Receivables MA-AR-001–004; payables MA-AP-001–004 | `owner-menu/receivables-payables/*`; `pos/session-records.tsx` | Customer and store debt creation, balance/payment flows and paid history implemented with mock data | Customer debt shares the POS/Quick Add ledger; payables have a separate creditor/debt/payment ledger | `services/receivables.ts`, `services/payables.ts`, `services/quick-add.ts`; see [Accounts Receivable](accounts-receivable.md) and [Accounts Payable](accounts-payable.md) |
+| Financial statements MA-MT-001, Profile MA-PRO-001-003 | `owner-menu/financial-statements/*`, `owner-menu/profile/*` | Statement filters/reports/PDF export and Owner profile/Operator management implemented | Reports use a fictional posted-book fixture; profile, email verification, avatar, permission and account lifecycle behavior are local mocks | `services/financial.ts`, `services/profile.ts`, `services/authentication.ts`; see [Owner Profile](owner-profile.md) |
 | Settings MA-SET-001; Settings 1-6 | `owner-menu/settings/*`; `components/settings/*` | Landing, Language, Security, Cashiers, Data, Help-unavailable | Shared cashier creation, Owner PIN change, selected cashier reset, sync/cache simulation | Replaceable `SettingsService`, typed fixtures and immutable snapshots; see [Owner Settings](owner-settings.md) |
-| Barcode MA-MT-004, KH-MT scanner story; cashier application | No scanner or cashier workspace routes | Not implemented | Cashier demo credentials can be verified; no Cashier session/workspace or scanner | Do not infer completion from shared Owner components |
+| Barcode MA-MT-004, KH-MT scanner story; Operator application | `operator-pos/*`, `operator-inventory.tsx`, `operator-more.tsx` | POS flow and three-item navigation implemented; Inventory and More are guarded placeholders; barcode scanner absent | Operator session uses mock authentication and POS capability checks; Owner-only actions remain denied | `authenticationService`, `state/auth-flow.tsx`, `state/pos.tsx`; no scanner service |
 | Expo starter | `explore.tsx` and starter UI/theme helpers | Retained starter route | Outside product scope | Retained because route/import/asset references exist |
 
 Inventory route parameters: product `mode=add|edit|restock|details|delete` with existing `id` as applicable; asset `mode=add|edit|delete`, `id`; list `tab=assets` and stock `status=out|low`. Product mode handling is in `inventory/product-screen.tsx`; do not put credentials in route parameters.
@@ -105,14 +105,14 @@ Frontend owns layout, motion, navigation, accessible forms, local drafts, displa
 
 ## Verification
 
-Baseline shared checks passed: lint, TypeScript and **66/66** Node tests. Prepared-version results:
+Baseline shared checks passed: lint, TypeScript and **66/66** Node tests. The prepared-version results below record the earlier handoff run; see the November 15 update after the table for current SDK/package checks.
 
 | Check | Result |
 | --- | --- |
 | `npm run lint`, `npm run typecheck` | Passed; lint has no warnings |
 | `npm test` | **69 passed, 0 failed**, including three service regressions for owner denial, checkout rollback/retry/idempotency, stock/debt/dashboard propagation, inventory session isolation and cash token handling |
-| `npm ls --depth=0` | Passed; no dependency changes. Package/lock dependency maps match |
-| `npx expo install --check` | Online check blocked by network `EACCES`. Offline retry reported dependencies up to date, with Expo's warning that offline validation is unreliable; not equivalent to full online diagnostics |
+| `npm ls --depth=0` | Passed for the earlier handoff baseline; package/lock dependency maps matched |
+| `npx expo install --check` | Earlier online check was blocked by network `EACCES`; offline retry used Expo's local map and was treated as unreliable |
 | `npx expo export --platform android --platform ios --output-dir .expo/backend-handoff/native-export --no-bytecode --max-workers 2` | Both JavaScript bundles and referenced assets exported successfully; no Hermes bytecode or native binary built |
 | Web development export + Chrome regression | Passed direct POS guard/login, empty cart, stock ceilings, cart/remove/cancel behavior, Cash/GCash/Split/Partial validation and confirmation, draft retention, five completed sales, duplicate confirmations, two linked debts, transaction/debt views and 320/360/390/430 px overflow/footer checks; no application console errors/exceptions |
 | Cash service browser check | Passed disabled empty submission, exact ₱10.25 addition despite 20 rapid taps, success feedback, Keep Editing preserving the formatted draft and confirmed discard leaving the balance unchanged; no application console errors/exceptions |
@@ -120,11 +120,27 @@ Baseline shared checks passed: lint, TypeScript and **66/66** Node tests. Prepar
 
 Browser checks used an isolated headless Chrome profile on Windows and an exported development bundle served only on localhost. Temporary `EXPO_PUBLIC_ENABLE_MOCK_AUTH=true`, `EXPO_NO_BUNDLE_SPLITTING=1`, `EXPO_NO_METRO_LAZY=1` and offline flags were limited to that export command. No env/config default changed. Metro recovered from a stale cache with a full crawl. Local harness, screenshots, baseline and audit records are ignored under `.expo/backend-handoff/`.
 
+### November 15, 2026 SDK and package update
+
+Expo SDK 58 is the current stable Expo Go target ([Expo Go](https://expo.dev/go), [SDK 58 reference](https://docs.expo.dev/versions/v58.0.0/)). Expo packages were updated to current SDK 58 patch releases; newer React, React Native, ESLint, Tailwind and TypeScript majors/versions outside the existing SDK/NativeWind constraints were not applied.
+
+| Check | Result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck` | Passed after the package update |
+| `npm ls --depth=0` | Passed; installed dependency tree is present and `babel-preset-expo` remains a dev dependency |
+| `npx expo install --check` | Passed; dependencies up to date |
+| `npx expo-doctor` | Passed, 20/20 checks |
+| `npx expo export --platform android --platform ios --output-dir .expo/backend-handoff/sdk58-export --no-bytecode --max-workers 2` | Android and iOS JavaScript bundles and referenced assets exported; no native binary built |
+| `npm audit` | 8 moderate, 0 high/critical. Non-forced fixes leave the transitive `minimatch` advisory; the suggested forced Expo change downgrades to SDK 52.0.49 and was not applied |
+| `npm test` | Not rerun for this SDK/package update |
+
+Android and iOS runtime validation remains **not tested**; JavaScript export is not a native build or device test.
+
 **Android runtime: not tested.** Android JavaScript export passed, but ADB device discovery is blocked in this environment (`Cannot mkdir '\\.android': Permission denied`), so no emulator/device runtime was validated. **iOS runtime: not tested.** iOS JavaScript export passed; this Windows host has no iOS simulator or connected iPhone testing session. Native builds/EAS jobs were not run. Safe areas, fonts/text scaling, native keyboards/focus/dismissal, TalkBack/VoiceOver, Android back, iOS swipe-back, modal handoff and image selection still need separate device checks. Browser checks do not establish any of these native behaviors.
 
-`npm ci` was documented for the teammate but not rerun over the user's installed dependencies. `expo-doctor` was not run. No unrelated pre-existing lint/type/test failures were observed.
+`npm ci` was documented for the teammate but not rerun over the user's installed dependencies. The earlier baseline did not run `expo-doctor`; the November 15 update passed it. No unrelated pre-existing lint/type/test failures were observed.
 
-## Files changed by this preparation
+## Files changed by the original backend-handoff preparation
 
 - Setup/docs: `README.md`, `.gitignore`, `.env.example`, `package.json` (test script only), `docs/backend-handoff.md`, `docs/api-contract.md`, `docs/designs/README.md` (corrected stale claim that exports were absent).
 - New adapters: `src/services/inventory.ts`, `dashboard.ts`, `cash-register.ts`; existing `src/services/mock-auth.ts`, `registration.ts`, `quick-add.ts` gain integration notes.
@@ -133,7 +149,7 @@ Browser checks used an isolated headless Chrome profile on Windows and an export
 
 ## Repository hygiene
 
-The handoff preserves pre-existing modified/untracked work. It adds typed service boundaries, `TODO(BACKEND)` notes, an `npm test` script, `.env.example`, these docs and ignore rules. No dependencies/upgrades, native configuration, assets or original requirements were changed. No unused app imports/logs were found by lint/search; existing route/asset references justify retaining starter files. Console output in asset-generation/maintenance CLI scripts is intentional.
+The original handoff preparation added typed service boundaries, `TODO(BACKEND)` notes, an `npm test` script, `.env.example`, docs and ignore rules. The November 15 frontend progress adds the current UI, fixtures, assets, mock storage and profile/operator flows. It also updates SDK 58 Expo package patches, adds the `expo-navigation-bar` and `expo-secure-store` dependencies/configuration, and includes the config plugins Expo detected during installation; it does not edit generated `ios/` or `android/` projects or the original requirements. `project-clean.zip` is a local archive and is excluded from the branch commit. No unused app imports/logs were found by lint/search; existing route/asset references justify retaining starter files. Console output in asset-generation/maintenance CLI scripts is intentional.
 
 Credential pattern review found no matches in tracked/current candidate text or reachable local Git history (all **3 reachable commits**; private-key headers, recognizable provider tokens, credential-bearing connection URLs and sensitive assignments checked without printing values). No environment/key files are tracked; `.env.example` is the only candidate env file. The workbook's decoded story cells were reviewed for sample credentials. This is a pattern review, not proof that every binary/export is free of private data. **Source documents contain real participant/client names and embedded signature images** in both `docs/PROJECT_CHARTER-v2.02.21.10.2026.md` and its `docs/requirements/` copy. Confirm the team repository's intended audience/permission to share those documents before pushing; preserve the originals locally and use an approved redacted distribution if needed. Workbook sample credentials and fictional app fixtures are examples, not production secrets. If any example was reused in reality, rotate it.
 

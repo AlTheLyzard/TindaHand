@@ -1,0 +1,32 @@
+# POS UI refinements
+
+Read root `AGENTS.md` and the original workbook in `docs/requirements/`: baseline MAY-ARI MODULE and KAHERA MODULE POS-001–004 and AR-001–004, with the copy owner sheet compared separately. Reviewed the supplied MA-POS-001, MA-POS-003 (cart and review), MA-POS-004, Color Pallette and Buttons exports. Existing Expo SDK 58 configuration, npm lockfile, routes and shared components were inspected; consulted the SDK 58 reference and React Native Pressable, ScrollView and Modal documentation.
+
+The baseline owner sheet names Cash/GCash; the cashier sheet includes Split Payment. The user's current request explicitly retains the existing four modes, including Partial Payment. The copy's stock-threshold, receipt and debt-allocation remarks remain unresolved and do not introduce new rules. Existing inventory thresholds and checkout calculations remain authoritative. Original requirements and designs are unchanged.
+
+Changed files:
+
+- `src/components/pos/alphabet-index.tsx`: renders A–Z, with 8px labels, evenly spaced cells and a persistent compact current-letter indicator. Unmatched letters are muted, disabled and announced as having no matching products. The dedicated 44dp rail retains tap/drag handling and boundary tolerance; indicator emphasis only expands horizontally to avoid adjacent letters. Dense index text has a fixed maximum font scale; full accessibility labels remain available.
+- `src/components/pos/product-browsing-screen.tsx`: reserves the rail beside all scroll content, preventing overlap with controls on short screens. Validates jump destinations and keeps the requested letter at rest when short final sections share a clamped offset; manual scrolling resumes section tracking. Cart sheet and navigation remain outside the rail.
+- `src/components/pos/credit-product-browser.tsx`: the other shared index caller also reserves the rail beside its scroll content, preserving the existing in-progress changes in this file.
+- `src/components/pos/cart-review-screen.tsx`: stock limits, insufficient stock and unavailable products use Error Red. A non-blocking low-stock caution uses the Warning token for its subtle surface and accent, with dark readable message text. Unit prices and other neutral information retain Text Secondary. Existing quantity ceilings and checkout eligibility are unchanged.
+- `src/constants/design-tokens.json`: exposes the supplied palette's existing Error Red (`#972020`) and Success Green (`#1D5D21`) as semantic tokens.
+- `src/components/pos/pos-chip.tsx`: payment modes use consistent 12px type, intrinsic single-line widths, 12dp horizontal padding and a minimum 44dp visible height inside 48dp touch slots. Selection changes color without changing border thickness or typography; disabled and pressed states use existing button tokens. Other chip appearances retain their sizing behavior.
+- `src/components/pos/payment-screen.tsx`: one horizontally scrolling payment-mode row with edge padding; explicit balance/change labels and semantic amount/accent styling on the existing card surface; zero values are neutral. The same calculation output is displayed without changing centavo arithmetic or Partial Payment validation. Checkout opens only on explicit valid submission; Confirm rechecks validity and the reviewed draft. Synchronous submission and state-level duplicate guards remain. Cancel preserves inputs. The confirmation uses exact Cancel/Confirm labels with secondary left and primary right actions. Back returns to Cart Review without clearing drafts.
+- `src/components/pos/pos-dialog.tsx`: optional equal-width, equal-height horizontal actions reuse shared Buttons. Existing stacked destructive dialogs retain their layout and behavior. Safe-area-aware scrollable modal content accommodates short screens and longer summaries.
+- `src/components/pos/pos-frame.tsx`: optional shared back action beside the page title, below the top safe area. Payment reuses PosBackButton/BackButton, its 48dp target, outline icon and light pressed backdrop.
+
+Validation:
+
+- `npm run typecheck` and `npm run lint` passed.
+- `node --test tests/alphabet-index.test.cjs tests/pos.test.cjs tests/payment.test.cjs tests/pos-checkout.test.cjs`: all 24 tests passed. Coverage includes stock changes/deletion, quantity limits, exact centavos, Cash/GCash/Split/Partial validation, immutable snapshots, remaining debt and duplicate checkout rejection.
+- Development web export compiled successfully with temporary process-only mock-auth/export flags. No dependencies, application configuration or environment files changed.
+- Headless Chrome checks at 320×568, 360×800, 390×844 and 430×932 confirmed all 26 letters fit evenly above the cart sheet. Checked available-letter taps, disabled empty-letter taps, filtering and restoring products. At 320px, each letter retains the full 44dp rail width; native finger precision still needs validation.
+- Browser checks covered warning/stock-limit colors, single-line long chip labels, horizontal access to the last mode, stable row/chip heights across all modes, green change/red balance/neutral zero, and unchanged balance-card height across amount states. Confirmed header back placement and preservation of entered payment details.
+- At 320×568, checked modal fit and equal Cancel/Confirm dimensions/label alignment. Cancellation retained inputs. Valid inputs did not automatically open the dialog or check out. A Partial Payment with a red remaining balance completed after explicit confirmation; 20 rapid Confirm clicks deducted stock once. Browser console errors/exceptions: none. Local scripts, screenshots and results are ignored under `.expo/pos-ui-refinement/`.
+
+Android runtime: **not tested**. The installed ADB fails device enumeration with `Cannot mkdir '\.android': Permission denied`. No Android native build or platform bundle export was run for this refinement.
+
+iOS runtime: **not tested**. This Windows environment has no iOS simulator or attached iOS test target. No iOS native build or platform bundle export was run.
+
+Device checks still needed on each platform: native rail tap/drag precision, safe areas and bottom navigation/gesture insets, keyboard avoidance/focus/dismissal, larger OS text, TalkBack/VoiceOver, Android system back, iOS back gestures and modal dismissal. Browser geometry and behavior checks do not constitute native runtime validation. Nothing was committed, pushed, deployed or published.

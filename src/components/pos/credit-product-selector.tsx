@@ -1,3 +1,4 @@
+import { FieldLabel } from '@/components/ui/field-label';
 import { Text, View, useWindowDimensions } from 'react-native';
 import { Button, ButtonSurface, IconButton } from '@/components/ui/button';
 import { PosIcon } from './pos-icon';
@@ -17,7 +18,7 @@ export function CreditProductSelector({ selection, onChange, onRemove, onBrowse,
   const lines = Object.values(selection);
   const { fontScale } = useWindowDimensions();
   return <View style={{ gap: 8 }}>
-    <Text style={quickAddStyles.label}>Products taken on credit (Required)</Text>
+    <FieldLabel label="Products taken on credit" required style={quickAddStyles.label} />
     {!lines.length && <Text accessibilityRole={error ? 'alert' : undefined} style={[quickAddStyles.note, error ? { color: '#B4232C' } : undefined]}>No products added yet. Search for items taken on credit.</Text>}
     {lines.map(line => {
       const product = products.find(item => item.id === line.productId);
@@ -39,7 +40,7 @@ export function CreditProductSelector({ selection, onChange, onRemove, onBrowse,
       </View>;
     })}
     {error && lines.length > 0 && <Text accessibilityRole="alert" style={quickAddStyles.error}>{error}</Text>}
-    <View style={{ marginTop: lines.length ? 0 : 8 }}><Button onPress={onBrowse}>{fullPage ? '+ Add Product' : lines.length ? '+ Add Product' : '+ Select Products'}</Button></View>
+    <View style={{ marginTop: lines.length ? 0 : 8 }}><Button onPress={onBrowse}>Select Products</Button></View>
   </View>;
 }
 function QuantityControl({ label, icon, onPress, disabled = false }: { label: string; icon: 'minus' | 'plus'; onPress: () => void; disabled?: boolean }) {

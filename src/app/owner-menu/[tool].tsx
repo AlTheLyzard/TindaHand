@@ -13,6 +13,7 @@ export default function OwnerToolRoute() {
   if (tool.id === 'store-expenses') return <Redirect href="/owner-menu/store-expenses" />;
   if (tool.id === 'transaction-history') return <Redirect href="/owner-menu/transaction-history" />;
   if (tool.id === 'settings') return <Redirect href="/owner-menu/settings" />;
+  if (tool.id === 'profile') return <Redirect href="/owner-menu/profile" />;
   if (tool.id === 'receivables-payables') return <Redirect href="/owner-menu/receivables-payables" />;
   return <ToolPlaceholderScreen key={tool.id} tool={tool} owner={owner} />;
 }

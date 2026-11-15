@@ -6,12 +6,17 @@ const test = require('node:test');
 const ts = require('typescript');
 function fixture({ development = true, flag = 'true', scenario } = {}) {
   const cache = new Map();
+  const identityStorage = require('./helpers/identity-storage.cjs')();
+  const authStorage = require('./helpers/auth-storage.cjs')();
   function load(file) {
     file = path.normalize(file);
     if (cache.has(file)) return cache.get(file);
     const context = { exports: {}, __DEV__: development, setTimeout,
       process: { env: { EXPO_PUBLIC_ENABLE_MOCK_AUTH: flag, EXPO_PUBLIC_MOCK_RECOVERY_SCENARIO: scenario } },
       require(name) {
+        if (name === '@/services/auth-identity-storage') return { authIdentityStorage: identityStorage };
+        if (name === '@/services/auth-record-storage') return { authRecordStorage: authStorage.recordStorage };
+        if (name === '@/services/auth-secret-storage') return { authSecretStorage: authStorage.secretStorage };
         const base = name.startsWith('@/') ? name.replace('@/', 'src/') : path.join(path.dirname(file), name);
         const target = [`${base}.ts`, `${base}/index.ts`].find(p => fs.existsSync(p));
         if (!target) throw Error(`Unexpected module ${name}`);
@@ -26,6 +31,69 @@ function fixture({ development = true, flag = 'true', scenario } = {}) {
 }
 const draft = { name: 'Fictional Owner', email: 'new@example.test', password: 'StoreTest25!', confirmPassword: 'StoreTest25!', pin: '0007', confirmPin: '0007' };
 const ownerLogin = { ownerId: 'TH-DEMO-OWNER', password: 'DemoStore25@!' };
+
+test('successful authentication remembers only the canonical role-scoped ID across service restarts', async () => {
+  const storage = require('./helpers/identity-storage.cjs')();
+  const create = () => fixture()('src/services/authentication.ts').createAuthenticationService({ enabled: true, identityStorage: storage });
+  const first = create();
+  assert.equal(JSON.stringify(await first.restoreRememberedIdentities()), '{}');
+  assert.equal((await first.authenticateOwner({ ...ownerLogin, password: 'wrong' })).ok, false);
+  assert.equal(storage.read(), null, 'failed credentials must not select an identity');
+  await first.authenticateOwner(ownerLogin);
+  assert.equal(storage.read(), JSON.stringify({ owner: ownerLogin.ownerId }));
+  await first.lockSession();
+  assert.equal((await first.unlockOwner({ ownerId: 'TH-MA-9999', pin: '0123' })).ok, false);
+  assert.equal((await first.unlockOwner({ ownerId: ownerLogin.ownerId, pin: '9999' })).ok, false);
+  assert.equal((await first.restoreSession()).locked, true);
+  assert.equal((await first.unlockOwner({ ownerId: ownerLogin.ownerId, pin: '0123' })).ok, true);
+  const restarted = create();
+  assert.equal((await restarted.restoreRememberedIdentities()).owner, ownerLogin.ownerId);
+  assert.equal(await restarted.restoreSession(), null, 'an ID is never a device credential');
+  assert.equal((await restarted.unlockOwner({ ownerId: ownerLogin.ownerId, pin: '0123' })).ok, false);
+  assert.equal((await restarted.authenticateOwner(ownerLogin)).ok, true, 'preserve password-first after mock process restart');
+  assert.equal(storage.read(), JSON.stringify({ owner: ownerLogin.ownerId }), 'no password, PIN or session is persisted');
+});
+
+test('role changes keep different stores separate; explicit account switching forgets only that role and revokes access', async () => {
+  const storage = require('./helpers/identity-storage.cjs')();
+  const service = fixture()('src/services/authentication.ts').createAuthenticationService({ enabled: true, identityStorage: storage });
+  const registered = await service.registerOwner(draft);
+  assert.equal(registered.status, 'confirmed');
+  assert.equal((await service.loginOperator({ ownerId: ownerLogin.ownerId, pin: '1423' })).ok, true);
+  const identities = await service.restoreRememberedIdentities();
+  assert.equal(identities.owner, registered.account.id);
+  assert.equal(identities.cashier, ownerLogin.ownerId, 'remember the Operator store ID, never the internal Operator ID');
+  assert.equal((await service.loginOperator({ ownerId: registered.account.id, pin: '1423' })).ok, false);
+  assert.equal((await service.restoreRememberedIdentities()).cashier, ownerLogin.ownerId);
+  await service.switchAccount('owner');
+  assert.equal(await service.restoreSession(), null);
+  assert.equal(JSON.stringify(await service.restoreRememberedIdentities()), JSON.stringify({ cashier: ownerLogin.ownerId }));
+  const restarted = fixture()('src/services/authentication.ts').createAuthenticationService({ enabled: true, identityStorage: storage });
+  assert.equal((await restarted.restoreRememberedIdentities()).owner, undefined);
+  assert.equal((await restarted.restoreRememberedIdentities()).cashier, ownerLogin.ownerId);
+  await restarted.switchAccount('cashier');
+  assert.equal(storage.read(), '{}');
+});
+
+test('corrupt or unavailable identity storage cannot grant access or break credential verification', async () => {
+  for (const initial of ['invalid JSON', 'null', '[]', '{"owner":"bad","cashier":42}', '{"owner":"TH-DEMO-OWNER","pin":"0123","password":"secret"}']) {
+    const storage = require('./helpers/identity-storage.cjs')(initial);
+    const service = fixture()('src/services/authentication.ts').createAuthenticationService({ enabled: true, identityStorage: storage });
+    const restored = await service.restoreRememberedIdentities();
+    assert.ok(Object.keys(restored).every(key => key === 'owner' || key === 'cashier'));
+    assert.equal(await service.restoreSession(), null);
+    assert.equal((await service.authenticateOwner(ownerLogin)).ok, true);
+    assert.equal(storage.read(), JSON.stringify({ owner: ownerLogin.ownerId }));
+  }
+  const broken = { read() { throw Error('unavailable'); }, write() { throw Error('unavailable'); } };
+  const service = fixture()('src/services/authentication.ts').createAuthenticationService({ enabled: true, identityStorage: broken });
+  assert.equal(JSON.stringify(await service.restoreRememberedIdentities()), '{}');
+  assert.equal((await service.authenticateOwner(ownerLogin)).ok, true);
+  await service.lockSession();
+  assert.equal((await service.unlockOwner({ ownerId: ownerLogin.ownerId, pin: 'wrong' })).ok, false);
+  await service.switchAccount('owner');
+  assert.equal(await service.restoreSession(), null);
+});
 
 test('registration validates six fields, returns permanent identity and a separate credential-free session', async () => {
   const load = fixture();
@@ -131,7 +199,9 @@ test('Operator identity comes from unique active PIN; create, reset, reactivatio
   assert.equal((await service.resetOperatorPin({ operatorId: created.value.id, ownerPin: '9999', pin: '0022', confirmPin: '0022' })).ok, false);
   assert.equal((await service.resetOperatorPin({ operatorId: created.value.id, ownerPin: '0123', pin: '1423', confirmPin: '1423' })).ok, false);
   const loggedIn = await service.loginOperator({ ownerId: actor.id, pin: '0011' });
-  assert.equal(loggedIn.value.role, 'cashier'); assert.equal(loggedIn.value.operator.id, created.value.id);
+  assert.deepEqual({ role: loggedIn.value.role, ownerId: loggedIn.value.ownerId, operatorId: loggedIn.value.operatorId, displayName: loggedIn.value.displayName },
+    { role: 'operator', ownerId: actor.id, operatorId: created.value.id, displayName: created.value.name });
+  assert.equal(loggedIn.value.operator.id, created.value.id);
   assert.ok(loggedIn.value.operator.permissions.includes('pos')); assert.ok(!loggedIn.value.operator.permissions.includes('financial'));
   assert.ok(!JSON.stringify(loggedIn).includes('0011'));
   assert.equal((await service.createOperator({ ...values, pin: '0099', confirmPin: '0099' })).ok, false);

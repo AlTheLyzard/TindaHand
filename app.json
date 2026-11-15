@@ -26,6 +26,14 @@
     "plugins": [
       "expo-router",
       [
+        "expo-navigation-bar",
+        {
+          "hidden": false,
+          "style": "dark",
+          "enforceContrast": true
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Choose a product photo for your inventory.",
@@ -42,7 +50,11 @@
           "resizeMode": "contain"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      "expo-sharing",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

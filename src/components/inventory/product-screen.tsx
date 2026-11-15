@@ -8,7 +8,7 @@ import { Image, Keyboard, Text, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { MotionModal } from '@/components/ui/motion-modal';
 import { ConfirmationContent } from '@/components/ui/confirmation-content';
-import { InvCard, InvDateField, InvField, InventoryFrame, InvText, InvSelect } from './inventory-ui';
+import { InvCard, InvDateField, InvField, InventoryFrame, InvText, InvSelect, inventoryIllustrations } from './inventory-ui';
 import { BatchCard, ExistingBatchCard, batchExpiryLabel } from './batch-card';
 import { useInventory } from '@/state/inventory';
 import type { BatchDraft, BatchErrors, InventoryProduct, ProductDraft } from '@/types/inventory';
@@ -169,14 +169,13 @@ export function ProductScreen() {
   const productHeader = (p: Pick<InventoryProduct, 'name' | 'category' | 'photoUri' | 'unitPriceCentavos'>) => <View className="flex-row items-center gap-4"><ProductPhoto uri={p.photoUri} /><View className="min-w-0 flex-1 gap-1"><InvText bold size={15} color="#102342">{p.name || 'Product Name'}</InvText><InvText>{categoryLabels[p.category]} · {formatPesos(p.unitPriceCentavos)}</InvText></View></View>;
   const photoControl = <Pressable accessibilityRole="button" accessibilityLabel="Choose a product photo, optional" accessibilityState={{ disabled: picking }} disabled={picking} onPress={pickPhoto} className="min-h-[130px] items-center justify-center gap-2 rounded-control border border-[#B0C8E3] bg-white p-4">
     {draft.details.photoUri ? <ProductPhoto uri={draft.details.photoUri} /> : <View className="h-9 w-9 items-center justify-center rounded-pill bg-brand"><InvText size={22} color="#FFFFFF">+</InvText></View>}
-    <InvText bold color="#102342">{picking ? 'Opening photo picker...' : 'Choose or upload a photo (Optional)'}</InvText><InvText size={10}>Max file size: 2 MB. Supported formats: JPG & PNG</InvText>
+    <InvText bold color="#102342">{picking ? 'Opening photo picker...' : 'Choose or upload a photo'}</InvText><InvText size={10}>Max file size: 2 MB. Supported formats: JPG & PNG</InvText>
   </Pressable>;
   const detailsFields = <>
-    <InvText bold color="#245399">Product Information</InvText>
     <InvField label="Product Name *" value={draft.details.name} onChangeText={v => update('name', v)} error={errors.name} placeholder="Enter product name" returnKeyType="next" onSubmitEditing={() => costInput.current?.focus()} maxLength={120} />
     <InvSelect label="Category *" value={draft.details.category} options={categoryLabels} onChange={v => update('category', v)} error={errors.category} />
     <InvText bold color="#245399">Pricing Details</InvText>
-    <View className="flex-row flex-wrap gap-3"><View className="min-w-[130px] flex-1"><InvField label="Cost / Capital Price *" inputRef={costInput} value={draft.details.cost} onChangeText={v => update('cost', v)} error={errors.cost} placeholder="₱0.00" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => sellingInput.current?.focus()} /></View><View className="min-w-[130px] flex-1"><InvField label="Selling Price *" inputRef={sellingInput} value={draft.details.sellingPrice} onChangeText={v => update('sellingPrice', v)} error={errors.sellingPrice} placeholder="₱0.00" keyboardType="decimal-pad" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} /></View></View>
+    <View className="flex-row flex-wrap gap-3"><View className="min-w-[130px] flex-1"><InvField money label="Cost / Capital Price *" inputRef={costInput} value={draft.details.cost} onChangeText={v => update('cost', v)} error={errors.cost} placeholder="₱0.00" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => sellingInput.current?.focus()} /></View><View className="min-w-[130px] flex-1"><InvField money label="Selling Price *" inputRef={sellingInput} value={draft.details.sellingPrice} onChangeText={v => update('sellingPrice', v)} error={errors.sellingPrice} placeholder="₱0.00" keyboardType="decimal-pad" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} /></View></View>
     <View className="gap-2 rounded-control border border-[#6B9CE0] bg-[#D9E7F4] p-3"><InvText bold color="#245399">Estimated profit per item</InvText><InvText bold color="#102342">{parsePaymentAmount(draft.details.sellingPrice) !== null && parsePaymentAmount(draft.details.cost) !== null ? formatPesos(parsePaymentAmount(draft.details.sellingPrice)! - parsePaymentAmount(draft.details.cost)!) : '₱0.00'}</InvText><InvText size={10}>Calculated from selling price minus cost price.</InvText></View>
   </>;
   const batchCards = <>
@@ -184,7 +183,7 @@ export function ProductScreen() {
     <Button compact variant="text" fullWidth={false} onPress={() => { const batch = newBatch(makeId()); setDraft(d => ({ ...d, batches: [...d.batches, batch] })); setExpandedBatch(batch.id); }}>+ Add Another Batch</Button>
     <View className="flex-row flex-wrap justify-between gap-2 rounded-control bg-[#D9E7F4] p-3"><InvText bold>{mode === 'restock' ? 'Quantity to add' : mode === 'edit' ? 'Total Stock' : 'Total Initial Stock'}</InvText><InvText bold>{total} PCS</InvText></View>
   </>;
-  const footer = !readonly ? mode === 'edit' ? <View className="flex-row gap-3"><View className="flex-1"><Button variant="secondary" disabled={saving || picking} onPress={() => navigate(() => router.canGoBack() ? router.back() : router.replace('/owner-inventory'))}>Cancel</Button></View><View className="flex-1"><Button loading={saving} disabled={picking} onPress={save}>Save Changes</Button></View></View>
+  const footer = !readonly ? mode === 'edit' ? <View className="flex-row gap-3"><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} variant="secondary" disabled={saving || picking} onPress={() => navigate(() => router.canGoBack() ? router.back() : router.replace('/owner-inventory'))}>Cancel</Button></View><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} loading={saving} disabled={picking} onPress={save}>Save Changes</Button></View></View>
     : <><Button loading={saving} disabled={picking} onPress={mode === 'restock' || step === 'review' ? save : advance}>{mode === 'restock' ? 'Confirm Restock' : step === 'review' ? 'Confirm & Save' : step === 'stock' ? 'Review Product' : 'Stock & Expiry'}</Button><Button variant="secondary" disabled={saving || picking} onPress={step === 'review' ? () => setStep('details') : clearStep}>{step === 'review' ? 'Edit Details' : 'Clear'}</Button></> : undefined;
   if (mode !== 'add' && preview.loading) return <InventoryFrame title={title} back hideNavigation inlineTitle background>{preview.control}<RecordSkeleton kind={readonly ? 'details' : 'form'} form={mode === 'restock' ? 'restock' : 'product'} deleting={mode === 'delete'} /></InventoryFrame>;
   // Keep the confirmation mounted after our own delete until onHidden completes
@@ -192,15 +191,15 @@ export function ProductScreen() {
   if (mode !== 'add' && (!liveProduct || preview.empty) && !leaving) return <InventoryFrame title="Product unavailable" back hideNavigation inlineTitle background>{preview.control}<EmptyState title="Product unavailable" description="This product is no longer available. Return to Inventory to choose another product." action="Return to Inventory" onAction={() => { preview.reset(); router.replace('/owner-inventory'); }} /></InventoryFrame>;
   const restocks = store.restocks.filter(r => r.productId === product?.id).slice().reverse();
   const reviewProduct = step === 'review' ? buildDraftProduct(id, draft) : null;
-  return <InventoryFrame title={title} back inlineTitle hideNavigation background onBack={back} onNavigate={navigate} footer={footer} overlay={<MotionModal visible={!!confirmation} onRequestClose={() => { if (!busy.current) setConfirmation(null); }} onHidden={() => { const action = pending.current; pending.current = null; action?.(); }}>
+  return <InventoryFrame title={title} back inlineTitle hideNavigation background subtitle="Product details for your store." illustration={mode === 'edit' ? inventoryIllustrations.editProduct : mode === 'restock' ? inventoryIllustrations.restock : mode === 'add' && step !== 'review' ? step === 'stock' ? inventoryIllustrations.expiry : inventoryIllustrations.addProduct : undefined} onBack={back} onNavigate={navigate} footer={footer} overlay={<MotionModal visible={!!confirmation} onRequestClose={() => { if (!busy.current) setConfirmation(null); }} onHidden={() => { const action = pending.current; pending.current = null; action?.(); }}>
     <View className="flex-1 justify-center px-5">
+      {confirmation?.kind === 'productDelete' && <Pressable accessible={false} focusable={false} tabIndex={-1} onPress={() => { if (!busy.current) setConfirmation(null); }} style={{ position: 'absolute', inset: 0 }} />}
       {confirmation?.kind === 'restock' ? <View accessibilityViewIsModal className="w-full max-w-[412px] gap-4 self-center rounded-control bg-white p-5"><InvText bold size={18} color="#112F6F">Confirm Restock?</InvText><InvText>Add {total} PCS to {product?.name}?</InvText><InvText>Resulting total: {(product ? productStock(product) : 0) + total} PCS</InvText><InvText size={11}>Existing batches keep their quantities and expiry dates.</InvText><Button loading={saving} onPress={save}>Confirm</Button><Button variant="secondary" disabled={saving} onPress={() => setConfirmation(null)}>Cancel</Button></View>
       : confirmation && <ConfirmationContent stackedActions title={confirmation.kind === 'clear' ? 'Clear All Fields?' : confirmation.kind === 'discard' ? 'Discard Changes?' : confirmation.kind === 'batchDelete' ? 'Delete Batch ' + (draft.batches.findIndex(b => b.id === confirmation.batchId) + 1) + '?' : 'Delete Product?'}
         message={confirmation.kind === 'clear' ? 'Clear the inputs in this step? Your other product details will be kept.' : confirmation.kind === 'discard' ? 'Your unsaved changes will be discarded.' : confirmation.kind === 'batchDelete' ? 'Remove this batch from the draft? Inventory changes only when you save the product.' : 'Delete ' + product?.name + ' from inventory? This cannot be undone. Historical transactions will be kept.'}
-        confirmLabel={confirmation.kind === 'clear' ? 'Clear' : confirmation.kind === 'discard' ? 'Discard Changes' : confirmation.kind === 'batchDelete' ? 'Delete Batch' : 'Delete'} cancelLabel="Cancel" onCancel={() => setConfirmation(null)} onConfirm={confirm} />}
+        confirmLabel={confirmation.kind === 'clear' ? 'Clear' : confirmation.kind === 'discard' ? 'Discard Changes' : confirmation.kind === 'batchDelete' ? 'Delete Batch' : 'Delete'} cancelLabel={confirmation.kind === 'discard' ? 'Keep Editing' : 'Cancel'} onCancel={() => setConfirmation(null)} onConfirm={confirm} />}
     </View>
   </MotionModal>}>
-    <InvText>Product details for your store.</InvText>
     {!!error && <Text accessibilityRole="alert" className="font-poppins text-[12px] text-[#972020]">{error}</Text>}
     {readonly && product ? <>
       <ProductReview product={product} />
@@ -219,7 +218,7 @@ export function ProductScreen() {
     </> : mode === 'add' && step === 'review' && reviewProduct ? <><ProductReview product={reviewProduct} /><InvCard><InvText bold color="#245399">Before saving</InvText><InvText size={11}>Review product details, prices, and batch information.</InvText></InvCard></>
     : mode === 'add' && step === 'stock' ? <>{productHeader({ name: draft.details.name, category: draft.details.category as InventoryProduct['category'], unitPriceCentavos: parsePaymentAmount(draft.details.sellingPrice) ?? 0, photoUri: draft.details.photoUri })}{batchCards}</>
     : <>
-      {mode === 'edit' && <View className="items-center gap-2"><Pressable accessibilityRole="button" accessibilityLabel="Edit product photo" disabled={picking} onPress={pickPhoto}><ProductPhoto uri={draft.details.photoUri} /><View className="absolute bottom-1 right-1 rounded bg-white px-1"><InvText bold color="#245399">Edit</InvText></View></Pressable>{!!draft.details.photoUri && <Button compact fullWidth={false} variant="text" onPress={() => update('photoUri', undefined)}>Remove photo</Button>}</View>}
+      {mode === 'edit' && <View className="items-center gap-2 pb-2"><Pressable accessibilityRole="button" accessibilityLabel="Edit product photo" disabled={picking} onPress={pickPhoto}><ProductPhoto uri={draft.details.photoUri} /><View className="absolute bottom-1 right-1 rounded bg-white px-2 py-1"><InvText bold size={11} color="#245399">Edit</InvText></View></Pressable>{!!draft.details.photoUri && <Button compact fullWidth={false} variant="text" onPress={() => update('photoUri', undefined)}>Remove photo</Button>}</View>}
       {detailsFields}
       {mode === 'add' ? <><InvText bold color="#245399">Product Photo</InvText>{photoControl}{!!draft.details.photoUri && <Button variant="text" onPress={() => update('photoUri', undefined)}>Remove photo</Button>}</>
       : <><InvText bold color="#245399">Stock Batches</InvText>{batchCards}<View className="mt-8 gap-2 border-t border-[#B0C8E3] pt-4"><InvText size={10}>This action cannot be undone.</InvText><Button variant="destructiveOutline" disabled={saving || picking} onPress={() => setConfirmation({ kind: 'productDelete' })}>Delete Product</Button></View></>}
@@ -228,21 +227,21 @@ export function ProductScreen() {
   </InventoryFrame>;
 }
 function ProductPhoto({ uri }: { uri?: string }) {
-  return <View className="h-24 w-24 overflow-hidden rounded-control bg-[#D9E7F4]">{uri && <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />}</View>;
+  return <View className="h-32 w-28 overflow-hidden rounded-control bg-[#D9E7F4]">{uri && <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />}</View>;
 }
 function ProductReview({ product }: { product: InventoryProduct }) {
   const status = stockCategory(productStock(product));
   const expiry = productExpiry(product, todayInManila());
   return <>
-    <View className="items-center gap-2"><ProductPhoto uri={product.photoUri} /><InvText bold size={18} color="#112F6F">{product.name}</InvText><InvText>{categoryLabels[product.category]}</InvText></View>
+    <View className="items-center gap-2 py-2"><ProductPhoto uri={product.photoUri} /><Text className="text-center font-poppins-bold text-[18px] text-brand">{product.name}</Text><InvText>{categoryLabels[product.category]}</InvText></View>
     <InvText bold color="#245399">Product Information</InvText><InvCard><ReviewRow label="Product Name" value={product.name} /><ReviewRow label="Category" value={categoryLabels[product.category]} /></InvCard>
-    <InvText bold color="#245399">Pricing Details</InvText><InvCard><ReviewRow label="Cost / Capital Price" value={formatPesos(product.costCentavos)} /><ReviewRow label="Selling Price" value={formatPesos(product.unitPriceCentavos)} /><ReviewRow label="Estimated profit per item" value={formatPesos(product.unitPriceCentavos - product.costCentavos)} /></InvCard>
+    <InvText bold color="#245399">Pricing Details</InvText><InvCard><ReviewRow label="Cost / Capital Price" value={formatPesos(product.costCentavos)} /><ReviewRow label="Selling Price" value={formatPesos(product.unitPriceCentavos)} /><View className="border-t border-[#B0C8E3] pt-3"><ReviewRow label="Estimated profit per item" value={formatPesos(product.unitPriceCentavos - product.costCentavos)} /></View></InvCard>
     <InvText bold color="#245399">Initial Stock & Batches</InvText><InvCard><ReviewRow label="Total Stock" value={productStock(product) + ' PCS'} /><ReviewRow label="Stock status" value={status === 'good' ? 'In Stock' : status === 'low' ? 'Low Stock' : 'Out of Stock'} /></InvCard>
     {expiry.expired && <InvText bold color="#972020">This product has expired stock.</InvText>}
     {expiry.nearExpiry && <InvText bold color="#805000">This product has stock nearing expiry.</InvText>}
-    {productBatches(product).map((batch, index) => <View key={batch.id} className="overflow-hidden rounded-control border border-[#B0C8E3] bg-white"><View className="bg-brand px-3 py-2"><InvText bold color="#FFFFFF">Batch {index + 1}</InvText></View><View className="p-3"><InvText>{batch.quantity} PCS | {batch.noExpiry ? 'No expiry date' : 'Expires ' + batchExpiryLabel(batch)}</InvText></View></View>)}
+    {productBatches(product).map((batch, index) => <View key={batch.id} className="w-full overflow-hidden rounded-control border border-[#B0C8E3] bg-white"><View className="min-h-9 justify-center bg-brand px-3 py-2"><InvText bold color="#FFFFFF">Batch {index + 1}</InvText></View><View className="min-h-20 justify-center gap-1 p-3"><InvText bold>{batch.quantity} PCS</InvText><InvText>{batch.noExpiry ? 'No expiry date' : 'Expires ' + batchExpiryLabel(batch)}</InvText></View></View>)}
   </>;
 }
 function ReviewRow({ label, value }: { label: string; value: string }) {
-  return <View className="flex-row flex-wrap justify-between gap-2"><View className="min-w-[110px] flex-1"><InvText size={11}>{label}</InvText></View><View className="min-w-[100px] flex-1 items-end"><InvText bold size={11} color="#102342">{value}</InvText></View></View>;
+  return <View className="flex-row flex-wrap items-start justify-between gap-3 py-1"><View className="min-w-[100px] flex-1"><InvText size={11}>{label}</InvText></View><View className="min-w-[100px] flex-1"><Text className="text-right font-poppins-bold text-[11px] text-[#102342]">{value}</Text></View></View>;
 }

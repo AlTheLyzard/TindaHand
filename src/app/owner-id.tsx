@@ -13,7 +13,7 @@ export default function OwnerIdRoute() {
   }} onSkip={() => {
     setSelectedRole('owner');
     setDashboardAccess(true);
-    router.dismissAll();
+    if (router.canDismiss()) router.dismissAll();
     router.replace('/owner-dashboard');
   }} />;
 }

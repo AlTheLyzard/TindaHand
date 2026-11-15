@@ -1,6 +1,6 @@
 # Shared application motion
 
-This refinement applies to the implemented authentication, Dashboard, Inventory, POS, More Tools and Quick Add flows. It preserves the supplied visual system, role/capability gates, fixtures, calculations and acceptance criteria. The Operator account-choice/login flow uses the same controls; a complete authenticated Operator workspace remains unimplemented.
+This refinement applies to the implemented authentication, Dashboard, Inventory, POS, More Tools and Quick Add flows. It preserves the supplied visual system, role/capability gates, fixtures, calculations and acceptance criteria. Operator login now opens the shared POS workspace with the three-item navigation. Operator Inventory and More remain guarded placeholders for later phases.
 
 Reviewed AGENTS.md, source requirements and named-role acceptance criteria, the proposed frontend plan, and the existing authentication, Dashboard, Inventory, POS, content-state, Quick Add and More Tools notes. The original requirements and existing documented disagreements with the copy sheet remain unchanged.
 

@@ -2,7 +2,7 @@ import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useTranslation } from '@/i18n/use-translation';
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { AccountRole } from '@/types/auth';
+import type { AccountRole, RegisteredOwner } from '@/types/auth';
 
 export const accountOptions = [
   { role: 'owner', name: 'roles.owner', description: 'roles.ownerDescription', action: 'auth.login.ownerTitle' },
@@ -13,7 +13,8 @@ type Props = {
   option: (typeof accountOptions)[number];
   selected: boolean;
   action?: 'auth.choice.addCashier' | 'auth.choice.createOwner';
-  onPress: (role: AccountRole) => void;
+  account?: RegisteredOwner;
+  onPress: (role: AccountRole, ownerId?: string) => void;
 };
 
 export function RoleIcon({ owner, color: suppliedColor }: { owner: boolean; color?: string }) {
@@ -44,17 +45,19 @@ export function RoleIcon({ owner, color: suppliedColor }: { owner: boolean; colo
   );
 }
 
-export function AccountRoleCard({ option, selected, onPress, action }: Props) {
+export function AccountRoleCard({ option, selected, onPress, action, account }: Props) {
   const { t } = useTranslation();
   const owner = option.role === 'owner';
   const color = owner ? '#FFFFFF' : '#102342';
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t('auth.choice.roleAccessibility', { name: t(option.name), description: t(option.description), action: t(action ?? option.action) })}
-      accessibilityHint={t(action === 'auth.choice.addCashier' ? 'auth.choice.cashierUnavailable' : action === 'auth.choice.createOwner' ? 'auth.choice.createOwnerHint' : 'auth.choice.roleHint')}
+      accessibilityLabel={account
+        ? `${account.name}, Owner ID ${account.id}, ${t(option.action)}`
+        : t('auth.choice.roleAccessibility', { name: t(option.name), description: t(option.description), action: t(action ?? option.action) })}
+      accessibilityHint={account ? t('auth.choice.ownerAccountHint') : t(action === 'auth.choice.addCashier' ? 'auth.choice.cashierUnavailable' : action === 'auth.choice.createOwner' ? 'auth.choice.createOwnerHint' : 'auth.choice.roleHint')}
       accessibilityState={{ selected }}
-      onPress={() => onPress(option.role)}
+      onPress={() => onPress(option.role, account?.id)}
       // Keep styles as data: NativeWind interop merges className into style.
       // A Pressable style callback can be swallowed during that merge.
       style={[styles.card, {
@@ -65,8 +68,8 @@ export function AccountRoleCard({ option, selected, onPress, action }: Props) {
       <View className="flex-row items-center gap-6 px-1 pb-4">
         <RoleIcon owner={owner} />
         <View className="min-w-0 flex-1">
-          <Text style={{ color }} className="font-poppins text-[16px] leading-6">{t(option.name)}</Text>
-          <Text style={{ color }} className="font-poppins text-[10px] leading-[15px]">{t(option.description)}</Text>
+          <Text style={{ color }} className="font-poppins text-[16px] leading-6">{account?.name ?? t(option.name)}</Text>
+          <Text style={{ color }} className="font-poppins text-[10px] leading-[15px]">{account ? `Owner ID: ${account.id}` : t(option.description)}</Text>
         </View>
       </View>
       <View style={{ borderTopWidth: 1, borderColor: color }} className="min-h-12 flex-row items-center justify-between gap-3 pt-2">

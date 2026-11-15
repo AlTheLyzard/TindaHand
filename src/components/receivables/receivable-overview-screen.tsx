@@ -1,3 +1,4 @@
+import { StatusText } from '@/components/ui/status-text';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View, type ScrollViewInstance } from 'react-native';
@@ -51,7 +52,7 @@ export function ReceivableOverviewScreen({ pendingOnly = false }: { pendingOnly?
     {pendingOnly ? <Text className="font-poppins text-[14px] text-text-secondary">Keep track of customers with pending debt.</Text> : <SegmentedSelector
       options={[{ label: 'Receivable', value: 'receivable' }, { label: 'Payable', value: 'payable' }]}
       value="receivable" onChange={section => { router.setParams({ section, status: 'unpaid' }); setExpanded(null); }} />}
-    {!!receivableFeedback && <Pressable accessibilityRole="button" accessibilityLabel={`${receivableFeedback} Dismiss`} onPress={dismissReceivableFeedback} className="rounded-control bg-[#E8F5E9] p-3"><Text accessibilityRole="status" className="font-poppins text-[12px] text-[#1D5D21]">{receivableFeedback}</Text></Pressable>}
+    {!!receivableFeedback && <Pressable accessibilityRole="button" accessibilityLabel={`${receivableFeedback} Dismiss`} onPress={dismissReceivableFeedback} className="rounded-control bg-[#E8F5E9] p-3"><StatusText className="font-poppins text-[12px] text-[#1D5D21]">{receivableFeedback}</StatusText></Pressable>}
     {!pendingOnly && !paid && <>
       <BalancePanel title="Total Amount to Collect" amount={formatPesos(lists.outstandingCentavos)} caption={`${lists.transactionCount} ${lists.transactionCount === 1 ? 'transaction' : 'transactions'} · ${lists.customerCount} ${lists.customerCount === 1 ? 'customer' : 'customers'}`} />
       <View className="py-1"><Button onPress={() => push(`${receivablesRoot}/customer-new`)}>Record Debt</Button></View>

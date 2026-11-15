@@ -1,11 +1,9 @@
-import type { TextInputInstance, ScrollViewInstance } from 'react-native';
+import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
+import type { TextInputInstance } from 'react-native';
 import { useTranslation } from '@/i18n/use-translation';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import {
-  AccessibilityInfo, Keyboard, KeyboardAvoidingView, Platform,
-  ScrollView, Text, View,
-} from 'react-native';
+import { AccessibilityInfo, Keyboard, Platform, Text, View } from 'react-native';
 import { AuthBackground } from './auth-background';
 
 import { AuthHeader } from '@/components/auth/auth-header';
@@ -26,7 +24,7 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
   service?: RegistrationService;
 }) {
   const { t } = useTranslation();
-  const { draft: values, setDraft: setValues, setRegistrationPreview, setCompletion, setDashboardAccess, setAccounts, refreshSession } = useAuthFlow();
+  const { draft: values, setDraft: setValues, setRegistrationPreview, setCompletion, setDashboardAccess, refreshSession } = useAuthFlow();
   const [submitted, setSubmitted] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<RegistrationField, boolean>>>({});
   const [busy, setBusy] = useState(false);
@@ -42,17 +40,13 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
   }
   const disabled = busy;
   const focused = useRef(true);
-  const scroll = useRef<ScrollViewInstance>(null);
-  const fieldOffsets = useRef<Partial<Record<RegistrationField, number>>>({});
-  const cardOffset = useRef(0);
 
   function focusField(field: RegistrationField) {
-    // Let validation messages lay out before scrolling, then focus after the
-    // scroll settles so the keyboard/scroll responder cannot steal initial focus.
+    // Let validation messages lay out; the shared viewport tracks focus and the
+    // subsequent keyboard/layout changes without pre-scrolling stale offsets.
     requestAnimationFrame(() => {
       if (!focused.current) return;
-      scroll.current?.scrollTo({ y: Math.max(0, cardOffset.current + (fieldOffsets.current[field] ?? 0) - 24), animated: false });
-      requestAnimationFrame(() => { if (focused.current) inputs.current[field]?.focus(); });
+      inputs.current[field]?.focus();
     });
   }
 
@@ -103,7 +97,6 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
         const result = await request.current(values);
         if (!focused.current) return;
         if (result?.status === 'confirmed') {
-          setAccounts((current) => ({ ...current, owner: result.account }));
           setRegistrationPreview(false);
           setCompletion({ mode: 'confirmed', name: result.account.name, id: result.account.id, toastExpiresAt: Date.now() + 15000 });
           // Credentials are no longer needed once the backend has confirmed creation.
@@ -128,14 +121,14 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
   return (
     <AuthBackground>
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView ref={scroll}
+        <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === 'web' ? 'none' : 'on-drag'}
           showsVerticalScrollIndicator={false}>
           <View className="w-full max-w-[460px] flex-1 self-center px-6 pb-4 pt-5">
             <View className="-mx-1">
-              <AuthHeader showWordmark={false} onBack={() => { if (!locked.current) { Keyboard.dismiss(); onBack(); } }} />
+              <AuthHeader showWordmark={false} backDisabled={busy} onBack={() => { if (!locked.current) { Keyboard.dismiss(); onBack(); } }} />
             </View>
             <View
               accessible
@@ -155,17 +148,16 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
             <Text accessibilityRole="header" className="text-center font-poppins-bold text-[22px] leading-[30px] text-brand">{t('auth.registration.title')}</Text>
             <Text className="mt-0.5 text-center font-poppins text-[10px] leading-[15px] text-text-secondary">{t('auth.registration.instructions')}</Text>
 
-            <View onLayout={event => { cardOffset.current = event.nativeEvent.layout.y; }} className="mx-1 mt-4 gap-6 rounded-[20px] bg-[#D9E7F5] px-5 py-8">
+            <View className="mx-1 mt-4 gap-6 rounded-[20px] bg-[#D9E7F5] px-5 py-8">
               <Text className="font-poppins text-[10px] text-text-secondary">Fields marked * are required.</Text>
               {fieldOrder.map((field, index) => {
                 const label = { name: t('fields.name'), email: 'Email Address', password: t('fields.password'), confirmPassword: t('fields.confirmPassword'), pin: t('fields.pin'), confirmPin: t('fields.confirmPin') }[field];
                 const pin = field === 'pin' || field === 'confirmPin';
                 return (
-                  <View key={field} onLayout={event => { fieldOffsets.current[field] = event.nativeEvent.layout.y; }}>
+                  <View key={field}>
                   <FormField
                     ref={(input) => { inputs.current[field] = input; }}
                     label={label}
-                    onFocus={() => scroll.current?.scrollTo({ y: Math.max(0, cardOffset.current + (fieldOffsets.current[field] ?? 0) - 24), animated: false })}
                     requiredIndicator="asterisk"
                     value={values[field]}
                     onChangeText={(value) => update(field, value)}
@@ -186,7 +178,7 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
                     returnKeyType={index === fieldOrder.length - 1 ? 'done' : 'next'}
                     submitBehavior="submit"
                     onSubmitEditing={() => {
-                      if (index === fieldOrder.length - 1) void submit();
+                      if (index === fieldOrder.length - 1) Keyboard.dismiss();
                       else inputs.current[fieldOrder[index + 1]]?.focus();
                     }}
                   />

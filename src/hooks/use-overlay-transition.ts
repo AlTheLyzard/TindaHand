@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import { cancelAnimation, useSharedValue, withTiming } from 'react-native-reanimated';
+import { cancelAnimation, ReduceMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { motion } from '@/constants/motion';
 import { useMotionReduced } from '@/state/motion';
 
 /** Retain the native window through exit; only the latest request may complete. */
-export function useOverlayTransition(visible: boolean, onHidden?: () => void, duration: number = motion.transition, nativeWindow = true) {
+export function useOverlayTransition(visible: boolean, onHidden?: () => void, duration: number = motion.transition, nativeWindow = true, initialProgress = 0) {
   const reduced = useMotionReduced();
   const [phase, setPhase] = useState({ requested: visible, presented: visible, opened: false });
   if (phase.requested !== visible) {
@@ -16,7 +16,7 @@ export function useOverlayTransition(visible: boolean, onHidden?: () => void, du
   const shown = useRef(false);
   const generation = useRef(0);
   const notified = useRef(-1);
-  const progress = useSharedValue(0);
+  const progress = useSharedValue(initialProgress);
   const live = useRef(true);
   const hidden = useRef(onHidden);
   useLayoutEffect(() => { hidden.current = onHidden; }, [onHidden]);
@@ -39,7 +39,9 @@ export function useOverlayTransition(visible: boolean, onHidden?: () => void, du
     }
   }, [nativeWindow, notifyHidden]);
   const animate = useCallback((target: number, version: number) => {
-    progress.set(withTiming(target, { duration: reduced ? 0 : duration, easing: motion.ease }, complete => {
+    // The live provider owns this preference. Reanimated's System default can
+    // retain the launch setting after Reduce Motion is changed in iOS Settings.
+    progress.set(withTiming(target, { duration: reduced ? 0 : duration, easing: motion.ease, reduceMotion: ReduceMotion.Never }, complete => {
       if (complete) scheduleOnRN(finished, target, version);
     }));
   }, [duration, finished, progress, reduced]);

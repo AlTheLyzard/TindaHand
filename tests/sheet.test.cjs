@@ -24,6 +24,13 @@ test('release snaps to content, compact or expanded, including directional veloc
   assert.equal(releaseSheet(680, -0.9, heights), 'expanded');
   assert.equal(releaseSheet(500, 0.9, heights), 'compact');
 });
+test('short cash forms fit their content without the default large-form minimum', () => {
+  const heights = sheetHeights(820, 86, 214, 280);
+  assert.equal(heights.content, 300);
+  assert.equal(heights.compact, 294);
+  assert.equal(sheetHeights(250, 86, 214, 280).content, 250);
+  assert.equal(releaseSheet(heights.compact - 80, 0, heights), 'dismiss');
+});
 test('dismissal requires pulling past compact or a downward flick near compact', () => {
   const heights = sheetHeights(820, 420, 240);
   assert.equal(releaseSheet(heights.compact - 73, 0, heights), 'dismiss');

@@ -1,10 +1,12 @@
-import { IconButton, Button } from '@/components/ui/button';
+import { KeyboardInput as TextInput } from '@/components/ui/keyboard-aware-scroll-view';
+import { IconButton } from '@/components/ui/button';
 import { useState, type Ref } from 'react';
-import { Text, TextInput, View, type TextInputInstance } from 'react-native';
+import { Text, View, type TextInputInstance } from 'react-native';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { PosIcon } from '@/components/pos/pos-icon';
 import type { Customer } from '@/types/pos';
-import tokens from '@/constants/design-tokens.json';
+import { PartyNameField } from '@/components/ui/party-name-field';
+import { useInventory } from '@/state/inventory';
 import { payableColors } from '@/components/payables/payables-ui';
 import { EmptyState as ContentState } from '@/components/ui/content-state';
 
@@ -19,21 +21,13 @@ export function CustomerSearch({ value, onChange, kind = 'customer' }: { value: 
     {!!value && <IconButton accessibilityLabel={`Clear ${kind} search`} onPress={() => onChange('')} className="min-h-12 min-w-12 items-center justify-center" icon={({ color }) => <PosIcon name="close" size={16} color={color} />} />}
   </View>;
 }
-export function CustomerNameField({ value, customerId, onChange, onSelect, error, inputRef, onNext, onPressField }: {
-  value: string; customerId?: string; onChange: (name: string) => void; onSelect: () => void; error?: string; inputRef?: Ref<TextInputInstance>; onNext?: () => void;
-  onPressField?: () => void;
+export function CustomerNameField({ value, customerId, onChange, onMatch, onSelect, error, inputRef, onNext, floatingSuggestions }: {
+  value: string; customerId?: string; onChange: (name: string) => void; onMatch: (customer: Customer) => void;
+  onSelect: () => void; error?: string; inputRef?: Ref<TextInputInstance>; onNext?: () => void; floatingSuggestions?: boolean;
 }) {
-  const [focused, setFocused] = useState(false);
-  return <View className="gap-2">
-    <Text className="font-poppins-semibold text-[12px] leading-[18px] text-text-secondary">Customer name or other identifying details (Required)</Text>
-    <View className="flex-row items-center rounded-control border bg-white px-3" style={{ borderColor: error ? '#D32F2F' : focused ? tokens.color.accentBase : tokens.color.borderOutline, backgroundColor: error ? '#FFF7F8' : '#FFFFFF' }}>
-      {!!customerId && <View accessible={false} className="mr-2 h-9 w-9 items-center justify-center rounded-pill bg-[#D1E1F5]"><Text className="font-poppins-semibold text-[14px] text-action">{value.charAt(0).toUpperCase()}</Text></View>}
-      <TextInput ref={inputRef} accessibilityLabel="Customer name, required" accessibilityHint={error} value={value} onChangeText={onChange} showSoftInputOnFocus={!onPressField} onPressIn={onPressField} placeholder="Enter Customer Name" placeholderTextColor="#5A7394" onFocus={() => { setFocused(true); onPressField?.(); }} onBlur={() => setFocused(false)} autoCapitalize="words" returnKeyType="next" onSubmitEditing={onNext} className="min-h-[56px] min-w-0 flex-1 py-3 font-poppins-semibold text-[12px] text-[#102342]" />
-      <Button variant="text" fullWidth={false} compact accessibilityLabel="Select an existing customer" onPress={onSelect}>Select</Button>
-    </View>
-    {!!error && <Text accessibilityRole="alert" className="font-poppins text-[10px] leading-[15px] text-[#972020]">{error}</Text>}
-    {!!value.trim() && !customerId && <Text className="font-poppins text-[10px] leading-[15px] text-text-secondary">New customer on save. Use Select to link an existing customer.</Text>}
-  </View>;
+  const { store } = useInventory();
+  return <PartyNameField kind="customer" label="Customer name or other identifying details" value={value} selectedId={customerId}
+    records={store.pos?.customers ?? []} onChange={onChange} onMatch={onMatch} onSelect={onSelect} error={error} inputRef={inputRef} onNext={onNext} floatingSuggestions={floatingSuggestions} />;
 }
 export function CustomerList({ customers, onSelect }: { customers: readonly Customer[]; onSelect: (customer: Customer) => void }) {
   const [query, setQuery] = useState('');

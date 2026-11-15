@@ -1,90 +1,53 @@
-import type { ScrollViewInstance } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
-import { Image, Keyboard, ScrollView, Text, View } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
-import { AlphabetIndex } from './alphabet-index';
-import { PosIcon } from './pos-icon';
-import { Button, IconButton } from '@/components/ui/button';
-import { QuickAddField } from '@/components/dashboard/quick-add-ui';
+import { useRef, useState } from 'react';
+import { Keyboard, Text, View } from 'react-native';
+import { BackButton } from '@/components/ui/back-button';
+import { Button } from '@/components/ui/button';
+import { ProductCatalog } from './product-catalog';
 import { useInventory } from '@/state/inventory';
-import { useAuthFlow } from '@/state/auth-flow';
+import tokens from '@/constants/design-tokens.json';
 import type { ProductSelection } from '@/types/pos';
-import { filterProducts, selectProduct, selectionSummary } from '@/utils/pos';
+import { removeSelectedProduct, selectProduct, selectionSummary, setSelectedQuantity, stockConflicts } from '@/utils/pos';
 import { formatPesos } from '@/utils/dashboard';
 
-/** Full-screen presentation inside the existing modal; draft and stock ownership stay with the caller. */
-export function CreditProductBrowser({ name, onName, selection, onChange, onReturn, nameError }: {
-  name: string; onName: (name: string) => void; selection: ProductSelection;
-  onChange: (update: (previous: ProductSelection) => ProductSelection) => void; onReturn: () => void; nameError?: string;
+/** Selection is a local transaction. Confirm publishes snapshots to the debt
+ * form only; neither selection nor dismissal writes a sale, debt, or stock. */
+export function CreditProductBrowser({ name, selection, onConfirm, onReturn }: {
+  name: string; selection: ProductSelection; onConfirm: (selection: ProductSelection) => void; onReturn: () => void;
 }) {
   const { store: { products } } = useInventory();
-  const { owner } = useAuthFlow();
-  const [query, setQuery] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible());
-  useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
-  const scroll = useRef<ScrollViewInstance>(null);
-  const sections = useRef<Record<string, number>>({});
-  const gridOffset = useRef(0);
-  const gridStart = useSharedValue(0), scrollY = useSharedValue(0), viewportHeight = useSharedValue(0);
-  const [active, setActive] = useState<string | null>(null);
-  const visible = filterProducts(products, query, null, null);
-  const letters = [...new Set(visible.map(product => product.name.charAt(0).toUpperCase()))];
-  const summary = selectionSummary(selection);
-  return <View className="flex-1 bg-canvas">
-    <View className="border-b border-[#ADC9EE] bg-white">
-      <View className="w-full max-w-[460px] flex-row items-center gap-3 self-center px-5 py-3">
-        <Image source={require('@/assets/images/brand/tindahand-mark.png')} style={{ width: 36, height: 38 }} accessible={false} resizeMode="contain" />
-        <Text className="flex-1 font-poppins-bold text-[22px] text-brand">TindaHand</Text>
-        <Image source={require('@/assets/images/dashboard/settings.png')} style={{ width: 24, height: 24 }} accessible={false} resizeMode="contain" />
-        <View accessible={false} className="h-9 w-9 items-center justify-center rounded-pill bg-[#D1E2F8]"><Text className="font-poppins-bold text-[14px] text-action">{owner?.name.charAt(0).toUpperCase()}</Text></View>
+  const [draft, setDraft] = useState(selection);
+  const returned = useRef(false);
+  const summary = selectionSummary(draft);
+  const conflicts = stockConflicts(draft, products);
+  const finish = (confirm: boolean) => {
+    if (returned.current || (confirm && conflicts.length)) return;
+    returned.current = true; Keyboard.dismiss();
+    if (confirm) onConfirm(draft); else onReturn();
+  };
+  return <View testID="credit-product-browser" style={{ flex: 1, backgroundColor: '#F0F8FF' }}>
+    <View style={{ width: '100%', maxWidth: 460, flex: 1, alignSelf: 'center' }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><BackButton accessibilityLabel="Back to debt form" onPress={() => finish(false)} />
+          <Text accessibilityRole="header" style={{ flex: 1, fontFamily: 'Poppins_700Bold', fontSize: 22, color: tokens.color.textPrimary }}>Select Products</Text></View>
+        <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, color: tokens.color.textSecondary }}>Choose items and quantities for this Customer Debt.</Text>
+        {!!name.trim() && <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: tokens.color.textPrimary }}>Customer: {name}</Text>}
       </View>
-    </View>
-    <View className="w-full max-w-[460px] flex-1 self-center" onLayout={event => { viewportHeight.value = event.nativeEvent.layout.height; }}>
-      <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" onScroll={event => { scrollY.value = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}>
-        <IconButton accessibilityLabel="Back to debt form" onPress={onReturn} className="-ml-2 mt-1 min-h-12 w-12 items-center justify-center" icon={({ color }) => <PosIcon name="back" size={24} color={color} />} />
-        <Text accessibilityRole="header" className="mb-4 font-poppins-bold text-[32px] leading-[48px] text-brand">{'New Customer\nDebt'}</Text>
-        <Text className="mb-6 font-poppins text-[14px] leading-[21px] text-text-secondary">Keep track of what your customers owe and when they need to pay.</Text>
-        <QuickAddField label="Customer name or other identifying details" value={name} onChangeText={onName} placeholder="e.g. Arman Salon" error={nameError} />
-        <View className="my-4 min-h-12 flex-row items-center justify-between gap-2"><Text accessibilityRole="header" className="flex-1 font-poppins-bold text-[18px] text-[#102342]">Products</Text><Text className="font-poppins-bold text-[12px] text-text-secondary">{visible.length} {visible.length === 1 ? 'Product' : 'Products'}</Text>
-          <IconButton accessibilityLabel="Search products" accessibilityState={{ expanded: searchOpen }} onPress={() => setSearchOpen(value => !value)} className="min-h-12 min-w-12 items-center justify-center" icon={({ color }) => <PosIcon name="search" size={20} color={color} />} />
+      <ProductCatalog products={products} selection={draft} onAdd={id => {
+        const product = products.find(item => item.id === id);
+        if (product) setDraft(previous => selectProduct(previous, product));
+      }} onDecrease={id => {
+        const product = products.find(item => item.id === id);
+        setDraft(previous => !previous[id] ? previous : previous[id].quantity === 1 ? removeSelectedProduct(previous, id)
+          : product ? setSelectedQuantity(previous, product, previous[id].quantity - 1) : previous);
+      }} />
+      <View style={{ padding: 16, gap: 12, borderTopWidth: 1, borderColor: tokens.color.borderOutline, backgroundColor: '#FFFFFF' }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 }}>
+          <Text accessibilityLiveRegion="polite" style={{ fontFamily: 'Poppins_600SemiBold', color: tokens.color.textSecondary }}>{summary.quantity} selected</Text>
+          <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 20, color: tokens.color.textPrimary }}>{formatPesos(summary.totalCentavos)}</Text>
         </View>
-        {searchOpen && <View className="mb-4"><QuickAddField label="Search products" required={false} value={query} onChangeText={setQuery} placeholder="Enter product name" returnKeyType="search" onSubmitEditing={Keyboard.dismiss} /></View>}
-        <View className="pr-6" onLayout={event => { gridOffset.current = event.nativeEvent.layout.y; gridStart.value = event.nativeEvent.layout.y; }}>
-          {visible.length === 0 && <Text className="py-6 font-poppins text-[12px] text-text-secondary">No products match your search.</Text>}
-          {letters.map(letter => <View key={letter} className="mb-5" onLayout={event => { sections.current[letter] = event.nativeEvent.layout.y; }}>
-            <Text accessibilityRole="header" className="mb-2 font-poppins-bold text-[12px] text-[#102342]">{letter}</Text>
-            <View className="flex-row flex-wrap" style={{ marginHorizontal: -6 }}>
-              {visible.filter(product => product.name.charAt(0).toUpperCase() === letter).map(product => {
-                const count = selection[product.id]?.quantity ?? 0;
-                const remaining = Math.max(0, product.stock - count);
-                const photoUri = products.find(item => item.id === product.id)?.photoUri;
-                return <View key={product.id} style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
-                  <View className="flex-1 rounded-surface bg-white p-3">
-                    {photoUri ? <Image source={{ uri: photoUri }} style={{ width: '100%', aspectRatio: 1.35, marginBottom: 8 }} resizeMode="cover" /> : <View accessible={false} className="mb-2 w-full bg-[#D9E7F4]" style={{ aspectRatio: 1.35 }} />}
-                    <Text className="font-poppins-bold text-[11px] leading-4 text-[#102342]">{product.name}</Text>
-                    <Text className="font-poppins text-[12px] text-[#102342]">{formatPesos(product.unitPriceCentavos)}</Text>
-                  </View>
-                  <View className="my-2 rounded-control border px-2 py-1" style={{ backgroundColor: remaining ? '#E7F3E8' : '#FDEEEF', borderColor: remaining ? '#36833C' : '#CC333B' }}><Text className="font-poppins-bold text-[11px]" style={{ color: remaining ? '#286B2C' : '#B4232C' }}>{remaining} in stock</Text></View>
-                  <Button disabled={!remaining} accessibilityLabel={`Add ${product.name}, ${formatPesos(product.unitPriceCentavos)}, ${remaining} available`} onPress={() => onChange(previous => selectProduct(previous, product))}>{count ? `+ Add · ${count} selected` : '+ Add'}</Button>
-                </View>;
-              })}
-            </View>
-          </View>)}
-        </View>
-      </ScrollView>
-      <AlphabetIndex letters={letters} active={active} gridStart={gridStart} scrollY={scrollY} viewportHeight={viewportHeight} onPick={letter => { setActive(letter); Keyboard.dismiss(); scroll.current?.scrollTo({ y: letter ? gridOffset.current + (sections.current[letter] ?? 0) : 0, animated: false }); }} />
-    </View>
-    <View className="rounded-t-[24px] bg-white px-4 pb-3 pt-4">
-      <View className="w-full max-w-[428px] flex-row gap-3 self-center"><View className="flex-1"><Button variant="secondary" onPress={onReturn}>Cancel</Button></View><View className="flex-1"><Button onPress={onReturn}>Review Debt</Button></View></View>
-      <Text accessibilityLiveRegion="polite" className="my-2 text-center font-poppins text-[11px] text-text-secondary">{summary.quantity} selected · {formatPesos(summary.totalCentavos)}</Text>
-      {!keyboardVisible && <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden className="min-h-[72px] w-full max-w-[330px] flex-row items-center justify-around self-center rounded-pill border border-[#ADC9EE] bg-white" style={{ boxShadow: '0 4px 12px #10234230' }}>
-        {(['home', 'cart', 'inventory', 'menu'] as const).map(icon => <View key={icon} className="h-14 w-14 items-center justify-center rounded-pill" style={{ backgroundColor: icon === 'menu' ? '#D1E2F8' : 'transparent' }}><PosIcon name={icon} size={30} color="#4A607A" /></View>)}
-      </View>}
+        {!!conflicts.length && <Text accessibilityRole="alert" style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, color: tokens.color.errorBase }}>Stock changed. Reduce or remove unavailable quantities before confirming.</Text>}
+        <Button disabled={!!conflicts.length} onPress={() => finish(true)}>Confirm Products</Button>
+      </View>
     </View>
   </View>;
 }

@@ -1,12 +1,14 @@
+import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { router, useFocusEffect } from 'expo-router';
 import { Image as BackgroundImage } from 'expo-image';
 import { useCallback, type ReactNode } from 'react';
-import { BackHandler, Image, KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { BackHandler, Image, Platform, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
 import { DashboardAction, DashboardCircle } from '@/components/dashboard/dashboard-ui';
 import { PosIcon } from '@/components/pos/pos-icon';
 import { IconButton } from '@/components/ui/button';
+import { BackButton } from '@/components/ui/back-button';
 import { useTranslation } from '@/i18n/use-translation';
 import { useAuthFlow } from '@/state/auth-flow';
 import tokens from '@/constants/design-tokens.json';
@@ -45,7 +47,7 @@ export function FinancialFrame({ title, landing = false, children, refreshing = 
       contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + (landing ? tokens.navigation.height + 24 : 24) }}>
       <View className="w-full max-w-[460px] flex-1 self-center px-6 pt-6">
         <View className="mb-5 flex-row items-center gap-1">
-          <IconButton accessibilityLabel={t('common.back')} onPress={back} className="-ml-3" icon={({ color }) => <PosIcon name="back" size={22} color={color} />} />
+          <BackButton accessibilityLabel={t('common.back')} onPress={back} />
           <Text accessibilityRole="header" className="min-w-0 flex-1 font-poppins-bold text-brand" style={{ fontSize: landing ? width < 360 ? 20 : 26 : 22, lineHeight: landing ? 38 : 32 }}>{title}</Text>
           {!landing && onRefresh && <IconButton accessibilityLabel={t('financial.refresh')} disabled={refreshing} onPress={onRefresh} icon={({ color }) => <PosIcon name="history" size={20} color={color} />} />}
         </View>

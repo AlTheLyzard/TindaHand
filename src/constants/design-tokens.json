@@ -1,5 +1,5 @@
 {
-  "color": { "warningBase": "#F9A825", "surfaceCard": "#FFFFFF", "surfaceSubtle": "#D9E7F4", "accentBase": "#2F6CC9", "accentContainer": "#D1E1F5", "primaryDisabled": "#B8CCE4", "borderOutline": "#B0C8E3", "textPrimary": "#0C1B3C", "textSecondary": "#4A607A", "navigationSurface": "#FFFFFF", "navigationBorder": "#ADC9EE" },
+  "color": { "errorBase": "#972020", "successBase": "#1D5D21", "warningBase": "#F9A825", "surfaceCard": "#FFFFFF", "surfaceSubtle": "#D9E7F4", "accentBase": "#2F6CC9", "accentContainer": "#D1E1F5", "primaryDisabled": "#B8CCE4", "borderOutline": "#B0C8E3", "textPrimary": "#0C1B3C", "textSecondary": "#4A607A", "navigationSurface": "#FFFFFF", "navigationBorder": "#ADC9EE" },
   "button": {
     "height": 50, "radius": 5, "fontSize": 14, "lineHeight": 21,
     "fontFamily": "Poppins_700Bold", "paddingHorizontal": 16, "paddingVertical": 12,

@@ -1,12 +1,13 @@
+import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { Button } from '@/components/ui/button';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, Text, View, type TextInputInstance, type ViewInstance } from 'react-native';
+import { Keyboard, Platform, Text, View, type TextInputInstance, type ViewInstance } from 'react-native';
 import { MotionContent } from '@/components/ui/motion-content';
 import { PosDialog } from '@/components/pos/pos-dialog';
-import { PosBackButton } from '@/components/pos/pos-back-button';
 import { PosChip } from '@/components/pos/pos-chip';
-import { PosFrame } from '@/components/pos/pos-frame';
+import { PosFrame, posHref, type PosRouteBase } from '@/components/pos/pos-frame';
+import { PosBackButton } from '@/components/pos/pos-back-button';
 import { PaymentAmountField } from '@/components/pos/payment-amount-field';
 import { PaymentCustomerField } from '@/components/pos/payment-customer-field';
 import { FormField } from '@/components/ui/form-field';
@@ -26,7 +27,9 @@ const errorLabels = { required: 'Enter the amount received.', invalid: 'Enter a 
   positive: 'Enter an amount greater than zero.', insufficient: 'Cover the remaining balance to complete this payment.',
   fullyPaid: 'This payment covers the total. Use Cash or GCash to complete a fully paid sale.' };
 
-export function PaymentScreen({ owner }: { owner: OwnerIdentity }) {
+export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPayment = true }: {
+  owner: OwnerIdentity; basePath?: PosRouteBase; allowPartialPayment?: boolean;
+}) {
   const metrics = usePosMetrics();
   const { selection, paymentDraft: draft, updatePayment, completeOrder, clear, hasStockConflict, customers } = usePos();
   const preview = useContentPreview();
@@ -47,6 +50,7 @@ export function PaymentScreen({ owner }: { owner: OwnerIdentity }) {
   const summary = selectionSummary(selection);
   const amounts = paymentAmounts(summary.totalCentavos, draft);
   const errors = paymentErrors(summary.totalCentavos, draft);
+  const validPayment = !hasStockConflict && !Object.values(errors).some(Boolean);
   const partial = draft.method === 'partial';
   const split = draft.method === 'split';
   const gcashVisible = draft.method === 'gcash' || split || (partial && draft.partialMethod === 'gcash');
@@ -54,8 +58,10 @@ export function PaymentScreen({ owner }: { owner: OwnerIdentity }) {
   const confirmationKey = orderSelectionKey(selection) + JSON.stringify(draft);
   const update = (patch: Parameters<typeof updatePayment>[0]) => { setFailure(''); updatePayment(patch); };
   const amountError = errors.amount ? errorLabels[errors.amount] : undefined;
-  const back = () => { Keyboard.dismiss(); router.navigate('/owner-pos/cart'); };
+  const back = () => { Keyboard.dismiss(); router.navigate(posHref(basePath, 'cart')); };
+  const closeConfirmation = () => { if (!committing.current) setConfirmation(null); };
   function submit() {
+    if (committing.current || confirmation !== null) return;
     setAttempted(true);
     if (hasStockConflict || errors.order) return;
     if (errors.customer) { customerInput.current?.focus(); return; }
@@ -68,7 +74,13 @@ export function PaymentScreen({ owner }: { owner: OwnerIdentity }) {
     setConfirmation(confirmationKey);
   }
   function commit() {
-    if (committing.current) return;
+    if (committing.current || confirmation === null) return;
+    if (!validPayment || confirmation !== confirmationKey) {
+      setConfirmation(null);
+      setAttempted(true);
+      setFailure('The order or payment changed. Review the details and confirm again.');
+      return;
+    }
     committing.current = true;
     setBusy(true);
     let saved = false;
@@ -86,30 +98,40 @@ export function PaymentScreen({ owner }: { owner: OwnerIdentity }) {
       if (!saved) committing.current = false;
       setBusy(false);
     }
-    if (saved) router.navigate('/owner-pos');
+    if (saved) router.navigate(posHref(basePath));
   }
   const confirmationRows = paymentConfirmationRows(summary.totalCentavos, draft,
     customers.find(customer => customer.id === draft.customerId)?.name ?? draft.customerName.trim());
+  const balanceAmount = partial || amounts.remainingCentavos > 0 ? amounts.remainingCentavos : amounts.changeCentavos;
+  const balanceColor = balanceAmount === 0 ? tokens.color.textPrimary
+    : amounts.remainingCentavos > 0 ? tokens.color.errorBase : tokens.color.successBase;
 
-  return <PosFrame owner={owner} step="payment" onPos={() => router.navigate('/owner-pos')}>
+  const paymentMethods = (Object.keys(modeLabels) as PaymentMethod[]).filter(method => allowPartialPayment || method !== 'partial');
+
+  return <PosFrame owner={owner} basePath={basePath} step="payment" onPos={() => router.navigate(posHref(basePath))}>
     <View ref={keyboardArea} collapsable={false} className="flex-1" onLayout={() => keyboardArea.current?.measureInWindow((_x, y) => setKeyboardOffset(y))}>
     <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={keyboardOffset}>
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: tokens.spacing.four }}>
         <MotionContent changeKey={preview.mode} className="w-full max-w-[460px] self-center" style={{ paddingHorizontal: metrics.gutter }}>
+          <View style={{ marginBottom: tokens.spacing.two }}>
+            <PosBackButton label="Back to cart review" onPress={back} />
+          </View>
           {preview.loading ? <RecordSkeleton kind="payment" gcash={gcashVisible} /> : preview.empty || summary.quantity === 0
-            ? <EmptyState icon="cart" title="Your cart is empty" description="Select products before making a payment." action="Browse Products" onAction={() => { preview.reset(); router.navigate('/owner-pos'); }} /> : <>
+            ? <EmptyState icon="cart" title="Your cart is empty" description="Select products before making a payment." action="Browse Products" onAction={() => { preview.reset(); router.navigate(posHref(basePath)); }} /> : <>
             <View className="rounded-card bg-action p-5">
               <Text className="font-poppins-bold text-[11px] text-white">Total Amount Payable · {cartCountsLabel(selection)}</Text>
               <Text accessibilityLiveRegion="polite" className="mt-3 font-poppins-bold text-[26px] text-white">Total: {formatPesos(summary.totalCentavos)}</Text>
             </View>
-            <View accessibilityRole="radiogroup" accessibilityLabel="Payment mode" className="mb-8 mt-2 flex-row gap-1">
-              {(Object.keys(modeLabels) as PaymentMethod[]).map(method => <View key={method} style={{ flex: method === 'cash' ? 60 : method === 'gcash' ? 70 : method === 'split' ? 100 : 114 }}>
-                <PosChip radio stretch appearance="payment" selected={draft.method === method}
-                  onPress={() => update({ method })} label={modeLabels[method]} />
-              </View>)}
-            </View>
-            {hasStockConflict && <Text accessibilityRole="alert" className="mb-3 font-poppins text-[12px] text-[#972020]">Stock changed. Return to your cart and review the unavailable quantities.</Text>}
+            <ScrollView testID="payment-mode-selector" horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+              style={{ flexGrow: 0, marginHorizontal: -8, marginTop: 8, marginBottom: 32 }}
+              contentContainerStyle={{ paddingHorizontal: 8, paddingVertical: 2, gap: 8, alignItems: 'center' }}>
+              <View accessibilityRole="radiogroup" accessibilityLabel="Payment mode" className="flex-row items-center gap-2">
+                {paymentMethods.map(method => <PosChip key={method} radio appearance="payment" selected={draft.method === method}
+                  disabled={busy} onPress={() => update({ method })} label={modeLabels[method]} />)}
+              </View>
+            </ScrollView>
+            {hasStockConflict && <Text accessibilityRole="alert" className="mb-3 font-poppins text-[12px]" style={{ color: tokens.color.errorBase }}>Stock changed. Return to your cart and review the unavailable quantities.</Text>}
             <View className="gap-4 rounded-card bg-white p-4" style={{ zIndex: 1 }}>
               {partial && <>
                 <PaymentCustomerField inputRef={customerInput} customers={customers} draft={draft} update={update}
@@ -135,7 +157,8 @@ export function PaymentScreen({ owner }: { owner: OwnerIdentity }) {
                 autoCapitalize="none" placeholder="Enter reference number" returnKeyType="done" onSubmitEditing={Keyboard.dismiss}
                 error={(attempted || touched.reference) && errors.reference ? 'Enter the GCash reference number.' : undefined} />}
             </View>
-            <View accessibilityLiveRegion="polite" className="mt-8 gap-2 rounded-card bg-[#D1E1F5] p-5">
+            <View testID="payment-balance-card" accessibilityLiveRegion="polite" className="mt-8 gap-2 rounded-card bg-[#D1E1F5] p-5">
+              <View testID="payment-balance-accent" accessible={false} style={{ position: 'absolute', left: 8, top: 20, bottom: 20, width: 3, borderRadius: 2, opacity: balanceAmount > 0 ? 0.45 : 0, backgroundColor: balanceColor }} />
               {partial && <Text className="font-poppins-bold text-[12px] text-brand">Amount Paid: {formatPesos(amounts.paidCentavos)}</Text>}
               {split && <Text className="font-poppins-bold text-[12px] text-brand">Amount Received: {formatPesos(amounts.paidCentavos)}</Text>}
               {!partial && <Text className="font-poppins-bold text-[12px] text-brand">{amounts.remainingCentavos > 0 ? 'Remaining Balance' : 'Change'}</Text>}
@@ -143,7 +166,7 @@ export function PaymentScreen({ owner }: { owner: OwnerIdentity }) {
                 ? `${formatPesos(summary.totalCentavos)} − ${formatPesos(amounts.paidCentavos)} = ${formatPesos(amounts.remainingCentavos)}`
                 : errors.gcash === 'overpayment' ? 'Review the GCash amount before completing the order.' : `${formatPesos(amounts.paidCentavos)} − ${formatPesos(summary.totalCentavos)} = ${formatPesos(amounts.changeCentavos)}`}</Text>
               {partial && <Text className="mt-4 font-poppins-bold text-[12px] text-brand">Remaining Balance</Text>}
-              <Text className="font-poppins-bold text-[28px] text-brand">{formatPesos(partial || amounts.remainingCentavos > 0 ? amounts.remainingCentavos : amounts.changeCentavos)}</Text>
+              <Text testID="payment-balance-amount" className="font-poppins-bold text-[28px]" style={{ color: balanceColor }}>{formatPesos(balanceAmount)}</Text>
             </View>
             {attempted && amountError && <Text accessibilityRole="alert" className="mt-3 font-poppins text-[12px] text-[#972020]">{amountError}</Text>}
             {attempted && errors.amount === 'fullyPaid' && draft.partialMethod && <Button variant="text" fullWidth={false} compact style={{ alignSelf: 'flex-start' }} onPress={() => update(draft.partialMethod === 'cash' ? { method: 'cash', cashAmount: draft.partialAmount } : { method: 'gcash', gcashAmount: draft.partialAmount, gcashReference: draft.partialReference })}>{["Use ", modeLabels[draft.partialMethod], "for full payment"].join('')}</Button>}
@@ -152,14 +175,14 @@ export function PaymentScreen({ owner }: { owner: OwnerIdentity }) {
               <Button variant="positive" loading={busy} disabled={hasStockConflict} onPress={submit}>Complete Order</Button>
               <Button variant="destructiveOutline" onPress={() => { Keyboard.dismiss(); setCancelRequested(true); }}>Cancel Order</Button>
             </View>
-            <PosBackButton label="Back to cart review" onPress={back} />
           </>}
           {preview.control}
         </MotionContent>
       </ScrollView>
     </KeyboardAvoidingView>
     </View>
-    <PosDialog visible={confirmation !== null} title="Confirm Checkout?" confirmLabel="Confirm Checkout" cancelLabel="Back to Payment" onClose={() => setConfirmation(null)} onConfirm={commit}>
+    <PosDialog visible={confirmation !== null} title="Confirm Checkout?" confirmLabel="Confirm" cancelLabel="Cancel" actionLayout="row"
+      busy={busy} confirmDisabled={!validPayment || confirmation !== confirmationKey} onClose={closeConfirmation} onConfirm={commit}>
       <View className="gap-3">
         {confirmationRows.map((row, index) => <View key={row.label} className={`flex-row items-start justify-between gap-3 ${index === 0 ? 'border-b border-[#ADC9EE] pb-3' : ''}`}>
           <Text className="flex-1 font-poppins text-[12px] text-text-secondary">{row.label}</Text>
@@ -168,6 +191,6 @@ export function PaymentScreen({ owner }: { owner: OwnerIdentity }) {
       </View>
     </PosDialog>
     <PosDialog visible={cancelRequested} destructive title="Discard Changes?" message="You have unsaved changes. Are you sure you want to close without saving?" confirmLabel="Discard Changes" cancelLabel="Keep Editing" onClose={() => setCancelRequested(false)}
-      onConfirm={() => { setCancelRequested(false); clear(); router.navigate('/owner-pos'); }} />
+      onConfirm={() => { setCancelRequested(false); clear(); router.navigate(posHref(basePath)); }} />
   </PosFrame>;
 }

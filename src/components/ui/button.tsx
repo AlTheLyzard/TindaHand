@@ -1,5 +1,5 @@
 import { useRef, useState, type ComponentProps, type ReactNode } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { MotionPressable } from '@/components/ui/motion-pressable';
 import tokens from '@/constants/design-tokens.json';
 
@@ -8,11 +8,12 @@ type Icon = (props: { color: string; size: number }) => ReactNode;
 type SurfaceProps = Omit<ComponentProps<typeof MotionPressable>, 'children'> & {
   variant?: ButtonVariant;
   loading?: boolean;
+  interactionBackgroundColor?: string;
   children: ReactNode | ((appearance: { color: string; size: number }) => ReactNode);
 };
 
 /** Shared palette and feedback for CTAs and controls that retain their own geometry. */
-export function ButtonSurface({ variant = 'primary', loading = false, disabled, children, style,
+export function ButtonSurface({ variant = 'primary', loading = false, disabled, children, style, interactionBackgroundColor,
   onPress, onPressIn, onPressOut, onHoverIn, onHoverOut, onFocus, onBlur, ...props }: SurfaceProps) {
   const [pressed, setPressed] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -26,7 +27,10 @@ export function ButtonSurface({ variant = 'primary', loading = false, disabled, 
   const state = disabled ? 'disabled' : loading ? 'default' : pressed ? 'pressed' : hovered ? 'hover' : 'default';
   const color = disabled ? palette.disabledText : outlined || textOnly ? ink[pressed ? 'pressed' : hovered ? 'hover' : 'default'] : '#FFFFFF';
   const appearance: ViewStyle = {
-    backgroundColor: textOnly ? pressed || hovered ? palette[state] : 'transparent' : palette[state],
+    backgroundColor: textOnly
+      ? interactionBackgroundColor && (pressed || hovered || props.accessibilityState?.selected) ? interactionBackgroundColor
+        : pressed || hovered ? palette[state] : 'transparent'
+      : palette[state],
     borderWidth: textOnly ? 0 : 1,
     borderColor: disabled ? variant === 'destructiveOutline' ? '#FFEBEE' : outlined ? '#B0C8E3' : palette.disabled : outlined ? ink[pressed ? 'pressed' : hovered ? 'hover' : 'default'] : palette[state],
     boxShadow: textOnly ? 'none' : outlined || disabled
@@ -68,18 +72,21 @@ type ButtonProps = Omit<SurfaceProps, 'children'> & {
   fullWidth?: boolean;
   shape?: 'control' | 'pill';
   compact?: boolean;
+  textColor?: string;
 };
 
 /** The 2× artwork maps to a 50 dp minimum; labels grow and wrap with system text. */
 export function Button({ children, icon, iconPosition = 'leading', fullWidth = true,
-  shape = 'control', compact = false, loading = false, style, ...props }: ButtonProps) {
+  shape = 'control', compact = false, loading = false, textColor, style, ...props }: ButtonProps) {
+  const { fontScale } = useWindowDimensions();
   return <ButtonSurface {...props} accessibilityLabel={props.accessibilityLabel ?? children} loading={loading} style={[styles.button,
     { width: fullWidth ? '100%' : undefined, borderRadius: shape === 'pill' ? tokens.radius.pill : tokens.button.radius,
       paddingHorizontal: props.variant === 'text' || props.variant === 'destructiveText' ? 8 : compact ? 12 : tokens.button.paddingHorizontal }, style]}>
     {({ color, size }) => <>
       <View accessible={false} style={[styles.content, { opacity: loading ? 0 : 1 }]}>
         {icon && iconPosition === 'leading' && <View style={styles.icon}>{icon({ color, size })}</View>}
-        <Text style={[styles.label, { color, fontSize: compact ? 12 : tokens.button.fontSize }]}>{children}</Text>
+        <Text style={[styles.label, { color: props.disabled ? color : textColor ?? color,
+          fontSize: compact ? 12 : tokens.button.fontSize, lineHeight: tokens.button.lineHeight * fontScale }]}>{children}</Text>
         {icon && iconPosition === 'trailing' && <View style={styles.icon}>{icon({ color, size })}</View>}
       </View>
       {loading && <View pointerEvents="none" style={styles.loading}><ActivityIndicator size="small" color={color} /></View>}
@@ -99,7 +106,7 @@ export function IconButton({ icon, accessibilityLabel, variant = 'text', style, 
 const styles = StyleSheet.create({
   button: { minHeight: tokens.button.height, minWidth: tokens.size.touchTarget, justifyContent: 'center', alignItems: 'center', paddingVertical: tokens.button.paddingVertical },
   content: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: tokens.button.iconGap, maxWidth: '100%' },
-  label: { flexShrink: 1, textAlign: 'center', fontFamily: tokens.button.fontFamily, lineHeight: tokens.button.lineHeight },
+  label: { flexShrink: 1, textAlign: 'center', fontFamily: tokens.button.fontFamily },
   icon: { flexShrink: 0 },
   loading: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   iconButton: { minHeight: tokens.size.touchTarget, minWidth: tokens.size.touchTarget, borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center' },

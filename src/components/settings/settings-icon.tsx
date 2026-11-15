@@ -1,6 +1,8 @@
 import { Image } from 'expo-image';
 
 const sources = {
+  settings: require('@/assets/images/menu/settings.png'),
+  profile: require('@/assets/images/menu/profile.png'),
   language: require('@/assets/images/settings/language.svg'),
   security: require('@/assets/images/settings/security.svg'),
   lock: require('@/assets/images/settings/lock.svg'),

@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { settingsService } from '@/services/settings';
 import type { SettingsService } from '@/types/settings';
+import { defaultOperatorPermissions } from '@/utils/operator-access';
 
 const Context = createContext<SettingsService>(settingsService);
 /** Replace the adapter here when an authenticated backend contract is approved. */
@@ -15,5 +16,6 @@ export function useSettings() {
     ...service,
     cashiers: (ownerId: string) => snapshot.cashiers.filter(item => item.ownerId === ownerId),
     syncState: (ownerId: string) => snapshot.syncByOwner.get(ownerId) ?? snapshot.defaultSync,
+    operatorPermissions: (operatorId: string) => snapshot.permissionsByOperator.get(operatorId) ?? defaultOperatorPermissions,
   }), [service, snapshot]);
 }

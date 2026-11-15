@@ -1,10 +1,11 @@
 import { businessAssets, inventoryProducts, inventorySales } from '@/data/inventory';
-import type { OwnerIdentity } from '@/types/auth';
+import type { DeviceSession, OwnerIdentity } from '@/types/auth';
 import type { MockSale } from '@/types/pos';
 import { inventoryReducer, type InventoryAction, type InventoryStore } from '@/utils/inventory';
 import { emptyPosLedger } from '@/utils/pos-checkout';
 import { saleLines } from '@/utils/pos-records';
 import { receivablesSeed } from '@/data/receivables';
+import { hasCapability } from '@/utils/operator-access';
 
 // TODO(BACKEND): Replace seed loading with store-scoped reads; search/filter/ranking
 // currently use complete local collections, without pagination. See docs/backend-handoff.md#inventory-and-pos.
@@ -25,5 +26,14 @@ export function getInventorySales(sales: readonly MockSale[]) {
 // atomic transactions and durable idempotency. See docs/api-contract.md#inventory-and-pos.
 export function applyInventoryAction(store: InventoryStore, owner: OwnerIdentity | null, action: InventoryAction): InventoryStore {
   if (!owner || ('command' in action && action.command.ownerId !== owner.id)) return store;
+  return inventoryReducer(store, action);
+}
+
+/** Operators may commit POS sales only; every other inventory action stays Owner-only. */
+export function applyOperatorPosAction(store: InventoryStore, session: DeviceSession | null,
+  action: Extract<InventoryAction, { type: 'completeSale' }>): InventoryStore {
+  if (!session || session.role !== 'operator' || session.ownerId !== session.owner.id
+    || action.command.ownerId !== session.ownerId || !hasCapability(session, 'pos')
+    || (action.command.draft.method === 'partial' && !hasCapability(session, 'receivables'))) return store;
   return inventoryReducer(store, action);
 }

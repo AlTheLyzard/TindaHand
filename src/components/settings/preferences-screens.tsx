@@ -59,7 +59,7 @@ export function SecurityScreen() {
       </View>
       <Button onPress={() => router.navigate(`${settingsRoot}/cashier-pins`)}>Manage Operator PINs</Button>
       <View className="h-4" />
-      <Button variant="secondary" onPress={() => { void lock().then(() => { router.dismissAll(); router.replace({ pathname: '/login', params: { role: 'owner' } }); }); }}>Lock App</Button>
+      <Button variant="secondary" onPress={() => { void lock().then(() => { if (router.canDismiss()) router.dismissAll(); router.replace({ pathname: '/login', params: { role: 'owner' } }); }); }}>Lock App</Button>
       <Text className="mt-3 font-poppins text-[12px] leading-[18px] text-text-secondary">Locking keeps this device session for PIN unlock. Full logout ends the session and requires your password.</Text>
     </SettingsCard>
   </SettingsFrame>;
