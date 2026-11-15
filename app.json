@@ -27,7 +27,11 @@
       "expo-router",
       [
         "expo-image-picker",
-        { "photosPermission": "Choose a product photo for your inventory.", "cameraPermission": false, "microphonePermission": false }
+        {
+          "photosPermission": "Choose a product photo for your inventory.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ],
       [
         "expo-splash-screen",
@@ -37,7 +41,8 @@
           "imageWidth": 76,
           "resizeMode": "contain"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

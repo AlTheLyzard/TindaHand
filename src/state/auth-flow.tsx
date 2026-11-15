@@ -1,9 +1,9 @@
-import { createContext, useContext, useState, useEffect, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { createContext, useContext, useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { AppState } from 'react-native';
 
-import type { AccountRole, DeviceSession, MockAccounts, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues } from '@/types/auth';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { authenticationService } from '@/services/authentication';
+import type { AccountRole, DeviceSession, MockAccounts, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues } from '@/types/auth';
 
 const emptyDraft: RegistrationFormValues = {
   name: '', email: '', password: '', confirmPassword: '', pin: '', confirmPin: '',
@@ -37,9 +37,6 @@ type AuthFlow = {
 
 const AuthFlowContext = createContext<AuthFlow | null>(null);
 
-/** Ephemeral identity/drafts plus service-validated device sessions. */
-// BACKEND INTEGRATION: Replace mock restoration with the agreed secure session
-// adapter; server authorization is mandatory. See docs/authentication-handoff.md.
 export function AuthFlowProvider({ children }: { children: ReactNode }) {
   const [deviceSession, setDeviceSession] = useState<DeviceSession | null>(null);
   const [restoring, setRestoring] = useState(true);
@@ -67,14 +64,14 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
     catch { setDeviceSession(null); }
     finally { setRestoring(false); }
   }
+
   async function lock() {
     await authenticationService.lockSession();
     const current = await authenticationService.restoreSession();
     setDeviceSession(current);
-    // An unauthenticated registration can temporarily background for autofill.
-    // Preserve that draft; locking an existing authenticated device clears it.
     if (current) setDraft(emptyDraft);
   }
+
   useEffect(() => {
     void authenticationService.restoreSession().then(session => { setDeviceSession(session); setRestoring(false); }).catch(() => { setDeviceSession(null); setRestoring(false); });
     const subscription = AppState.addEventListener('change', state => {
@@ -84,8 +81,7 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
     const timer = setInterval(() => { void refreshSession(); }, 15000);
     return () => { subscription.remove(); clearInterval(timer); };
   }, []);
-  // SECURITY: Navigation gates only. Backend authorization is required for every
-  // read/write. Neither registration completion nor a remembered ID grants access.
+
   const active = deviceSession && !deviceSession.locked;
   const owner: OwnerIdentity | null = active && deviceSession.role === 'owner' ? { ...deviceSession.owner, mode: 'mock' } : null;
   const mockSession: MockOwnerSession | null = owner ? { kind: 'mock', role: 'owner', owner } : null;
