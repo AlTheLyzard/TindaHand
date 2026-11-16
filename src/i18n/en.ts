@@ -1,5 +1,5 @@
-import { inventoryEnglish } from './inventory-en';
 import { financialEnglish } from './financial-en';
+import { inventoryEnglish } from './inventory-en';
 /** English catalog. Proper names, sample IDs and code identifiers are not translated. */
 export const en = {
   ...financialEnglish,
@@ -183,9 +183,9 @@ export const en = {
   "auth.details.permanence": "Assigned once · Yours permanently",
   "auth.details.reminderTitle": "Important Reminder",
   "auth.details.reminder": "Please remember your Owner ID. It will never regenerate. Keep your ID safe and secure. You will use this ID to log in to your account in the future.",
-  "auth.details.next": "Next: Set up an account for your Operator.",
+  "auth.details.next": "Next: Set up an account for your Kahera.",
   "auth.details.setupUnavailable": "Cashier account setup is not implemented yet. No setup changes have been made.",
-  "auth.details.continueSetup": "Continue to Operator Account Setup",
+  "auth.details.continueSetup": "Continue to Kahera Account Setup",
   "auth.details.skip": "Skip for Now",
   "auth.toast.title": "Account Created.",
   "auth.toast.message": "You can now start using TindaHand.",

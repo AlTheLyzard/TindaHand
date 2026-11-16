@@ -30,7 +30,7 @@ export function OwnerIdScreen({ completion, onSkip, onSetup }: { completion: Reg
         <Text className="mt-2 font-poppins-bold text-[30px] leading-[44px] text-white">{completion.name}</Text>
         <View className="my-3 h-px bg-[#7399CC]" />
         <Text className="font-poppins-bold text-[12px] leading-[18px] text-white">{t('auth.details.uniqueId')}</Text>
-        <Text className="mt-2 font-poppins-bold text-[30px] leading-[44px] text-white">{completion.id}</Text>
+        <Text className="mt-2 font-poppins-bold text-[30px] leading-[44px] text-white">{`TH-MA-${String(completion.id).padStart(4, '0')}`}</Text>
         <Text className="mt-1 font-poppins text-[10px] leading-[15px] text-white">{t('auth.details.permanence')}</Text>
       </View>
       <View className="mx-3 mt-5">

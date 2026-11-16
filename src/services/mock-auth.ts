@@ -1,8 +1,8 @@
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { demoOwner } from '@/data/mock-auth';
+import { settingsService } from '@/services/settings';
 import type { AccountRole, MockOwnerSession } from '@/types/auth';
 import { validateLogin } from '@/utils/account-access';
-import { settingsService } from '@/services/settings';
 
 // ── MOCK (dev only) ──────────────────────────────────────────────
 export function authenticateMockOwner(role: AccountRole, id: string, pin: string): MockOwnerSession | null {
@@ -31,7 +31,7 @@ export type LoginResult =
  */
 export async function loginOwner(ownerId: string, pin: string): Promise<LoginResult> {
   try {
-    const res = await fetch(`${API_URL}/auth/login-by-id`, {
+      const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ owner_id: ownerId.trim().toUpperCase(), pin }),
@@ -39,7 +39,7 @@ export async function loginOwner(ownerId: string, pin: string): Promise<LoginRes
 
     if (res.ok) {
       const data = await res.json();
-      return { status: 'ok', token: data.access_token, name: data.owner?.full_name ?? '' };
+      return { status: 'ok', token: data.access_token, name: data.full_name ?? '' };
     }
     if (res.status === 401) return { status: 'invalid' };
     if (res.status === 423 || res.status === 429) return { status: 'locked' };

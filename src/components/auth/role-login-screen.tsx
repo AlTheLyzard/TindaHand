@@ -17,6 +17,8 @@ import { AuthBackground } from './auth-background';
 import { AuthHeader } from './auth-header';
 import { OperatorPinHelpModal } from './operator-pin-help-modal';
 
+import { fetchMe } from '@/services/session-api';
+
 type OperatorLoginState = 'idle' | 'invalid' | 'submitting' | 'failed';
 
 /** One shared form for new-device password login, returning PIN unlock and Operator login. */
@@ -72,7 +74,9 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
         const result = await loginOwner(id, credential);
         if (!active.current) return;
         if (result.status === 'ok') {
-          await saveToken(result.token, result.name);
+          const me = await fetchMe(result.token);
+          const ownerId = me ? `TH-MA-${String(me.id).padStart(4, '0')}` : '';
+          await saveToken(result.token, result.name, ownerId);
           setCredential('');
           await flow.refreshSession();
           flow.setSelectedRole(role);

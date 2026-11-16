@@ -1,5 +1,7 @@
 import type { RegistrationFormValues, RegistrationResult } from '@/types/auth';
 
+import { saveToken } from '@/services/token-storage';
+
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 export async function registerOwner(values: RegistrationFormValues): Promise<RegistrationResult> {
@@ -14,8 +16,12 @@ export async function registerOwner(values: RegistrationFormValues): Promise<Reg
     }),
   });
 
-  if (res.ok) {
+    if (res.ok) {
     const data = await res.json();
+    const ownerId = `TH-MA-${String(data.id).padStart(4, '0')}`;
+    if (data.access_token) {
+      await saveToken(data.access_token, data.full_name, ownerId);
+    }
     return {
       status: 'confirmed',
       account: {
