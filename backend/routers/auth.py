@@ -26,7 +26,7 @@ LOCKOUT_MINUTES     = 15  # locked for 15 minutes
 
 # ── 1. REGISTER (May-Ari only) ───────────────────────────────────
 
-@router.post("/register", response_model=MayAriOut, status_code=201)
+@router.post("/register", response_model=None, status_code=201)
 def register(payload: MayAriRegister, db: Session = Depends(get_db)):
     """
     Create a new store owner account.
@@ -78,7 +78,7 @@ def login_may_ari(payload: MayAriLogin, db: Session = Depends(get_db)):
     if not owner.is_active:
         raise HTTPException(status_code=403, detail="Account is deactivated")
 
-        token = create_access_token({"sub": str(owner.id), "role": "may_ari"})
+    token = create_access_token({"sub": str(owner.id), "role": "may_ari"})
     return Token(access_token=token, role="may_ari", expires_in=8 * 3600, full_name=owner.full_name)
 
 # ── 3. KAHERA LOGIN ──────────────────────────────────────────────

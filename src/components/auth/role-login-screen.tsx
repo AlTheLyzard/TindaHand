@@ -47,7 +47,7 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
   const selection = useRef<InputSelection>({ start: 0, end: 0 });
   const idInput = useRef<TextInputInstance>(null), credentialInput = useRef<TextInputInstance>(null);
   const locked = useRef(false), active = useRef(true);
-  const password = owner && !returning;
+  const password = false;
   const validation = validateLogin(id, password ? '0000' : credential);
   const credentialError = password ? (!credential ? 'Enter your password.' : undefined) : validation.pin;
   function updateOperatorValidation(nextId: string, nextCredential: string) {
