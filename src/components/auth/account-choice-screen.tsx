@@ -1,9 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/i18n/use-translation';
 import { authenticationService } from '@/services/authentication';
-import { getHasOwner, getHasKaheras } from '@/services/token-storage';
+import { getHasOwner, getHasKaheras, markHasOwner, markHasKaheras } from '@/services/token-storage';
 import { useAuthFlow } from '@/state/auth-flow';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
+import { fetchHasAccounts } from '@/services/kahera-api';
 import type { AccountRole } from '@/types/auth';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState, useSyncExternalStore } from 'react';
@@ -23,16 +24,27 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
     authenticationService.getAccountDirectorySnapshot, authenticationService.getAccountDirectorySnapshot);
   const ownerOption = accountOptions[0];
   const operatorOption = accountOptions[1];
-  // Offline-first flags — written once on first successful login, read from local
-  // storage. No network needed. Works after logout, JWT expiry, and offline.
   const [localHasOwner, setLocalHasOwner] = useState(false);
   const [localHasKaheras, setLocalHasKaheras] = useState(false);
 
   useFocusEffect(useCallback(() => {
     if (MOCK_AUTH_ENABLED) return;
     void (async () => {
-      setLocalHasOwner(await getHasOwner());
-      setLocalHasKaheras(await getHasKaheras());
+      // 1. Show cached flags instantly (works offline).
+      const cachedOwner = await getHasOwner();
+      const cachedKaheras = await getHasKaheras();
+      setLocalHasOwner(cachedOwner);
+      setLocalHasKaheras(cachedKaheras);
+
+      // 2. Ask the server (no JWT needed). If online, update the display
+      //    and cache the result so it works offline next time.
+      try {
+        const server = await fetchHasAccounts();
+        if (server.has_owners) { setLocalHasOwner(true); await markHasOwner(); }
+        if (server.has_kaheras) { setLocalHasKaheras(true); await markHasKaheras(); }
+      } catch {
+        // Offline — cached values already shown above, nothing more to do.
+      }
     })();
   }, []));
 
