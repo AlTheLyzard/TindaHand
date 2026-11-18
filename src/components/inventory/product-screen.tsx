@@ -11,6 +11,7 @@ import { ConfirmationContent } from '@/components/ui/confirmation-content';
 import { InvCard, InvDateField, InvField, InventoryFrame, InvText, InvSelect, inventoryIllustrations } from './inventory-ui';
 import { BatchCard, ExistingBatchCard, batchExpiryLabel } from './batch-card';
 import { useInventory } from '@/state/inventory';
+import { suppressAuthLock, releaseAuthLock } from '@/state/auth-flow';
 import { createProduct, updateProduct, deleteProduct as deleteProductApi, addRestock as addRestockApi } from '@/services/inventory';
 import type { BatchDraft, BatchErrors, InventoryProduct, ProductDraft } from '@/types/inventory';
 import { categoryLabels, earliestExpiry, productBatches, productExpiry, productStock, stockCategory, todayInManila, validDate } from '@/utils/inventory';
@@ -100,6 +101,9 @@ export function ProductScreen() {
   async function pickPhoto() {
     if (picking || busy.current) return;
     setPicking(true); setError('');
+    // The system photo picker sends the app to the background temporarily.
+    // Suppress auto-lock so the session stays alive while the picker is open.
+    suppressAuthLock();
     try {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 });
       if (result.canceled) return;
@@ -110,7 +114,7 @@ export function ProductScreen() {
       if (photo.fileSize == null || photo.fileSize > 2 * 1024 * 1024) { setError(photo.fileSize == null ? 'The photo size could not be verified. Choose another photo.' : 'Photo must be 2 MB or smaller.'); return; }
       update('photoUri', photo.uri);
     } catch { setError('The photo picker could not open. Check access in Settings and try again.'); }
-    finally { setPicking(false); }
+    finally { releaseAuthLock(); setPicking(false); }
   }
   function validateDetails() {
     const validation = detailsErrors(draft.details, today); setErrors(validation);

@@ -1,7 +1,18 @@
-import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { AppState } from 'react-native';
 
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
+
+/**
+ * While a system overlay (image picker, camera, share sheet, etc.) is open the
+ * app temporarily moves to the background, which would normally trigger the
+ * auto-lock. Any component that opens a system overlay should call
+ * `suppressAuthLock()` before launching it and `releaseAuthLock()` after the
+ * promise resolves, so the AppState listener skips the lock for that window.
+ */
+let _lockSuppressed = false;
+export function suppressAuthLock() { _lockSuppressed = true; }
+export function releaseAuthLock()  { _lockSuppressed = false; }
 import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
 import { getKaheraId, getRole, getToken } from '@/services/token-storage';
@@ -159,8 +170,12 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void Promise.resolve().then(() => refreshSession());
     const subscription = AppState.addEventListener('change', state => {
-      if (state !== 'active') void lock();
-      else void refreshSession();
+      if (state !== 'active') {
+        // Skip the lock while a system overlay (photo picker, camera, etc.) is open.
+        // Those overlays put the app in the background momentarily without the user
+        // actually leaving — locking would kick them back to the role-selection screen.
+        if (!_lockSuppressed) void lock();
+      } else void refreshSession();
     });
     const timer = setInterval(() => { void refreshSession(); }, 15000);
     return () => { subscription.remove(); clearInterval(timer); };
