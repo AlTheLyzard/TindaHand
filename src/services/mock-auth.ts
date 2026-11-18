@@ -21,13 +21,14 @@ export type LoginResult =
   | { status: 'locked' }
   | { status: 'error'; message: string };
 
+export type KaheraLoginResult =
+  | { status: 'ok'; token: string; name: string; kaheraId: string; ownerId: string }
+  | { status: 'invalid' }
+  | { status: 'locked' }
+  | { status: 'error'; message: string };
+
 /**
  * POST /auth/login  — May-Ari (store owner) login.
- * The login screen collects an owner ID (TH-MA-0001) and a PIN (4 digits).
- * The backend expects { email, password }.
- * We derive the email the same way registration does:
- *   name → lowercase, spaces → dots, appended with @tindahand.app
- * The PIN is used as the password.
  */
 export async function loginOwner(ownerId: string, pin: string): Promise<LoginResult> {
   try {
@@ -43,6 +44,38 @@ export async function loginOwner(ownerId: string, pin: string): Promise<LoginRes
     }
     if (res.status === 401) return { status: 'invalid' };
     if (res.status === 423 || res.status === 429) return { status: 'locked' };
+    return { status: 'error', message: `Server error ${res.status}` };
+  } catch {
+    return { status: 'error', message: 'Could not reach server. Check your connection.' };
+  }
+}
+
+/**
+ * POST /auth/kahera/login-by-pin  — Kahera (cashier) login.
+ * The login screen only collects owner_id + PIN — no separate cashier ID field.
+ * The backend finds the matching active cashier for that store by trying each PIN.
+ */
+export async function loginKahera(ownerId: string, pin: string): Promise<KaheraLoginResult> {
+  try {
+    const res = await fetch(`${API_URL}/auth/kahera/login-by-pin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ owner_id: ownerId.trim().toUpperCase(), pin }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        status: 'ok',
+        token: data.access_token,
+        name: data.full_name ?? '',
+        kaheraId: data.kahera_id ?? '',
+        ownerId: data.owner_id ?? ownerId,
+      };
+    }
+    if (res.status === 401) return { status: 'invalid' };
+    if (res.status === 423 || res.status === 429) return { status: 'locked' };
+    if (res.status === 404) return { status: 'invalid' };
     return { status: 'error', message: `Server error ${res.status}` };
   } catch {
     return { status: 'error', message: 'Could not reach server. Check your connection.' };

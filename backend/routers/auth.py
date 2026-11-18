@@ -13,7 +13,7 @@ from auth import (
 )
 from schemas import (
     RegisterRequest, LoginRequest,
-    KaheraLoginRequest, KaheraCreateRequest, KaheraStatusRequest,
+    KaheraLoginRequest, KaheraLoginByPinRequest, KaheraCreateRequest, KaheraStatusRequest,
     TokenResponse, MeResponse, OkResponse,
 )
 
@@ -133,6 +133,77 @@ def kahera_login(body: KaheraLoginRequest, db: Session = Depends(get_db)):
         "access_token":  token,
         "token_type":    "bearer",
         "full_name":     kahera.full_name,
+        "role":          "cashier",
+        "expires_in":    8 * 3600,
+        "offline_cache": offline_cache,
+    }
+
+
+# ── 3b. KAHERA LOGIN BY PIN (app login screen: owner_id + pin only) ──────────
+
+@router.post("/kahera/login-by-pin")
+def kahera_login_by_pin(body: KaheraLoginByPinRequest, db: Session = Depends(get_db)):
+    """
+    App login screen collects owner_id + PIN only (no kahera_id field).
+    Tries every active cashier for that owner until one matches the PIN.
+    Returns the same shape as /kahera/login.
+    """
+    try:
+        owner_numeric = int(body.owner_id.strip().upper().split("-")[-1])
+    except (ValueError, IndexError):
+        raise HTTPException(400, "Invalid owner ID format. Expected TH-MA-XXXX.")
+
+    # Find all active cashiers for this store that are not locked out.
+    candidates = db.query(Kahera).filter(
+        Kahera.owner_id == owner_numeric,
+        Kahera.is_active == True,
+    ).all()
+
+    if not candidates:
+        raise HTTPException(404, "No active cashiers found for this store")
+
+    # Check lockout first on any candidate (rate-limit feedback).
+    now = datetime.now(timezone.utc)
+    locked_out = [k for k in candidates if k.locked_until and k.locked_until > now]
+    if len(locked_out) == len(candidates):
+        raise HTTPException(429, "Account locked. Try again later.")
+
+    # Try to match PIN against each unlocked candidate.
+    matched = None
+    for kahera in candidates:
+        if kahera.locked_until and kahera.locked_until > now:
+            continue
+        if verify_pin(body.pin, kahera.pin_hash):
+            matched = kahera
+            break
+        # Increment failed attempts on mismatch.
+        kahera.failed_attempts += 1
+        if kahera.failed_attempts >= MAX_FAILED_ATTEMPTS:
+            kahera.locked_until = now + timedelta(minutes=LOCKOUT_MINUTES)
+            kahera.failed_attempts = 0
+
+    db.commit()
+
+    if not matched:
+        raise HTTPException(401, "Invalid Owner ID or PIN.")
+
+    matched.failed_attempts = 0
+    matched.locked_until = None
+    db.commit()
+
+    token = create_access_token({
+        "sub":      str(matched.id),
+        "role":     "cashier",
+        "owner_id": matched.owner_id,
+    })
+    offline_cache = build_offline_cache_payload(matched.id, matched.pin_hash)
+
+    return {
+        "access_token":  token,
+        "token_type":    "bearer",
+        "full_name":     matched.full_name,
+        "kahera_id":     f"TH-KH-{matched.id:04d}",
+        "owner_id":      f"TH-MA-{matched.owner_id:04d}",
         "role":          "cashier",
         "expires_in":    8 * 3600,
         "offline_cache": offline_cache,

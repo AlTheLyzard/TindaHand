@@ -37,6 +37,11 @@ class KaheraLoginRequest(BaseModel):
     kahera_id: str        # TH-KH-XXXX
     pin: str
 
+class KaheraLoginByPinRequest(BaseModel):
+    """Used by the app login screen which only collects owner_id + PIN (no kahera_id field)."""
+    owner_id: str         # TH-MA-XXXX
+    pin: str
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

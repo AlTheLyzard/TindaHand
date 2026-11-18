@@ -12,6 +12,8 @@ import { validateRegistration, validateEmail } from '@/utils/registration';
 import { createMockProfileService } from '@/services/profile';
 import { defaultOperatorPermissions } from '@/utils/operator-access';
 import { isOwnerId } from '@/utils/owner-id';
+import { loginKahera } from '@/services/mock-auth';
+import { saveToken } from '@/services/token-storage';
 
 const unavailable = (): AuthFailure => ({ ok: false, code: 'unavailable', message: 'Authentication is not connected. Please try again when the service is available.' });
 const invalid = (): AuthResult<never> => ({ ok: false, code: 'invalid', message: 'Check your credentials and try again.' });
@@ -208,24 +210,37 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       return { ok: true, value: { ...session } };
     },
     async loginOperator({ ownerId, pin }) {
-      if (!enabled()) return unavailable();
       await ready;
-      const requestedOwnerId = ownerId.trim();
-      const operator = settingsService.matchOperator(requestedOwnerId, pin);
-      // The Operator record is the source of truth for store membership. The
-      // supplied Owner ID only scopes the credential lookup; never copy it into
-      // the session without confirming it matches the matched record.
-      const linkedOwnerId = operator?.ownerId;
-      const account = linkedOwnerId ? identities.get(linkedOwnerId) : undefined;
-      if (!operator || !linkedOwnerId || linkedOwnerId !== requestedOwnerId || !account || account.id !== linkedOwnerId) return invalid();
-      // BACKEND INTEGRATION: POST { ownerId, pin } to the Operator login endpoint.
-      // Return { role: 'operator', ownerId, operatorId, displayName } with the
-      // authenticated session and allowed capabilities. Enforce exactly one
-      // active Operator match for (ownerId, pin) on the server as well.
-      session = { ...issue(account), role: 'operator', ownerId: linkedOwnerId, operatorId: operator.id, displayName: operator.name,
-        operator: { id: operator.id, name: operator.name, permissions: [...settingsService.operatorPermissions(operator.id)] } };
-      operatorRevision = settingsService.operatorRevision(operator.id);
-      remembered.remember('cashier', linkedOwnerId);
+      // BACKEND INTEGRATION: POST owner_id + pin to /auth/kahera/login-by-pin.
+      // The backend finds the matching active cashier for that store by PIN.
+      const result = await loginKahera(ownerId, pin);
+      if (result.status === 'locked') return { ok: false, code: 'limited', message: 'Account locked due to too many failed attempts. Try again later.' };
+      if (result.status === 'error') return { ok: false, code: 'unavailable', message: result.message };
+      if (result.status !== 'ok') return invalid();
+
+      await saveToken(result.token, result.name, result.kaheraId);
+
+      // Build the owner identity for session scoping.
+      // The cashier belongs to a specific owner — use the ownerId the backend confirmed.
+      const ownerAccount: RegisteredOwner = { id: result.ownerId, name: '' };
+      if (!identities.has(result.ownerId)) {
+        identities.set(result.ownerId, ownerAccount);
+        publishAccountDirectory();
+      }
+
+      session = {
+        ...issue(ownerAccount),
+        role: 'operator',
+        ownerId: result.ownerId,
+        operatorId: result.kaheraId,
+        displayName: result.name,
+        operator: {
+          id: result.kaheraId,
+          name: result.name,
+          permissions: [...defaultOperatorPermissions],
+        },
+      };
+      remembered.remember('cashier', result.ownerId);
       return { ok: true, value: { ...session } };
     },
     // BACKEND RULE: Authorize from the live session; never trust a supplied role
