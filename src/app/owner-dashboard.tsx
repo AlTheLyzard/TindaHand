@@ -20,11 +20,11 @@ export default function OwnerDashboardRoute() {
       const token = await getToken();
       if (!token) { setServerOwner(null); return; }
       const me = await fetchMe(token);
-      if (me && me.role === 'may_ari') {
+      if (me && (me.role === 'owner' || me.role === 'may_ari')) {
         setServerOwner({
           id: me.formatted_id,
           name: me.name,
-          mode: 'mock',
+          mode: 'confirmed',
         });
       } else {
         setServerOwner(null);
