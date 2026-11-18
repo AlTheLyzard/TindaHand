@@ -38,6 +38,10 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
   const [helpOpen, setHelpOpen] = useState(false);
   const [idSelection, setIdSelection] = useState<InputSelection>();
   const selection = useRef<InputSelection>({ start: 0, end: 0 });
+  // On Android, onSelectionChange can deliver the old position after onChangeText
+  // has already committed a new caret. Block stale updates until the native view
+  // catches up — same guard as MoneyInput.
+  const pendingIdRestore = useRef<InputSelection | undefined>(undefined);
   const idInput = useRef<TextInputInstance>(null), credentialInput = useRef<TextInputInstance>(null);
   const locked = useRef(false), active = useRef(true);
   const password = false;
@@ -134,8 +138,21 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
                 {(!rememberedId || !owner) && <FormField ref={idInput} label={owner ? 'Owner ID' : 'May-Ari ID'} requiredIndicator="asterisk" value={id}
                   error={owner ? submitted || touched.id ? validation.id : undefined : submitted && operatorState === 'invalid' ? validation.id : undefined} editable={!busy}
                   help={owner ? 'Enter your permanent Owner ID.' : 'Enter your store\'s May-Ari ID.'} placeholder="TH-MA-0001" placeholderTextColor="#A3AFBF"
-                  selection={idSelection} onSelectionChange={event => { selection.current = event.nativeEvent.selection; setIdSelection(current => current?.start === selection.current.start && current.end === selection.current.end ? undefined : current); }}
-                  onChangeText={value => { const edit = editOwnerId(id, value, selection.current); setId(edit.text); selection.current = edit.selection; setIdSelection(edit.selection); setTouched(current => ({ ...current, id: true })); updateOperatorValidation(edit.text, credential); setNotice(''); }}
+                  selection={idSelection} onSelectionChange={event => {
+                    const reported = event.nativeEvent.selection;
+                    const pending = pendingIdRestore.current;
+                    if (pending) {
+                      if (reported.start === pending.start && reported.end === pending.end) {
+                        pendingIdRestore.current = undefined;
+                        setIdSelection(undefined);
+                      }
+                      // Don't overwrite selection.current until the restore lands.
+                    } else {
+                      selection.current = reported;
+                      setIdSelection(current => current?.start === reported.start && current.end === reported.end ? undefined : current);
+                    }
+                  }}
+                  onChangeText={value => { const edit = editOwnerId(id, value, selection.current); setId(edit.text); selection.current = edit.selection; pendingIdRestore.current = edit.selection; setIdSelection(edit.selection); setTouched(current => ({ ...current, id: true })); updateOperatorValidation(edit.text, credential); setNotice(''); }}
                   onBlur={() => setTouched(current => ({ ...current, id: true }))}
                   autoCapitalize="characters" smartInsertDelete={false} autoComplete="username" returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => credentialInput.current?.focus()} />}
                 {pinIdentity}
