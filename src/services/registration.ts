@@ -18,14 +18,15 @@ export async function registerOwner(values: RegistrationFormValues): Promise<Reg
 
     if (res.ok) {
     const data = await res.json();
-    const ownerId = `TH-MA-${String(data.id).padStart(4, '0')}`;
+    // data.id is already formatted as "TH-MA-XXXX" from the backend
+    const ownerId = data.id;
     if (data.access_token) {
       await saveToken(data.access_token, data.full_name, ownerId);
     }
     return {
       status: 'confirmed',
       account: {
-        id: String(data.id),
+        id: ownerId,
         name: data.full_name,
       },
     };

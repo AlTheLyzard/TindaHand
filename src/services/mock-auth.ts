@@ -13,7 +13,7 @@ export function authenticateMockOwner(role: AccountRole, id: string, pin: string
 }
 
 // ── REAL LOGIN ───────────────────────────────────────────────────
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.254.103:8000';
 
 export type LoginResult =
   | { status: 'ok'; token: string; name: string }
