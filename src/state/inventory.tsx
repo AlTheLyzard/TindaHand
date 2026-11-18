@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { applyInventoryAction, applyOperatorPosAction, getProducts, loadMockInventory } from '@/services/inventory';
-import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { useAuthFlow } from '@/state/auth-flow';
 import { type InventoryAction, type InventoryStore } from '@/utils/inventory';
 import { customerNameKey } from '@/utils/pos-checkout';
@@ -13,12 +12,11 @@ function SessionInventory({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<InventoryStore>(loadMockInventory);
   const current = useRef(store);
 
-  // Load real products from the API on session start (replaces demo products).
-  // Skipped entirely in mock-auth mode so the demo inventory stays intact for previews.
-  // Falls back silently for real sessions — if offline, demo inventory stays.
+  // Try to load real products from the API on session start.
+  // The store always starts with mock data (loadMockInventory), so if the API
+  // is unreachable or returns an error, the mock products remain visible.
+  // On success, real products replace the mock ones so checkout uses real IDs.
   useEffect(() => {
-    // Skip for mock/demo sessions — they should keep their seeded mock data.
-    if (MOCK_AUTH_ENABLED) return;
     // Only fetch when there's an active authenticated session (owner or kahera).
     if (!auth.deviceSession || auth.deviceSession.locked) return;
     let cancelled = false;
