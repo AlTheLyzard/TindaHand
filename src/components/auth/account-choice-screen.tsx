@@ -35,7 +35,7 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
 
       // Read the owner ID saved from the last successful login.
       // This exists even if the JWT has since expired — it's enough to show the cards.
-      const storedOwnerId = await getOwnerId();
+      const storedOwnerId = (await getOwnerId())?.trim() || null;
       if (storedOwnerId) {
         setRealHasOwner(true);
 
@@ -77,6 +77,7 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
         <Text accessibilityRole="header" className="font-poppins-bold text-[16px] leading-6 text-brand">{t('auth.choice.createFirst')}</Text>
         <Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">{t('auth.choice.createFirstDescription')}</Text>
         <Button onPress={onCreateAccount} accessibilityHint={t('auth.choice.createOwnerHint')}>{t('auth.choice.createOwner')}</Button>
+        {!MOCK_AUTH_ENABLED && <Button variant="secondary" onPress={() => onSelect('owner')}>I already have an account</Button>}
       </View>}
       {hasAccounts && <Text className="mt-4 text-center font-poppins text-[10px] leading-[15px] text-brand">{t('auth.choice.loginHint')}</Text>}
       <View className="min-h-24 flex-1" />
