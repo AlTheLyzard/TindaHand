@@ -1,10 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/i18n/use-translation';
 import { authenticationService } from '@/services/authentication';
-import { fetchMe } from '@/services/session-api';
-import { getToken, getOwnerId } from '@/services/token-storage';
+import { getHasOwner, getHasKaheras } from '@/services/token-storage';
 import { useAuthFlow } from '@/state/auth-flow';
-import { hasKaheraOperators } from '@/services/kahera-api';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import type { AccountRole } from '@/types/auth';
 import { useFocusEffect } from 'expo-router';
@@ -25,40 +23,21 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
     authenticationService.getAccountDirectorySnapshot, authenticationService.getAccountDirectorySnapshot);
   const ownerOption = accountOptions[0];
   const operatorOption = accountOptions[1];
-  const [serverOwner, setServerOwner] = useState<{ id: string; name: string } | null>(null);
-  const [realHasOwner, setRealHasOwner] = useState(false);
-  const [realHasKaheras, setRealHasKaheras] = useState(false);
+  // Offline-first flags — written once on first successful login, read from local
+  // storage. No network needed. Works after logout, JWT expiry, and offline.
+  const [localHasOwner, setLocalHasOwner] = useState(false);
+  const [localHasKaheras, setLocalHasKaheras] = useState(false);
 
   useFocusEffect(useCallback(() => {
-    (async () => {
-      if (MOCK_AUTH_ENABLED) return;
-
-      // Read the owner ID saved from the last successful login.
-      // This exists even if the JWT has since expired — it's enough to show the cards.
-      const storedOwnerId = (await getOwnerId())?.trim() || null;
-      if (storedOwnerId) {
-        setRealHasOwner(true);
-
-        // Also try to restore the owner's name if the JWT is still valid.
-        const token = await getToken();
-        if (token) {
-          const me = await fetchMe(token);
-          if (me && me.role === 'may_ari') {
-            setServerOwner({ id: me.formatted_id, name: me.full_name });
-          }
-        }
-
-        // Check Kaheras via the public endpoint — no JWT required.
-        const hasOps = await hasKaheraOperators(storedOwnerId);
-        setRealHasKaheras(hasOps);
-      }
+    if (MOCK_AUTH_ENABLED) return;
+    void (async () => {
+      setLocalHasOwner(await getHasOwner());
+      setLocalHasKaheras(await getHasKaheras());
     })();
   }, []));
 
-  // Show one generic May-Ari card when any owner exists (mock directory or real JWT),
-  // not one card per owner — matching the design intent.
-  const hasOwners = directory.owners.length > 0 || serverOwner !== null || realHasOwner;
-  const hasOperators = MOCK_AUTH_ENABLED ? directory.hasOperators : realHasKaheras;
+  const hasOwners = MOCK_AUTH_ENABLED ? directory.owners.length > 0 : localHasOwner;
+  const hasOperators = MOCK_AUTH_ENABLED ? directory.hasOperators : localHasKaheras;
   const hasAccounts = hasOwners || hasOperators;
 
   return <AuthBackground headerWave><ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -77,7 +56,6 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
         <Text accessibilityRole="header" className="font-poppins-bold text-[16px] leading-6 text-brand">{t('auth.choice.createFirst')}</Text>
         <Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">{t('auth.choice.createFirstDescription')}</Text>
         <Button onPress={onCreateAccount} accessibilityHint={t('auth.choice.createOwnerHint')}>{t('auth.choice.createOwner')}</Button>
-        {!MOCK_AUTH_ENABLED && <Button variant="secondary" onPress={() => onSelect('owner')}>I already have an account</Button>}
       </View>}
       {hasAccounts && <Text className="mt-4 text-center font-poppins text-[10px] leading-[15px] text-brand">{t('auth.choice.loginHint')}</Text>}
       <View className="min-h-24 flex-1" />

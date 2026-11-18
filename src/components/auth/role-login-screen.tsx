@@ -5,7 +5,7 @@ import { FormField } from '@/components/ui/form-field';
 import { KeyboardViewport as KeyboardAvoidingView, KeyboardAwareScrollView as ScrollView } from '@/components/ui/keyboard-aware-scroll-view';
 import tokens from '@/constants/design-tokens.json';
 import { loginKahera, loginOwner } from '@/services/mock-auth';
-import { saveToken } from '@/services/token-storage';
+import { saveToken, markHasOwner, markHasKaheras } from '@/services/token-storage';
 import { useAuthFlow } from '@/state/auth-flow';
 import type { AccountRole } from '@/types/auth';
 import { validateLogin } from '@/utils/account-access';
@@ -77,6 +77,7 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
           // Normalize to uppercase TH-MA-XXXX format.
           const ownerId = id.trim().toUpperCase();
           await saveToken(result.token, result.name, ownerId, 'owner');
+          await markHasOwner();
           setCredential('');
           await flow.refreshSession();
           flow.setSelectedRole(role);
@@ -97,6 +98,7 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
       if (!active.current) return;
       if (result.status === 'ok') {
         await saveToken(result.token, result.name, result.ownerId, 'cashier', result.kaheraId);
+        await markHasKaheras();
         setCredential('');
         await flow.refreshSession();
         flow.setSelectedRole(role);

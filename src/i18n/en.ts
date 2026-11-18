@@ -23,7 +23,7 @@ export const en = {
   'auth.choice.cashierUnavailable': 'No cashier is registered for this store yet. Log in as the Owner, then open Settings → User Management → Add Cashier.',
   'auth.choice.noAccounts': 'No accounts are registered yet.',
   'auth.choice.createFirst': 'Create an Owner account first',
-  'auth.choice.createFirstDescription': 'Your Owner account will appear here after it has been created. Operator Login becomes available after an Operator account is added.',
+  'auth.choice.createFirstDescription': 'Your Owner account will appear here after it has been created. Kahera Login becomes available after a Kahera account is added.',
   'auth.choice.selectAccount': 'Select your role and enter your credentials.',
   'auth.choice.ownerAccountHint': 'Opens Owner Login for this account.',
   'auth.choice.loginHint': 'Owners use a password on new devices and a PIN to unlock an authenticated device. Operators use the store’s Owner ID and their assigned PIN.',
