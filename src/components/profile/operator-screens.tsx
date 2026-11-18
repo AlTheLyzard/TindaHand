@@ -5,6 +5,8 @@ import { useAuthFlow } from '@/state/auth-flow';
 import { useSettings } from '@/state/settings';
 import { useProfileSnapshot } from '@/hooks/use-owner-profile';
 import { authenticationService } from '@/services/authentication';
+import { createKahera } from '@/services/kahera-api';
+import type { AvatarId } from '@/types/profile';
 import type { Cashier } from '@/types/settings';
 import type { OperatorPermission } from '@/types/auth';
 import { permissionGroups, updatePermission, type PermissionGroup } from '@/utils/operator-access';
@@ -125,8 +127,19 @@ export function AddOperatorScreen() {
   if (!owner) return null;
   return <ProfileFrame title="Add Operator" subtitle="Add an Operator to help you manage your store." onBack={() => router.dismissTo(operatorsRoot)}>
     <ProfileNotice title="Linked Owner ID">{owner.name} · {owner.id}</ProfileNotice>
-    <View className="mt-5 flex-1"><CredentialForm mode="create" fieldsCard onCancel={() => router.dismissTo(operatorsRoot)} onSave={values => authenticationService.createOperator(values)} onSuccess={operator => router.replace({ pathname: '/owner-menu/profile/operators/[operatorId]', params: { operatorId: operator.id, created: '1' } })} /></View>
-    <ProfileText small>Operator login uses the Owner ID and assigned four-digit PIN. Active Operators in a store must have distinct PINs. Development accounts are held in memory only.</ProfileText>
+    <View className="mt-5 flex-1"><CredentialForm mode="create" fieldsCard onCancel={() => router.dismissTo(operatorsRoot)} onSave={async values => {
+          const result = await createKahera({ name: values.name, pin: values.pin });
+          if (!result.ok) return result;
+          const operator: Cashier = {
+            id: result.value.id,
+            ownerId: result.value.ownerId,
+            name: result.value.name,
+            status: result.value.status,
+            avatarId: (result.value.avatarId ?? 'avatar-01') as AvatarId,
+          };
+          return { ok: true as const, value: operator };
+        }} onSuccess={operator => router.replace({ pathname: '/owner-menu/profile/operators/[operatorId]', params: { operatorId: operator.id, created: '1' } })} /></View>
+    <ProfileText small>Operator login uses the Owner ID and assigned four-digit PIN. Active Operators in a store must have distinct PINs.</ProfileText>
   </ProfileFrame>;
 }
 export function ResetOperatorPinScreen() {
