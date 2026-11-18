@@ -1,15 +1,47 @@
-import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
-import { applyInventoryAction, applyOperatorPosAction, loadMockInventory } from '@/services/inventory';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { applyInventoryAction, applyOperatorPosAction, getProducts, loadMockInventory } from '@/services/inventory';
 import { useAuthFlow } from '@/state/auth-flow';
 import { type InventoryAction, type InventoryStore } from '@/utils/inventory';
 import { customerNameKey } from '@/utils/pos-checkout';
 import type { Customer } from '@/types/pos';
+import type { InventoryProduct } from '@/types/inventory';
 
 const InventoryContext = createContext<{ store: InventoryStore; getStore: () => InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void } | null>(null);
 function SessionInventory({ children }: { children: ReactNode }) {
   const auth = useAuthFlow();
   const [store, setStore] = useState<InventoryStore>(loadMockInventory);
   const current = useRef(store);
+
+  // Load real products from the API on session start (replaces demo products).
+  // Falls back silently — if offline or the request fails, the demo inventory stays.
+  useEffect(() => {
+    // Only fetch when there's an active authenticated session (owner or kahera).
+    if (!auth.deviceSession || auth.deviceSession.locked) return;
+    let cancelled = false;
+    getProducts().then(apiProducts => {
+      if (cancelled) return;
+      const realProducts: InventoryProduct[] = apiProducts.map(p => ({
+        id: String(p.id),
+        name: p.name,
+        category: p.category as InventoryProduct['category'],
+        unitPriceCentavos: p.priceCentavos,
+        stock: p.stockQuantity,
+        costCentavos: 0,                         // not returned by list endpoint
+        expirationDate: p.expirationDate ?? '',
+      }));
+      // Merge real products into the store, keeping POS/sales/customer state intact.
+      setStore(previous => {
+        const next = { ...previous, products: realProducts };
+        current.current = next;
+        return next;
+      });
+    }).catch(() => {
+      // Offline or server error — keep whatever is already in state.
+    });
+    return () => { cancelled = true; };
+  // Re-fetch whenever the user's session changes (e.g. owner logs in then kahera logs in).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.deviceSession?.id]);
   const [feedback, setFeedback] = useState('');
   function dispatch(action: InventoryAction) {
     const next = auth.owner

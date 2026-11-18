@@ -168,7 +168,9 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
   // SECURITY: Navigation gates only. Backend authorization is required for every
   // read/write. Neither registration completion nor a remembered ID grants access.
   const active = deviceSession && !deviceSession.locked;
-  const owner: OwnerIdentity | null = active && deviceSession.role === 'owner' ? { ...deviceSession.owner, name: profiles.get(deviceSession.owner.id)?.name ?? deviceSession.owner.name, mode: 'mock' } : null;
+  // Real JWT sessions get mode 'confirmed'; only legacy mock sessions keep 'mock'.
+  const ownerMode: OwnerIdentity['mode'] = MOCK_AUTH_ENABLED ? 'mock' : 'confirmed';
+  const owner: OwnerIdentity | null = active && deviceSession.role === 'owner' ? { ...deviceSession.owner, name: profiles.get(deviceSession.owner.id)?.name ?? deviceSession.owner.name, mode: ownerMode } : null;
   const mockSession: MockOwnerSession | null = owner ? { kind: 'mock', role: 'owner', owner } : null;
 
   return (
