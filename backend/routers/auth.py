@@ -263,7 +263,22 @@ def has_kahera_operators(owner_id: str, db: Session = Depends(get_db)):
     return {"has_operators": count > 0}
 
 
-# ── 6. LIST KAHERAS ──────────────────────────────────────────────────────────
+# ── 6. HAS ACCOUNTS (public — no JWT required) ───────────────────────────────
+
+@router.get("/has-accounts")
+def has_accounts(db: Session = Depends(get_db)):
+    """
+    Public endpoint — no auth required.
+    Returns { has_owners: bool, has_kaheras: bool }.
+    Used by the Choose Account screen on first load so it can show the right
+    cards even before any login has happened on this device.
+    """
+    has_owners  = db.query(MayAri).filter(MayAri.is_active == True).count() > 0
+    has_kaheras = db.query(Kahera).filter(Kahera.is_active == True).count() > 0
+    return {"has_owners": has_owners, "has_kaheras": has_kaheras}
+
+
+# ── 7. LIST KAHERAS ──────────────────────────────────────────────────────────
 
 @router.get("/kahera/list")
 def list_kaheras(

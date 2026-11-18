@@ -19,6 +19,18 @@ export interface KaheraRecord {
  * Returns true if the given owner has at least one active Kahera.
  * Used by the Choose Account screen (user is not logged in yet).
  */
+/** Public — no JWT needed. Returns whether any active owners/kaheras exist on the server. */
+export async function fetchHasAccounts(): Promise<{ has_owners: boolean; has_kaheras: boolean }> {
+  try {
+    const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.254.103:8000';
+    const res = await fetch(`${API_URL}/auth/has-accounts`);
+    if (!res.ok) return { has_owners: false, has_kaheras: false };
+    return res.json() as Promise<{ has_owners: boolean; has_kaheras: boolean }>;
+  } catch {
+    return { has_owners: false, has_kaheras: false };
+  }
+}
+
 export async function hasKaheraOperators(ownerId: string): Promise<boolean> {
   try {
     const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.254.103:8000';
