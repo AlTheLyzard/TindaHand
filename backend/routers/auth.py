@@ -242,7 +242,29 @@ def create_kahera(
     }
 
 
-# ── 5. ACTIVATE / DEACTIVATE KAHERA ──────────────────────────────────────────
+# ── 5. LIST KAHERAS ──────────────────────────────────────────────────────────
+
+@router.get("/kahera/list")
+def list_kaheras(
+    db:          Session = Depends(get_db),
+    current_user = Depends(require_role("owner")),
+):
+    """Return all Kahera accounts belonging to the logged-in owner."""
+    owner_id = current_user["db_id"]
+    kaheras = db.query(Kahera).filter(Kahera.owner_id == owner_id).all()
+    return [
+        {
+            "id":       f"TH-KH-{k.id:04d}",
+            "ownerId":  f"TH-MA-{owner_id:04d}",
+            "name":     k.full_name,
+            "status":   "active" if k.is_active else "inactive",
+            "avatarId": k.avatar_id,
+        }
+        for k in kaheras
+    ]
+
+
+# ── 6. ACTIVATE / DEACTIVATE KAHERA ──────────────────────────────────────────
 
 @router.patch("/kahera/{kahera_id}/status", response_model=OkResponse)
 def toggle_kahera_status(

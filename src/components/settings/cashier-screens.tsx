@@ -14,14 +14,14 @@ import { CashierIdentity, OwnerStoreCard, SettingsCard, SettingsDescription, Set
 import { CredentialForm } from './credential-form';
 import { authenticationService } from '@/services/authentication';
 import { createKahera } from '@/services/kahera-api';
+import { useKaheraList } from '@/hooks/use-kahera-list';
 import type { AvatarId } from '@/types/profile';
 
 export function CashierListScreen({ pinManagement = false }: { pinManagement?: boolean }) {
   const { owner } = useAuthFlow();
-  const service = useSettings();
   const [selected, setSelected] = useState<string | null>(null);
+  const { cashiers } = useKaheraList();
   if (!owner) return null;
-  const cashiers = service.cashiers(owner.id);
   return <SettingsFrame title={pinManagement ? 'Operator PIN Management' : 'User Management'} parent={pinManagement ? `${settingsRoot}/security` : settingsRoot}>
     <SettingsDescription>{pinManagement ? 'Select an Operator to reset their access PIN.' : "Manage the people who have access to your store's TindaHand account."}</SettingsDescription>
     {!pinManagement && <View className="mb-4 gap-3 rounded-control bg-[#D1E1F5] p-4">
@@ -41,8 +41,9 @@ export function CashierListScreen({ pinManagement = false }: { pinManagement?: b
 export function ChangePinScreen({ cashier = false }: { cashier?: boolean }) {
   const { owner } = useAuthFlow();
   const service = useSettings();
+  const { cashiers } = useKaheraList();
   const { cashierId } = useLocalSearchParams<{ cashierId?: string }>();
-  const selected = owner && cashier ? service.cashiers(owner.id).find(item => item.id === cashierId) : null;
+  const selected = owner && cashier ? cashiers.find(item => item.id === cashierId) : null;
   const [success, setSuccess] = useState('');
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const dismiss = useCallback(() => setExpiresAt(null), []);
@@ -83,9 +84,9 @@ export function AddCashierScreen() {
 export function CashierCreatedScreen() {
   const leave = useLeaveOnce();
   const { owner } = useAuthFlow();
-  const service = useSettings();
+  const { cashiers } = useKaheraList();
   const { cashierId } = useLocalSearchParams<{ cashierId?: string }>();
-  const cashier = owner ? service.cashiers(owner.id).find(item => item.id === cashierId) : null;
+  const cashier = owner ? cashiers.find(item => item.id === cashierId) : null;
   const [expiresAt, setExpiresAt] = useState<number | null>(() => Date.now() + 15000);
   const dismiss = useCallback(() => setExpiresAt(null), []);
   if (!owner) return null;

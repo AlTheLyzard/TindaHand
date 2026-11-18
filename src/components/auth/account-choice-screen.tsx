@@ -4,6 +4,8 @@ import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
 import { getToken } from '@/services/token-storage';
 import { useAuthFlow } from '@/state/auth-flow';
+import { listKaheras } from '@/services/kahera-api';
+import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import type { AccountRole } from '@/types/auth';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState, useSyncExternalStore } from 'react';
@@ -24,6 +26,7 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
   const ownerOption = accountOptions[0];
   const operatorOption = accountOptions[1];
     const [serverOwner, setServerOwner] = useState<{ id: string; name: string } | null>(null);
+  const [realHasKaheras, setRealHasKaheras] = useState(false);
 
   useFocusEffect(useCallback(() => {
   (async () => {
@@ -35,6 +38,11 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
         id: me.formatted_id,
         name: me.full_name,
       });
+      // If owner is logged in, check if they have any Kaheras so the cashier card shows.
+      if (!MOCK_AUTH_ENABLED) {
+        const kaheras = await listKaheras();
+        setRealHasKaheras(kaheras.length > 0);
+      }
     }
   })();
 }, []));
@@ -42,7 +50,8 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
   // Show one generic May-Ari card when any owner exists (mock directory or real JWT),
   // not one card per owner — matching the design intent.
   const hasOwners = directory.owners.length > 0 || serverOwner !== null;
-  const hasAccounts = hasOwners || directory.hasOperators;
+  const hasOperators = MOCK_AUTH_ENABLED ? directory.hasOperators : realHasKaheras;
+  const hasAccounts = hasOwners || hasOperators;
 
   return <AuthBackground headerWave><ScrollView contentContainerStyle={{ flexGrow: 1 }}>
     <View className="w-full max-w-[460px] flex-1 self-center px-5 pb-5 pt-5">
@@ -54,7 +63,7 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
         {hasOwners && <AccountRoleCard option={ownerOption}
           selected={selectedRole === 'owner'}
           onPress={role => { setSelectedRole(role); setSelectedOwnerId(null); onSelect(role); }} />}
-        {directory.hasOperators && <AccountRoleCard option={operatorOption} selected={selectedRole === 'cashier'}
+        {hasOperators && <AccountRoleCard option={operatorOption} selected={selectedRole === 'cashier'}
           onPress={role => { setSelectedRole(role); setSelectedOwnerId(null); onSelect(role); }} />}
       </View> : <View className="mt-8 gap-3 rounded-[12px] border border-[#B8CDE6] bg-white/90 p-5">
         <Text accessibilityRole="header" className="font-poppins-bold text-[16px] leading-6 text-brand">{t('auth.choice.createFirst')}</Text>

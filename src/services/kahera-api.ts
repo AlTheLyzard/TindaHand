@@ -14,6 +14,19 @@ export interface KaheraRecord {
 }
 
 /**
+ * GET /auth/kahera/list
+ * Returns all Kahera accounts for the logged-in owner.
+ * Requires a valid May-Ari (owner) JWT.
+ */
+export async function listKaheras(): Promise<KaheraRecord[]> {
+  try {
+    return await apiFetch<KaheraRecord[]>('/auth/kahera/list');
+  } catch {
+    return [];
+  }
+}
+
+/**
  * POST /auth/kahera/create
  * Creates a new Kahera account under the logged-in owner's store.
  * Requires: { full_name, pin, avatar_id? }

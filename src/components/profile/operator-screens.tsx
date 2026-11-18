@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { useAuthFlow } from '@/state/auth-flow';
 import { useSettings } from '@/state/settings';
 import { useProfileSnapshot } from '@/hooks/use-owner-profile';
+import { useKaheraList } from '@/hooks/use-kahera-list';
 import { authenticationService } from '@/services/authentication';
 import { createKahera } from '@/services/kahera-api';
 import type { AvatarId } from '@/types/profile';
@@ -28,10 +29,9 @@ function openOperator(id: string) { router.push({ pathname: '/owner-menu/profile
 
 export function OperatorListScreen() {
   const { owner } = useAuthFlow();
-  const service = useSettings();
   const profiles = useProfileSnapshot();
+  const { cashiers: operators } = useKaheraList();
   if (!owner) return null;
-  const operators = service.cashiers(owner.id);
   const storeName = profiles.get(owner.id)?.storeName;
   return <ProfileFrame title="Manage Operators" subtitle="Control access to your store">
     <ProfileNotice title="Owner access only">Manage accounts linked to {storeName || 'your store'}.</ProfileNotice>
@@ -51,8 +51,8 @@ export function OperatorListScreen() {
 export function OperatorDetailsScreen() {
   const { operatorId, created } = useLocalSearchParams<{ operatorId?: string; created?: string }>();
   const { owner } = useAuthFlow();
-  const service = useSettings();
-  const operator = owner ? service.cashiers(owner.id).find(item => item.id === operatorId) : null;
+  const { cashiers } = useKaheraList();
+  const operator = owner ? cashiers.find(item => item.id === operatorId) : null;
   if (!operator) return <ProfileFrame title="View Account"><ProfileError message="This Operator is unavailable or does not belong to your store." /><Button onPress={() => router.dismissTo(operatorsRoot)}>Back to Manage Operators</Button></ProfileFrame>;
   return <OperatorDetails key={operator.id} operator={operator} created={created === '1'} />;
 }
@@ -145,8 +145,8 @@ export function AddOperatorScreen() {
 export function ResetOperatorPinScreen() {
   const { operatorId } = useLocalSearchParams<{ operatorId?: string }>();
   const { owner } = useAuthFlow();
-  const service = useSettings();
-  const operator = owner ? service.cashiers(owner.id).find(item => item.id === operatorId) : null;
+  const { cashiers } = useKaheraList();
+  const operator = owner ? cashiers.find(item => item.id === operatorId) : null;
   const [toast, setToast] = useState<number | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
   return <ProfileFrame title="Set / Reset Operator PIN" subtitle="Verify your Owner identity, then assign a new four-digit PIN.">
