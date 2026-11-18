@@ -150,3 +150,21 @@ export async function addRestock(data: {
     body: JSON.stringify(data),
   });
 }
+
+/** Update an asset. */
+export async function updateAsset(id: number, data: Partial<{
+  name: string;
+  classification: string;
+  purchasePriceCentavos: number;
+  purchasedAt: string;
+}>): Promise<ApiAsset> {
+  return apiFetch<ApiAsset>(`/inventory/assets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Delete an asset. */
+export async function deleteAsset(id: number): Promise<void> {
+  return apiFetch<void>(`/inventory/assets/${id}`, { method: 'DELETE' });
+}

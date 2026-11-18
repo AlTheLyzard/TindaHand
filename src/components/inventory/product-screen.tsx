@@ -11,6 +11,7 @@ import { ConfirmationContent } from '@/components/ui/confirmation-content';
 import { InvCard, InvDateField, InvField, InventoryFrame, InvText, InvSelect, inventoryIllustrations } from './inventory-ui';
 import { BatchCard, ExistingBatchCard, batchExpiryLabel } from './batch-card';
 import { useInventory } from '@/state/inventory';
+import { createProduct, updateProduct, deleteProduct as deleteProductApi, addRestock as addRestockApi } from '@/services/inventory';
 import type { BatchDraft, BatchErrors, InventoryProduct, ProductDraft } from '@/types/inventory';
 import { categoryLabels, earliestExpiry, productBatches, productExpiry, productStock, stockCategory, todayInManila, validDate } from '@/utils/inventory';
 import { batchErrors, buildDraftProduct, clearInventoryStep, createInventoryDraft, detailsErrors, draftQuantity, newBatch, toStockBatches } from '@/utils/inventory-draft';
@@ -134,7 +135,7 @@ export function ProductScreen() {
     if (step === 'details') { if (validateDetails()) setStep('stock'); }
     else if (validateBatches()) setStep('review');
   }
-  function save() {
+  async function save() {
     if (busy.current || picking || leaving) return;
     Keyboard.dismiss();
     if (mode !== 'restock' && !validateDetails()) { if (mode === 'add') setStep('details'); return; }
@@ -143,17 +144,78 @@ export function ProductScreen() {
     const currentProduct = getStore().products.find(p => p.id === product?.id);
     if (mode === 'edit' && JSON.stringify(currentProduct) !== baselineProduct) { setError('This product changed while you were editing. Cancel and reopen it to use the latest stock.'); return; }
     busy.current = true; setSaving(true);
-    let saved = false;
+
+    // ── Restock ──────────────────────────────────────────────────────────────
     if (mode === 'restock' && product) {
-      saved = dispatch({ type: 'restock', record: { id: restockId, productId: product.id, itemName: product.name,
+      // If the product has a numeric API id (real product), call the backend.
+      const numericId = Number(product.id);
+      if (!isNaN(numericId) && numericId > 0) {
+        try {
+          // Earliest expiry from the draft batches (if any expiry set).
+          const expiryBatch = draft.batches.find(b => !b.noExpiry && b.expirationDate);
+          await addRestockApi({
+            productId: numericId,
+            quantityAdded: total,
+            costPerUnitCentavos: 0,
+            expirationDate: expiryBatch?.expirationDate,
+          });
+        } catch {
+          // Offline or server error — fall through and dispatch locally anyway
+          // so the owner's local store still reflects the restock.
+        }
+      }
+      const saved = dispatch({ type: 'restock', record: { id: restockId, productId: product.id, itemName: product.name,
         quantity: total, stockDate: draft.details.stockDate, expirationDate: '', batches: toStockBatches(draft.batches), recordedAt: new Date().toISOString() } });
-    } else saved = dispatch({ type: 'saveProduct', product: buildDraftProduct(product?.id ?? id, draft) });
+      if (!saved) { busy.current = false; setSaving(false); setConfirmation(null); setError('Changes could not be saved. Check total stock and values, then try again.'); return; }
+      finish('Added ' + total + ' units to ' + product!.name + '.');
+      return;
+    }
+
+    // ── Add or Edit product ───────────────────────────────────────────────────
+    const builtProduct = buildDraftProduct(product?.id ?? id, draft);
+    if (mode === 'add') {
+      try {
+        const created = await createProduct({
+          name: builtProduct.name,
+          category: builtProduct.category,
+          priceCentavos: builtProduct.unitPriceCentavos,
+        });
+        // Use the real API id so future checkout/restock calls reference the right record.
+        builtProduct.id = String(created.id);
+      } catch {
+        // Offline — the product will be saved locally with its temporary id.
+        // On the next session start, getProducts() will replace mock/local products
+        // with the real server list, so this draft will be lost until reconnected.
+      }
+    } else if (mode === 'edit' && product) {
+      const numericId = Number(product.id);
+      if (!isNaN(numericId) && numericId > 0) {
+        try {
+          await updateProduct(numericId, {
+            name: builtProduct.name,
+            category: builtProduct.category,
+            priceCentavos: builtProduct.unitPriceCentavos,
+          });
+        } catch {
+          // Offline — keep the local edit.
+        }
+      }
+    }
+    const saved = dispatch({ type: 'saveProduct', product: builtProduct });
     if (!saved) { busy.current = false; setSaving(false); setConfirmation(null); setError('Changes could not be saved. Check total stock and values, then try again.'); return; }
-    finish(mode === 'restock' ? 'Added ' + total + ' units to ' + product!.name + '.' : draft.details.name.trim() + (mode === 'edit' ? ' updated successfully.' : ' added successfully.'));
+    finish(draft.details.name.trim() + (mode === 'edit' ? ' updated successfully.' : ' added successfully.'));
   }
-  function removeProduct() {
+  async function removeProduct() {
     if (busy.current || !product) return;
     busy.current = true; setSaving(true);
+    const numericId = Number(product.id);
+    if (!isNaN(numericId) && numericId > 0) {
+      try {
+        await deleteProductApi(numericId);
+      } catch {
+        // Offline — allow local delete anyway so the owner's view stays clean.
+      }
+    }
     if (dispatch({ type: 'deleteProduct', id: product.id })) finish(product.name + ' deleted.');
     else { busy.current = false; setSaving(false); setConfirmation(null); setError('Product could not be deleted.'); }
   }

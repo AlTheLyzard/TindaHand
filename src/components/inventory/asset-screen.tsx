@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { InvCard, InvDanger, InvField, InventoryFrame, InvText, inventoryIllustrations } from './inventory-ui';
 import { AssetClassificationField } from './asset-classification-field';
 import { useInventory } from '@/state/inventory';
+import { createAsset, updateAsset as updateAssetApi, deleteAsset as deleteAssetApi } from '@/services/inventory';
 import type { AssetClassification, BusinessAsset } from '@/types/inventory';
 import { assetLabels, todayInManila } from '@/utils/inventory';
 import { formatPesos } from '@/utils/dashboard';
@@ -40,7 +41,7 @@ export function AssetScreen() {
   const lifeInput = useRef<TextInputInstance>(null);
   const adding = mode === 'add', deleting = mode === 'delete';
   function leave(message?: string) { Keyboard.dismiss(); if (message) setFeedback(message); if (router.canGoBack()) router.back(); else router.replace({ pathname: '/owner-inventory', params: { tab: 'assets' } }); }
-  function save() {
+  async function save() {
     if (submitted.current) return;
     Keyboard.dismiss();
     const next: Record<string, string> = {};
@@ -54,13 +55,52 @@ export function AssetScreen() {
     setErrors(next);
     if (Object.keys(next).length) return;
     submitted.current = true;
-    const record: BusinessAsset = { id: asset?.id ?? newId, name: name.trim(), valueCentavos: amount!, usefulLifeYears: classification === 'current' ? 0 : Number(life), classification: classification as AssetClassification, recordedDate: asset?.recordedDate ?? todayInManila() };
+    const today = todayInManila();
+    const record: BusinessAsset = { id: asset?.id ?? newId, name: name.trim(), valueCentavos: amount!, usefulLifeYears: classification === 'current' ? 0 : Number(life), classification: classification as AssetClassification, recordedDate: asset?.recordedDate ?? today };
+
+    if (adding) {
+      try {
+        const created = await createAsset({
+          name: record.name,
+          classification: record.classification,
+          purchasePriceCentavos: record.valueCentavos,
+          purchasedAt: record.recordedDate,
+        });
+        // Use the real API id so future edits/deletes reference the right record.
+        record.id = String(created.id);
+      } catch {
+        // Offline — asset will be saved locally with a temporary id.
+      }
+    } else if (asset) {
+      const numericId = Number(asset.id);
+      if (!isNaN(numericId) && numericId > 0) {
+        try {
+          await updateAssetApi(numericId, {
+            name: record.name,
+            classification: record.classification,
+            purchasePriceCentavos: record.valueCentavos,
+            purchasedAt: record.recordedDate,
+          });
+        } catch {
+          // Offline — keep the local edit.
+        }
+      }
+    }
+
     if (dispatch({ type: 'saveAsset', asset: record })) { setSaved(record); setSuccessVisible(true); }
     else { submitted.current = false; setErrors({ form: t("inventory.asset.could.not.be.saved.please.sign") }); }
   }
-  function remove() {
+  async function remove() {
     if (!asset || submitted.current) return;
     submitted.current = true;
+    const numericId = Number(asset.id);
+    if (!isNaN(numericId) && numericId > 0) {
+      try {
+        await deleteAssetApi(numericId);
+      } catch {
+        // Offline — allow local delete anyway.
+      }
+    }
     if (dispatch({ type: 'deleteAsset', id: asset.id })) leave(t('inventory.asset.deleted', { name: asset.name }));
     else { submitted.current = false; setErrors({ form: t("inventory.asset.could.not.be.deleted") }); }
   }
