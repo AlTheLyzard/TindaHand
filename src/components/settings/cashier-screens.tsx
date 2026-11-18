@@ -13,6 +13,8 @@ import { SettingsFrame, settingsRoot } from './settings-frame';
 import { CashierIdentity, OwnerStoreCard, SettingsCard, SettingsDescription, SettingsNotice } from './settings-ui';
 import { CredentialForm } from './credential-form';
 import { authenticationService } from '@/services/authentication';
+import { createKahera } from '@/services/kahera-api';
+import type { AvatarId } from '@/types/profile';
 
 export function CashierListScreen({ pinManagement = false }: { pinManagement?: boolean }) {
   const { owner } = useAuthFlow();
@@ -59,13 +61,23 @@ export function ChangePinScreen({ cashier = false }: { cashier?: boolean }) {
 }
 export function AddCashierScreen() {
   const { owner } = useAuthFlow();
-  const service = useSettings();
   if (!owner) return null;
   return <SettingsFrame title="Add Operator" parent={`${settingsRoot}/users`}>
     <OwnerStoreCard owner={owner} />
-    <CredentialForm mode="create" onSave={values => service.createCashier(owner, values)}
+    <CredentialForm mode="create" onSave={async values => {
+      const result = await createKahera({ name: values.name, pin: values.pin });
+      if (!result.ok) return result;
+      // Map API response to the Cashier shape the rest of the app expects.
+      const cashier = {
+        id: result.value.id,
+        ownerId: result.value.ownerId,
+        name: result.value.name,
+        status: result.value.status,
+        avatarId: (result.value.avatarId ?? 'avatar-01') as AvatarId,
+      };
+      return { ok: true as const, value: cashier };
+    }}
       onSuccess={created => router.replace({ pathname: '/owner-menu/settings/cashier-created', params: { cashierId: created.id } })} />
-    <Text className="mt-2 font-poppins text-[11px] leading-4 text-text-secondary">Demo only. Operator accounts are kept in memory and reset when the app reloads.</Text>
   </SettingsFrame>;
 }
 export function CashierCreatedScreen() {

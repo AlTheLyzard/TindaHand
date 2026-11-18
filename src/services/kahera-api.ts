@@ -1,0 +1,44 @@
+/**
+ * Kahera (cashier) account management API calls.
+ * All endpoints require a valid May-Ari (owner) JWT.
+ */
+import { ApiError, apiFetch } from '@/services/api';
+import type { SettingsResult } from '@/types/settings';
+
+export interface KaheraRecord {
+  id: string;        // e.g. "TH-KH-0001"
+  ownerId: string;   // e.g. "TH-MA-0001"
+  name: string;
+  status: 'active' | 'inactive';
+  avatarId: string | null;
+}
+
+/**
+ * POST /auth/kahera/create
+ * Creates a new Kahera account under the logged-in owner's store.
+ * Requires: { full_name, pin, avatar_id? }
+ */
+export async function createKahera(
+  values: { name: string; pin: string; avatarId?: string },
+): Promise<SettingsResult<KaheraRecord>> {
+  try {
+    const data = await apiFetch<KaheraRecord>('/auth/kahera/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        full_name: values.name.trim(),
+        pin: values.pin,
+        avatar_id: values.avatarId ?? null,
+      }),
+    });
+    return { ok: true, value: data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      if (err.status === 401 || err.status === 403)
+        return { ok: false, message: 'You must be logged in as an Owner to add Operators.' };
+      if (err.status === 422)
+        return { ok: false, message: 'Invalid details. Check the name and PIN and try again.' };
+      return { ok: false, message: `Server error (${err.status}). Please try again.` };
+    }
+    return { ok: false, message: 'Could not reach server. Check your connection.' };
+  }
+}
