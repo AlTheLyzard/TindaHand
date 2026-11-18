@@ -32,16 +32,18 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
     const me = await fetchMe(token);
     if (me && me.role === 'may_ari') {
       setServerOwner({
-        id: `TH-MA-${String(me.id).padStart(4, '0')}`,
+        id: me.formatted_id,
         name: me.full_name,
       });
     }
   })();
 }, []));
 
-  const effectiveOwners = directory.owners.length > 0 ? directory.owners : serverOwner ? [serverOwner] : [];
-  const hasAccounts = effectiveOwners.length > 0 || directory.hasOperators;
-  
+  // Show one generic May-Ari card when any owner exists (mock directory or real JWT),
+  // not one card per owner — matching the design intent.
+  const hasOwners = directory.owners.length > 0 || serverOwner !== null;
+  const hasAccounts = hasOwners || directory.hasOperators;
+
   return <AuthBackground headerWave><ScrollView contentContainerStyle={{ flexGrow: 1 }}>
     <View className="w-full max-w-[460px] flex-1 self-center px-5 pb-5 pt-5">
       <AuthHeader onBack={onBack} />
@@ -49,9 +51,9 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
       <Text accessibilityRole="header" className="mt-12 font-poppins-bold text-[28px] leading-[40px] text-brand">Choose your Account</Text>
       <Text className="mt-1 font-poppins text-[10px] leading-[15px] text-black">{hasAccounts ? t('auth.choice.selectAccount') : t('auth.choice.noAccounts')}</Text>
       {hasAccounts ? <View className="mt-6 gap-7">
-        {effectiveOwners.map(account => <AccountRoleCard key={account.id} option={ownerOption} account={account}
-          selected={selectedRole === 'owner' && selectedOwnerId === account.id}
-          onPress={role => { setSelectedRole(role); setSelectedOwnerId(account.id); onSelect(role); }} />)}
+        {hasOwners && <AccountRoleCard option={ownerOption}
+          selected={selectedRole === 'owner'}
+          onPress={role => { setSelectedRole(role); setSelectedOwnerId(null); onSelect(role); }} />}
         {directory.hasOperators && <AccountRoleCard option={operatorOption} selected={selectedRole === 'cashier'}
           onPress={role => { setSelectedRole(role); setSelectedOwnerId(null); onSelect(role); }} />}
       </View> : <View className="mt-8 gap-3 rounded-[12px] border border-[#B8CDE6] bg-white/90 p-5">

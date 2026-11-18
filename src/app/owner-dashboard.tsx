@@ -22,7 +22,7 @@ export default function OwnerDashboardRoute() {
       const me = await fetchMe(token);
       if (me && me.role === 'may_ari') {
         setServerOwner({
-          id: `TH-MA-${String(me.id).padStart(4, '0')}`,
+          id: me.formatted_id,
           name: me.name,
           mode: 'mock',
         });
