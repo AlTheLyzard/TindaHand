@@ -17,7 +17,6 @@ import { AuthBackground } from './auth-background';
 import { AuthHeader } from './auth-header';
 import { OperatorPinHelpModal } from './operator-pin-help-modal';
 
-import { fetchMe } from '@/services/session-api';
 
 type OperatorLoginState = 'idle' | 'invalid' | 'submitting' | 'failed';
 
@@ -74,8 +73,9 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
         const result = await loginOwner(id, credential);
         if (!active.current) return;
         if (result.status === 'ok') {
-          const me = await fetchMe(result.token);
-          const ownerId = me ? me.formatted_id : '';
+          // The owner typed their ID into the form — use it directly.
+          // Normalize to uppercase TH-MA-XXXX format.
+          const ownerId = id.trim().toUpperCase();
           await saveToken(result.token, result.name, ownerId, 'owner');
           setCredential('');
           await flow.refreshSession();
