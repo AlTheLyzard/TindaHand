@@ -64,6 +64,7 @@ export interface AuthenticationService {
   createOperator(input: import('./settings').CashierValues): Promise<import('./settings').SettingsResult<import('./settings').Cashier>>;
   resetOperatorPin(input: import('./settings').PinValues & { operatorId: string }): Promise<import('./settings').SettingsResult<import('./settings').Cashier>>;
   setOperatorActive(input: { operatorId: string; active: boolean }): Promise<import('./settings').SettingsResult<import('./settings').Cashier>>;
+  updateOperatorProfile(input: import('./settings').OperatorProfileValues): Promise<import('./settings').SettingsResult<import('./settings').Cashier>>;
   setOperatorPermission(input: { operatorId: string; group: import('@/utils/operator-access').PermissionGroup; allowed: boolean }): Promise<import('./settings').SettingsResult<readonly OperatorPermission[]>>;
   restoreSession(): Promise<DeviceSession | null>;
   restoreRememberedIdentities(): Promise<RememberedIdentities>;

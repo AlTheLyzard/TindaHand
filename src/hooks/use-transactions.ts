@@ -9,13 +9,14 @@ import type { TransactionSources } from '@/utils/transactions';
 export function useTransactions() {
   const { owner } = useAuthFlow();
   const { store } = useInventory();
-  const { records, receivablePayments } = useQuickAdd();
+  const { records, receivablePayments, payables } = useQuickAdd();
   const ownerId = owner?.id;
   const [result, setResult] = useState<{ rows: TransactionRecord[]; source: TransactionSources | null; error: string }>({ rows: [], source: null, error: '' });
   const [revision, setRevision] = useState(0);
-  const source = useMemo(() => ({ ownerId, revision, sales: store.pos?.sales ?? [], customers: store.pos?.customers ?? [], records, payments: receivablePayments }), [ownerId, revision, store, records, receivablePayments]);
+  const source = useMemo(() => ({ ownerId, revision, sales: store.pos?.sales ?? [], customers: store.pos?.customers ?? [], records, payments: receivablePayments, payables }), [ownerId, revision, store, records, receivablePayments, payables]);
   useEffect(() => {
     let active = true;
+    // TODO: Backend integration: replace this local read with the authenticated API call. Pass the current page, limit (8), search, category, and date/payment filters, and refetch when any of them change.
     const request = ownerId ? readTransactions(ownerId, source) : Promise.resolve([]);
     void request.then(rows => { if (active) setResult({ rows, source, error: '' }); })
       .catch(() => { if (active) setResult({ rows: [], source, error: 'Could not load transactions. Please try again.' }); });

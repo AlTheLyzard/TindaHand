@@ -1,6 +1,7 @@
 import type { Customer, MockSale } from '@/types/pos';
 import type { QuickAddRecord } from '@/types/quick-add';
 import type { ReceivablePayment } from '@/types/receivables';
+import type { PayablesLedger } from '@/types/payables';
 import type { TransactionCategory, TransactionFilters, TransactionRecord } from '@/types/transactions';
 import { validCalendarDate } from './date';
 
@@ -20,7 +21,8 @@ export function transactionMetadata(record: TransactionRecord) {
   const date = new Date(record.occurredAt);
   const day = date.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: '2-digit' });
   const time = date.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' });
-  const method = record.paymentMethod === 'gcash' ? 'GCash' : record.paymentMethod === 'cash' ? 'Cash' : record.paymentMethod === 'split' ? 'Split' : 'Method not recorded';
+  const method = record.paymentMethod === 'gcash' ? 'GCash' : record.paymentMethod === 'cash' ? 'Cash' : record.paymentMethod === 'split' ? 'Split'
+    : record.type === 'customerDebt' || record.type === 'storeDebt' ? 'Debt recorded' : 'Method not recorded';
   return `${day}, ${time} • ${method}`;
 }
 /** Format integer parts directly: no floating-point money arithmetic. */
@@ -42,7 +44,7 @@ export function filterTransactions(records: readonly TransactionRecord[], query:
 
 export type TransactionSources = {
   sales: readonly MockSale[]; customers: readonly Customer[];
-  records: readonly QuickAddRecord[]; payments: readonly ReceivablePayment[];
+  records: readonly QuickAddRecord[]; payments: readonly ReceivablePayment[]; payables?: PayablesLedger;
 };
 /** POS mirrors its initial partial receipt into AR to calculate debt balances.
  * That mirror is the sale's receipt, not a later customer payment. */
@@ -74,6 +76,18 @@ export function projectTransactions(ownerId: string, sources: TransactionSources
       type: 'customerPayment', occurredAt: payment.occurredAt, description: 'Customer Payment',
       partyName: debt?.name ?? null, paymentMethod: null, amountCentavos: payment.amountCentavos,
       direction: 'in', debtId: payment.debtId, saleId: debt?.saleId });
+  }
+  for (const debt of sources.records.filter(row => row.ownerId === ownerId && !row.saleId && (row.kind === 'customerDebt' || row.kind === 'storeDebt'))) {
+    rows.push({ id: `${debt.kind}:${debt.id}`, sourceId: debt.id, ownerId, transactionNumber: debt.id,
+      type: debt.kind, occurredAt: debt.occurredAt, description: debt.kind === 'customerDebt' ? 'Customer Debt' : 'Store Debt',
+      partyName: debt.name, paymentMethod: null, amountCentavos: debt.originalAmountCentavos ?? debt.amountCentavos,
+      direction: debt.kind === 'customerDebt' && debt.borrowing === 'cash' ? 'out' : 'neutral', debtId: debt.id });
+  }
+  for (const payment of (sources.payables?.payments ?? []).filter(row => row.ownerId === ownerId)) {
+    const debt = sources.payables?.debts.find(row => row.ownerId === ownerId && row.id === payment.debtId);
+    rows.push({ id: `supplier-payment:${payment.id}`, sourceId: payment.id, ownerId, transactionNumber: payment.id,
+      type: 'supplierPayment', occurredAt: payment.occurredAt, description: 'Supplier Payment', partyName: debt?.name ?? null,
+      paymentMethod: null, amountCentavos: payment.amountCentavos, direction: 'out', debtId: payment.debtId });
   }
   for (const expense of sources.records.filter(row => row.ownerId === ownerId && row.kind === 'expense')) {
     rows.push({ id: `expense:${expense.id}`, sourceId: expense.id, ownerId, transactionNumber: expense.id,

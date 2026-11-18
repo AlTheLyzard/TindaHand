@@ -32,7 +32,7 @@ export function AssetCard({ asset, onEdit }: {
       <Text style={{ fontFamily: tokens.button.fontFamily, fontSize: 22, lineHeight: 30, color: tokens.button.primary.pressed }}>{formatPesos(asset.valueCentavos)}</Text>
       <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 14, lineHeight: 21, color: tokens.color.textSecondary }}>Recorded {formatCalendarDate(asset.recordedDate)}</Text>
     </View>
-    <InventoryPopover visible={open} anchorRef={trigger} label={`actions for ${asset.name}`} testID={`asset-actions-${asset.id}`} width={tokens.size.touchTarget * 2 + tokens.spacing.four}
+    <InventoryPopover visible={open} anchorRef={trigger} label={`actions for ${asset.name}`} testID={`asset-actions-${asset.id}`} width={tokens.size.touchTarget * 2 + tokens.spacing.four} placement="below"
       onClose={() => setOpen(false)} onHidden={() => {
         const action = pendingAction.current; pendingAction.current = null;
         // Finish dismissing this window before navigating on iOS.

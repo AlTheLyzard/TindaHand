@@ -17,7 +17,7 @@ import { useTranslation } from '@/i18n/use-translation';
 import { usePos } from '@/state/pos';
 import type { OwnerIdentity } from '@/types/auth';
 import { formatPesos } from '@/utils/dashboard';
-import { selectionSummary } from '@/utils/pos';
+import { cartStockStatus, selectionSummary } from '@/utils/pos';
 import { EmptyState, useContentPreview } from '@/components/ui/content-state';
 import { RecordSkeleton } from '@/components/ui/content-skeletons';
 import { usePosMetrics } from './pos-metrics';
@@ -80,10 +80,12 @@ export function CartReviewScreen({ owner, basePath = '/owner-pos' }: { owner: Ow
             const product = products.find(product => product.id === item.productId);
             const stock = product?.stock ?? 0;
             const atLimit = item.quantity >= stock;
-            const blocking = !product || stock <= 0 || item.quantity > stock;
-            const status = !product || stock <= 0 ? 'Product unavailable. Remove it from the cart.'
-              : item.quantity > stock ? `Insufficient stock. Only ${stock} available.`
-              : atLimit ? t('pos.cart.stockLimit') : stock <= inventoryRules.lowStock ? `Low stock: ${stock} available. Requested quantity is available.` : null;
+            const stockStatus = cartStockStatus(product?.stock, item.quantity, inventoryRules.lowStock);
+            const blocking = stockStatus?.kind === 'unavailable' || stockStatus?.kind === 'insufficient';
+            const status = stockStatus?.kind === 'unavailable' ? 'Product unavailable. Remove it from the cart.'
+              : stockStatus?.kind === 'insufficient' ? `Insufficient stock. Only ${stockStatus.available} available.`
+              : stockStatus?.kind === 'depleted' ? 'Out of stock. Requested quantity is available; no additional units remain.'
+              : stockStatus?.kind === 'low' ? `Low Stock: ${stockStatus.available} available. Requested quantity is available.` : null;
             return <Animated.View key={item.productId} collapsable={false} layout={moveRow} exiting={removeRow} style={{ marginBottom: tokens.spacing.three, borderRadius: tokens.radius.card, backgroundColor: '#FFFFFF', padding: tokens.spacing.three }}>
               <View className="flex-row items-start justify-between gap-2">
                 <View className="flex-1">
@@ -95,23 +97,23 @@ export function CartReviewScreen({ owner, basePath = '/owner-pos' }: { owner: Ow
               <View className="mt-3 flex-row flex-wrap items-center justify-between gap-3">
                 <View className="flex-row items-center gap-2">
                   <IconButton variant="primary" accessibilityLabel={t('pos.cart.decrease', { name: item.itemName })} onPress={() => item.quantity === 1 ? requestConfirmation({ kind: 'zero', productId: item.productId, name: item.itemName }) : changeQuantity(item.productId, -1)}
-                    style={{ minWidth: 40, minHeight: 40 }}
-                    icon={({ color }) => <Text style={{ fontFamily: tokens.button.fontFamily, fontSize: 18, color }}>−</Text>} />
+                    style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, padding: 0 }}
+                    icon={({ color }) => <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}><Text style={{ width: 24, height: 24, includeFontPadding: false, textAlign: 'center', textAlignVertical: 'center', fontFamily: tokens.button.fontFamily, fontSize: 18, lineHeight: 24, color }}>{'\u2212'}</Text></View>} />
                   <Text accessibilityLabel={t('pos.cart.quantity', { name: item.itemName, count: item.quantity })} className="min-w-6 text-center font-poppins-bold text-[16px] text-[#102342]">{item.quantity}</Text>
                   <IconButton variant="primary" accessibilityLabel={t('pos.cart.increase', { name: item.itemName })} disabled={atLimit} onPress={() => changeQuantity(item.productId, 1)}
-                    style={{ minWidth: 40, minHeight: 40 }}
-                    icon={({ color }) => <Text style={{ fontFamily: tokens.button.fontFamily, fontSize: 18, color }}>+</Text>} />
+                    style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, padding: 0 }}
+                    icon={({ color }) => <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}><Text style={{ width: 24, height: 24, includeFontPadding: false, textAlign: 'center', textAlignVertical: 'center', fontFamily: tokens.button.fontFamily, fontSize: 18, lineHeight: 24, color }}>+</Text></View>} />
                 </View>
                 <View className="ml-auto items-end">
                   <Text className="font-poppins text-[11px] text-text-secondary">{item.quantity} × {formatPesos(item.unitPriceCentavos)}</Text>
                   <Text className="mt-1 font-poppins-bold text-[16px] text-brand">{formatPesos(item.quantity * item.unitPriceCentavos)}</Text>
                 </View>
               </View>
-              {status && <View className="mt-2 flex-row items-start gap-2" style={!atLimit && !blocking ? { backgroundColor: `${tokens.color.warningBase}20`, borderRadius: tokens.button.radius, padding: tokens.spacing.two } : undefined}>
-                {!atLimit && !blocking && <View accessible={false} style={{ marginTop: 3, width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: tokens.color.warningBase }} />}
-                <Text accessibilityRole={blocking ? 'alert' : undefined} className="flex-1 font-poppins-bold text-[11px]"
-                  style={{ color: atLimit || blocking ? tokens.color.errorBase : tokens.color.textSecondary }}>{status}</Text>
-              </View>}
+              <View className="mt-2 flex-row items-start gap-2" style={{ minHeight: 16 }}>
+                {!!status && stockStatus?.kind !== 'unavailable' && stockStatus?.kind !== 'insufficient' && <View accessible={false} style={{ marginTop: 3, width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: tokens.color.warningBase }} />}
+                {!!status && <Text accessibilityRole={blocking ? 'alert' : undefined} className="flex-1 font-poppins-bold text-[11px] leading-[16px]"
+                  style={{ color: blocking ? tokens.color.errorBase : stockStatus?.kind === 'low' || stockStatus?.kind === 'depleted' ? '#7A5000' : tokens.color.textSecondary }}>{status}</Text>}
+              </View>
             </Animated.View>;
           })}
         </View>

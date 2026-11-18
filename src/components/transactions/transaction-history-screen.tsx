@@ -1,10 +1,11 @@
 import { KeyboardInput as TextInput, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { router } from 'expo-router';
-import { Image } from 'expo-image';
 import { useMemo, useRef, useState } from 'react';
 import { FlatList, Keyboard, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
+import { MainHeader } from '@/components/dashboard/main-header';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import { PosChip } from '@/components/pos/pos-chip';
 import { PosIcon } from '@/components/pos/pos-icon';
 import { Button, IconButton } from '@/components/ui/button';
@@ -18,12 +19,14 @@ import type { TransactionCategory, TransactionFilters, TransactionRecord } from 
 import { emptyTransactionFilters, filterTransactions, transactionAmount, transactionMetadata } from '@/utils/transactions';
 import { TransactionFilterSheet } from './transaction-filter-sheet';
 
+const transactionPageSize = 8;
+
 function TransactionRow({ record }: { record: TransactionRecord }) {
   const { width, fontScale } = useWindowDimensions();
   const amount = transactionAmount(record);
   // Give long amounts and enlarged text their own line without reducing font sizes.
   const stacked = fontScale > 1.25 || (width < 360 && amount.length > 10) || amount.length > 15;
-  const title = record.partyName && record.type === 'customerPayment' ? `${record.description} — ${record.partyName}` : record.description;
+  const title = record.partyName && record.type !== 'sale' && record.type !== 'expense' ? `${record.description} — ${record.partyName}` : record.description;
   const metadata = transactionMetadata(record);
   const partial = record.saleTotalCentavos !== undefined && (record.outstandingCentavos ?? 0) > 0;
   const details = partial ? ` Sale total ${transactionAmount({ amountCentavos: record.saleTotalCentavos!, direction: 'neutral' })}. Received ${amount}. Outstanding ${transactionAmount({ amountCentavos: record.outstandingCentavos!, direction: 'neutral' })}.` : '';
@@ -54,41 +57,61 @@ export function TransactionHistoryScreen() {
   const list = useRef<FlatList<TransactionRecord>>(null);
   const insets = useSafeAreaInsets();
   const navigationHeight = useNavigationHeight();
+  const { width, fontScale } = useWindowDimensions();
   const filtered = useMemo(() => filterTransactions(rows, query, category, filters), [rows, query, category, filters]);
   const hasFilters = !!filters.from || !!filters.to || filters.paymentMethod !== 'all';
+  const pageKey = JSON.stringify([query, category, filters, filtered.map(record => record.id)]);
+  const [pageState, setPageState] = useState<{ key: string; index: number }>({ key: '', index: 0 });
+  const pageCount = Math.max(1, Math.ceil(filtered.length / transactionPageSize));
+  const pageIndex = pageState.key === pageKey ? Math.min(pageState.index, pageCount - 1) : 0;
+  // TODO: Backend pagination: request pageIndex + 1 with limit transactionPageSize and use the server total for pageCount instead of slicing the full result locally.
+  const pageRows = filtered.slice(pageIndex * transactionPageSize, (pageIndex + 1) * transactionPageSize);
+  const safeWidth = Math.max(1, width - insets.left - insets.right);
+  const titleWidth = Math.max(1, Math.min(safeWidth, 460) - 48 - tokens.size.touchTarget - 4);
+  const titleFontSize = Math.min(32, Math.max(8, titleWidth * 0.095));
+  const searchHeight = Math.max(tokens.size.touchTarget, Math.ceil(fontScale * 18) + 24);
   const moveToTop = () => list.current?.scrollToOffset({ offset: 0, animated: false });
   const reset = () => { Keyboard.dismiss(); setQuery(''); setCategory('all'); setFilters(emptyTransactionFilters()); moveToTop(); };
+  const goToPage = (index: number) => {
+    setPageState({ key: pageKey, index });
+    Keyboard.dismiss();
+    moveToTop();
+  };
   function back() { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else router.replace('/owner-dashboard'); }
-  return <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: '#E8F1FB' }}>
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      <Image source={require('@/assets/images/financial/transaction-background.svg')} contentFit="fill" accessible={false}
-        pointerEvents="none" style={{ position: 'absolute', bottom: navigationHeight + insets.bottom, width: '100%', height: 210 }} />
-      <KeyboardAvoidingView style={{ flex: 1, paddingBottom: navigationHeight + insets.bottom }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={styles.controls}>
+  return <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: tokens.color.appBackground }}>
+    <View style={{ flex: 1, backgroundColor: tokens.color.appBackground }}>
+      <MainHeader onNavigate={action => { Keyboard.dismiss(); action(); }} />
+      <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <View style={{ flex: 1, minHeight: 0 }}>
+          <View style={styles.controls}>
           <View style={styles.heading}>
             <BackButton accessibilityLabel="Go back" onPress={back} />
-            <Text accessibilityRole="header" style={styles.title}>Transaction History</Text>
+            <Text accessibilityRole="header" numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.3}
+              style={[styles.title, { fontSize: titleFontSize, lineHeight: titleFontSize * 1.375 }]}>Transaction History</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={[styles.search, { borderColor: focused ? tokens.color.accentBase : '#E6EEF8' }]}>
+            <View style={[styles.search, { minHeight: searchHeight + 2, borderColor: focused ? tokens.color.accentBase : tokens.color.borderOutline }]}>
               <PosIcon name="search" size={20} color="#5A7394" />
               <TextInput accessibilityLabel="Search transactions" accessibilityHint="Search by transaction number, customer, payee, or description."
-                value={query} onChangeText={value => { setQuery(value); moveToTop(); }} placeholder="Search transactions..." placeholderTextColor="#5A7394"
-                autoCorrect={false} autoCapitalize="none" returnKeyType="search" onSubmitEditing={Keyboard.dismiss}
-                onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} style={styles.searchInput} />
+                value={query} onChangeText={value => { setQuery(value); moveToTop(); }} placeholder="Search transactions..." placeholderTextColor={tokens.color.textSecondary}
+                underlineColorAndroid="transparent" selectionColor={tokens.color.accentBase} autoCorrect={false} spellCheck={false} autoCapitalize="none"
+                returnKeyType="search" onSubmitEditing={Keyboard.dismiss} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+                style={[styles.searchInput, { height: searchHeight }]} />
+              {!!query && <IconButton accessibilityLabel="Clear transaction search" onPress={() => { setQuery(''); moveToTop(); }}
+                icon={({ color }) => <PosIcon name="close" size={18} color={color} />} />}
             </View>
-            <IconButton accessibilityLabel={hasFilters ? 'Filter transactions, filters applied' : 'Filter transactions'}
+            <Button compact variant="text" fullWidth={false} accessibilityLabel={hasFilters ? 'Filter transactions, filters applied' : 'Filter transactions'}
               accessibilityState={{ expanded: filterOpen, selected: hasFilters }} onPress={() => { Keyboard.dismiss(); setFilterOpen(true); }}
-              icon={() => <PosIcon name="filter" size={24} color={hasFilters ? tokens.button.primary.default : '#000000'} />} />
+              iconPosition="trailing" icon={props => <PosIcon name="filter" {...props} />}>Filter</Button>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, marginRight: -24 }} contentContainerStyle={{ gap: 8, paddingRight: 24 }}>
             {transactionCategories.map(item => <PosChip key={item.value} appearance="category" label={item.label} selected={category === item.value}
               onPress={() => { setCategory(item.value); moveToTop(); }} />)}
           </ScrollView>
         </View>
-        <FlatList ref={list} data={loading || error ? [] : filtered} keyExtractor={record => record.id} renderItem={({ item }) => <TransactionRow record={item} />}
-          style={{ flex: 1, width: '100%', maxWidth: 460, alignSelf: 'center' }}
-          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24, gap: 12, flexGrow: 1 }}
+        <FlatList ref={list} data={loading || error ? [] : pageRows} keyExtractor={record => record.id} renderItem={({ item }) => <TransactionRow record={item} />}
+          style={{ flex: 1, minHeight: 0, width: '100%', maxWidth: 460, alignSelf: 'center' }}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: navigationHeight + insets.bottom + 24, gap: 12, flexGrow: 1 }}
           keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}
           ListEmptyComponent={loading ? <TransactionSkeleton /> : <View style={styles.empty}>
             <Text accessibilityRole="header" style={styles.emptyTitle}>{error ? 'Unable to load transactions' : rows.length ? 'No matching transactions' : 'No transactions yet'}</Text>
@@ -96,7 +119,11 @@ export function TransactionHistoryScreen() {
               {error || (rows.length ? 'Try another search, category, date range, or payment method.' : 'Recorded sales, customer payments, and expenses will appear here.')}
             </Text>
             {error ? <Button onPress={retry}>Try Again</Button> : (rows.length > 0 || query || category !== 'all' || hasFilters) ? <Button variant="secondary" onPress={reset}>Clear search and filters</Button> : null}
-          </View>} />
+          </View>}
+          ListFooterComponent={!loading && !error && filtered.length > transactionPageSize ? <View style={styles.pagination}>
+            <PaginationControls pageIndex={pageIndex} pageCount={pageCount} itemName="transaction" onPageChange={goToPage} />
+          </View> : undefined} />
+        </View>
       </KeyboardAvoidingView>
       <DashboardNavigation onHome={() => router.navigate('/owner-dashboard')} onPos={() => router.navigate('/owner-pos')} onUnavailable={() => {}} />
     </View>
@@ -105,16 +132,17 @@ export function TransactionHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  controls: { width: '100%', maxWidth: 460, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 12, gap: 8, backgroundColor: '#FFFFFF' },
+  controls: { width: '100%', maxWidth: 460, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 12, gap: 8, backgroundColor: tokens.color.appBackground },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
-  title: { flex: 1, minWidth: 0, fontFamily: 'Poppins_700Bold', fontSize: 32, lineHeight: 44, color: '#112F6F' },
-  search: { flex: 1, minWidth: 0, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, borderWidth: 1, borderRadius: tokens.radius.control, backgroundColor: '#FFFFFF', boxShadow: 'inset 0 2px 4px rgba(115,153,204,0.25), 0 1px 3px #D9E7F4' },
-  searchInput: { flex: 1, minWidth: 0, minHeight: 48, paddingVertical: 12, fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18, color: tokens.color.textPrimary },
-  row: { minHeight: 72, paddingHorizontal: 16, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: tokens.radius.card, backgroundColor: '#FFFFFF' },
+  title: { flex: 1, minWidth: 0, fontFamily: 'Poppins_700Bold', color: '#112F6F' },
+  search: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderWidth: 1, borderRadius: tokens.radius.control, backgroundColor: tokens.color.surfaceCard, boxShadow: 'inset 0 2px 3px #D9E7F4' },
+  searchInput: { flex: 1, minWidth: 0, paddingVertical: 8, textAlignVertical: 'center', fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18, color: tokens.color.textPrimary },
+  row: { minHeight: 72, paddingHorizontal: 16, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard },
   rowTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, lineHeight: 18, color: tokens.color.textPrimary },
   metadata: { fontFamily: 'Poppins_400Regular', fontSize: 10, lineHeight: 15, color: '#5A7394' },
   amount: { flexShrink: 0, fontFamily: 'Poppins_700Bold', fontSize: 16, lineHeight: 24 },
-  empty: { padding: 20, marginTop: 20, gap: 16, borderRadius: tokens.radius.card, backgroundColor: '#FFFFFF' },
+  empty: { padding: 20, marginTop: 20, gap: 16, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard },
   emptyTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 22, lineHeight: 33, color: tokens.color.textPrimary },
   emptyCopy: { fontFamily: 'Poppins_400Regular', fontSize: 14, lineHeight: 21, color: tokens.color.textSecondary },
+  pagination: { width: '100%', paddingTop: 4, paddingBottom: 8 },
 });

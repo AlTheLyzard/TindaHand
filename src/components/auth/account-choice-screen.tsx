@@ -8,13 +8,14 @@ import type { AccountRole } from '@/types/auth';
 import { authenticationService } from '@/services/authentication';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/i18n/use-translation';
+import { demoOwner } from '@/data/mock-auth';
 
 export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
   onBack: () => void;
   onSelect: (role: AccountRole) => void;
   onCreateAccount: () => void;
 }) {
-  const { selectedRole, setSelectedRole, selectedOwnerId, setSelectedOwnerId } = useAuthFlow();
+  const { selectedRole, setSelectedRole, selectedOwnerId, setSelectedOwnerId, mockAuthEnabled } = useAuthFlow();
   const { t } = useTranslation();
   const directory = useSyncExternalStore(authenticationService.subscribeAccountDirectory,
     authenticationService.getAccountDirectorySnapshot, authenticationService.getAccountDirectorySnapshot);
@@ -37,6 +38,13 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
         <Text accessibilityRole="header" className="font-poppins-bold text-[16px] leading-6 text-brand">{t('auth.choice.createFirst')}</Text>
         <Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">{t('auth.choice.createFirstDescription')}</Text>
         <Button onPress={onCreateAccount} accessibilityHint={t('auth.choice.createOwnerHint')}>{t('auth.choice.createOwner')}</Button>
+      </View>}
+      {mockAuthEnabled && <View className="mt-5">
+        <Button variant="secondary" onPress={() => {
+          setSelectedRole('owner');
+          setSelectedOwnerId(demoOwner.id);
+          onSelect('owner');
+        }}>{t('auth.mock.open')}</Button>
       </View>}
       {hasAccounts && <Text className="mt-4 text-center font-poppins text-[10px] leading-[15px] text-brand">{t('auth.choice.loginHint')}</Text>}
       <View className="min-h-24 flex-1" />

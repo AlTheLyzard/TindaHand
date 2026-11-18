@@ -155,7 +155,7 @@ export function SalesCard({
             <Metric loading={loading}>
               <Pressable disabled={loading} accessibilityRole="button" accessibilityLabel={t(label)} accessibilityState={{ selected: period === value, disabled: loading }} onPress={() => onPeriod(value)}
                 style={{ minHeight: tokens.size.touchTarget, minWidth: tokens.size.touchTarget, alignItems: 'stretch', justifyContent: 'center' }}>
-                <View testID={`dashboard-period-${value}`} pointerEvents="none" style={{ paddingHorizontal: tokens.spacing.two, paddingVertical: tokens.spacing.one, borderWidth: 1, borderColor: 'transparent', borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: period === value ? '#28549A' : tokens.color.surfaceSubtle }}>
+                <View testID={`dashboard-period-${value}`} pointerEvents="none" style={{ paddingHorizontal: tokens.spacing.two, paddingVertical: tokens.spacing.one + 2, borderWidth: 1, borderColor: 'transparent', borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: period === value ? '#28549A' : tokens.color.surfaceSubtle }}>
                   <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} className="font-poppins-bold text-[12px] leading-[18px] text-center" style={{ color: period === value ? '#FFFFFF' : '#102342' }}>{t(label)}</Text>
                 </View>
               </Pressable>

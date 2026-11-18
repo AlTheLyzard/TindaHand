@@ -38,7 +38,7 @@ export function DateCalendar({ selection, mode, month, onMonth, onSelect, minDat
         onPress={() => onSelect(date)} style={{ width: `${100 / 7}%`, minHeight: 48, marginVertical: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: between ? tokens.color.accentContainer : 'transparent' }}>
         <View testID={endpoint ? 'calendar-selected-day' : undefined} style={{ width: daySize, height: daySize, borderRadius: daySize / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: endpoint ? tokens.button.primary.default : 'transparent', borderWidth: date === today && !endpoint && !between ? 1 : 0, borderColor: tokens.color.accentBase }}>
           <Text adjustsFontSizeToFit numberOfLines={1} style={{ width: daySize, height: daySize, lineHeight: daySize, textAlign: 'center', textAlignVertical: 'center', includeFontPadding: false,
-            fontFamily: 'Poppins_400Regular', fontSize: 14, color: endpoint ? '#FFFFFF' : disabled ? '#A1AEC0' : date.startsWith(month) ? tokens.color.textPrimary : '#607B9E' }}>{Number(date.slice(-2))}</Text>
+            fontFamily: 'Poppins_600SemiBold', fontSize: 18, color: endpoint ? '#FFFFFF' : disabled ? '#A1AEC0' : date.startsWith(month) ? tokens.color.textPrimary : '#607B9E' }}>{Number(date.slice(-2))}</Text>
         </View>
       </MotionPressable>;
     })}</View>

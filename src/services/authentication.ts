@@ -242,6 +242,23 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       const sessionId = live()?.id;
       return owner ? settingsService.setOperatorActive(owner, operatorId, active, () => live()?.id === sessionId && !!authorizedOwner()) : { ok: false, message: 'An unlocked Owner session is required.' };
     },
+    async updateOperatorProfile(input) {
+      const current = live();
+      if (!current || current.role !== 'operator' || current.locked) return { ok: false, message: 'An active Operator session is required.' };
+      const operatorId = current.operatorId;
+      const sessionId = current.id;
+      const result = await settingsService.updateOperatorProfile(operatorId, input, () => {
+        const active = live();
+        return !!active && active.id === sessionId && active.role === 'operator' && active.operatorId === operatorId && !active.locked;
+      });
+      if (result.ok) {
+        operatorRevision = settingsService.operatorRevision(operatorId);
+        if (session?.id === sessionId && session.role === 'operator') {
+          session = { ...session, displayName: result.value.name, operator: { ...session.operator, name: result.value.name } };
+        }
+      }
+      return result;
+    },
     async setOperatorPermission({ operatorId, group, allowed }) {
       const owner = authorizedOwner();
       const sessionId = live()?.id;

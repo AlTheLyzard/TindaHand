@@ -27,12 +27,12 @@ export function CreditProductSelector({ selection, onChange, onRemove, onBrowse,
           <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 12, lineHeight: 18, color: '#102342' }}>{line.itemName}</Text>
           <Text className="mt-0.5 font-poppins text-[11px] leading-4 text-text-secondary">{formatPesos(line.unitPriceCentavos)} each</Text>
         </View>
-        <View className="flex-row flex-wrap items-center">
+        <View className="flex-row flex-wrap items-center" style={{ flexShrink: 0 }}>
           <QuantityControl label={`Decrease ${line.itemName}`} icon="minus" onPress={() => {
             if (line.quantity === 1) onRemove(line.productId);
             else if (product) onChange(previous => setSelectedQuantity(previous, product, line.quantity - 1));
           }} />
-          <Text accessibilityLabel={`Quantity ${line.quantity}`} className="min-w-5 text-center font-poppins text-[12px] text-[#102342]">{line.quantity}</Text>
+          <Text accessibilityLabel={`Quantity ${line.quantity}`} numberOfLines={1} className="min-w-5 text-center font-poppins text-[12px] text-[#102342]" style={{ flexShrink: 0 }}>{line.quantity}</Text>
           <QuantityControl label={`Increase ${line.itemName}`} icon="plus" disabled={!product || line.quantity >= product.stock} onPress={() => { if (product) onChange(previous => selectProduct(previous, product)); }} />
           <IconButton accessibilityLabel={`Remove ${line.itemName}`} onPress={() => onRemove(line.productId)} className="min-h-12 min-w-12 items-center justify-center" variant="destructiveText" icon={({ color }) => <PosIcon name="trash" size={22} color={color} />} />
           {fullPage && <Text className="ml-auto font-poppins-bold text-[14px] text-brand">{formatPesos(line.quantity * line.unitPriceCentavos)}</Text>}
@@ -44,9 +44,9 @@ export function CreditProductSelector({ selection, onChange, onRemove, onBrowse,
   </View>;
 }
 function QuantityControl({ label, icon, onPress, disabled = false }: { label: string; icon: 'minus' | 'plus'; onPress: () => void; disabled?: boolean }) {
-  return <View style={{ minHeight: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center' }}>
+  return <View style={{ width: 48, height: 48, flexShrink: 0, alignItems: 'center', justifyContent: 'center' }}>
     <ButtonSurface accessibilityLabel={label} disabled={disabled} onPress={onPress} hitSlop={8}
-      style={{ minHeight: 32, width: 40, borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center' }}>
+      style={{ width: 32, height: 32, aspectRatio: 1, flexShrink: 0, borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center' }}>
       {({ color }) => <PosIcon name={icon} size={16} color={color} active />}
     </ButtonSurface>
   </View>;

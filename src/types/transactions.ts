@@ -1,7 +1,7 @@
 import type { PaymentMethod } from './pos';
 
 /** Read-only projection of existing mock ledgers, not a new persistence schema. */
-export type TransactionType = 'sale' | 'customerPayment' | 'expense';
+export type TransactionType = 'sale' | 'customerPayment' | 'expense' | 'customerDebt' | 'storeDebt' | 'supplierPayment';
 export type TransactionMethod = Exclude<PaymentMethod, 'partial'>;
 export type TransactionRecord = {
   id: string;

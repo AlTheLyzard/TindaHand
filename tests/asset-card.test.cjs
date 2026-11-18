@@ -69,5 +69,6 @@ test('asset cards render their record rather than example content, with only a m
   assert.match(body, /A long equipment name/); assert.match(body, /Equipment/);
   assert.match(body, /pesos:345678/); assert.match(body, /date:2026-01-03/);
   assert.equal(h.trigger().accessibilityLabel, 'Actions for A long equipment name');
+  assert.equal(h.popover().placement, 'below', 'asset actions keep a consistent position below the trigger');
   assert.equal(tree.props.children.filter(child => child.type === 'Button').length, 0);
 });

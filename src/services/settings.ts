@@ -4,12 +4,13 @@ import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { demoCashiers, syncFixtures } from '@/data/settings';
 import type { AuthSecretStorage, LocalRecordStorage, OperatorPermission, OwnerIdentity } from '@/types/auth';
 import { defaultOperatorPermissions, permissionGroups, updatePermission } from '@/utils/operator-access';
-import type { Cashier, CashierValues, PinValues, SettingsOperation, SettingsResult, SettingsService, SettingsSnapshot, SyncState, SyncStatus } from '@/types/settings';
-import { canClearCache, validateCashier, validatePinChange } from '@/utils/settings';
-import { createAvatarService } from '@/services/avatars';
+import type { Cashier, CashierValues, OperatorProfileValues, PinValues, SettingsOperation, SettingsResult, SettingsService, SettingsSnapshot, SyncState, SyncStatus } from '@/types/settings';
+import { canClearCache, validateCashier, validateOperatorProfile, validatePinChange } from '@/utils/settings';
+import { avatarInUse, createAvatarService } from '@/services/avatars';
 import { authRecordStorage } from '@/services/auth-record-storage';
 import { authSecretStorage } from '@/services/auth-secret-storage';
 import { operatorPinKey, ownerPinKey } from '@/services/auth-storage-keys';
+import { avatarPickerOrder } from '@/constants/profile-avatar-ids';
 
 type Options = { empty?: boolean; scenario?: SyncStatus; failNext?: SettingsOperation; delayMs?: number; recordStorage?: LocalRecordStorage; secretStorage?: AuthSecretStorage };
 const OPERATOR_RECORDS_KEY = 'tindahand-operators-v1';
@@ -28,7 +29,13 @@ export function createMockSettingsService(options: Options = {}) {
   const secretStorage = options.secretStorage ?? authSecretStorage;
   const seedRecords = !MOCK_AUTH_ENABLED || options.empty ? [] : demoCashiers.map(item => ({ ...item }));
   const storedRecords = !MOCK_AUTH_ENABLED || options.empty ? [] : readOperatorRecords(recordStorage);
-  let records: readonly Cashier[] = [...seedRecords, ...storedRecords.filter(item => !seedRecords.some(seed => seed.id === item.id))];
+  let records: readonly Cashier[] = [
+    ...seedRecords.map(seed => {
+      const stored = storedRecords.find(item => item.id === seed.id && item.ownerId === seed.ownerId);
+      return stored ? { ...seed, name: stored.name || seed.name, avatarId: stored.avatarId || seed.avatarId } : seed;
+    }),
+    ...storedRecords.filter(item => !seedRecords.some(seed => seed.id === item.id)),
+  ];
   const avatars = createAvatarService();
   for (const ownerId of new Set(records.map(item => item.ownerId))) {
     const operators = records.filter(item => item.ownerId === ownerId);
@@ -65,7 +72,11 @@ export function createMockSettingsService(options: Options = {}) {
     return MOCK_AUTH_ENABLED && !!owner?.id && (owner.mode === 'mock' || owner.mode === 'preview') && ownerPins.has(owner.id);
   }
   function persistRecords(next: readonly Cashier[]) {
-    recordStorage.write(OPERATOR_RECORDS_KEY, JSON.stringify(next.filter(item => item.ownerId !== demoOwner.id)));
+    recordStorage.write(OPERATOR_RECORDS_KEY, JSON.stringify(next.filter(item => {
+      if (item.ownerId !== demoOwner.id) return true;
+      const seed = demoCashiers.find(record => record.id === item.id && record.ownerId === item.ownerId);
+      return !!seed && (item.name !== seed.name || item.avatarId !== seed.avatarId);
+    })));
   }
   async function operation<T>(owner: OwnerIdentity, kind: SettingsOperation, work: () => SettingsResult<T> | Promise<SettingsResult<T>>, stillAuthorized?: () => boolean): Promise<SettingsResult<T>> {
     if (!authorized(owner)) return failed('This mock operation needs a demo Owner session. Real account services are not connected.');
@@ -171,6 +182,37 @@ export function createMockSettingsService(options: Options = {}) {
         return { ok: true, value: updated };
       }, stillAuthorized);
     },
+    async updateOperatorProfile(operatorId: string, values: OperatorProfileValues, stillAuthorized) {
+      const operator = records.find(item => item.id === operatorId && item.status === 'active');
+      if (!operator) return failed('Your Operator profile is unavailable. Please log in again.');
+      const lockId = operator.ownerId;
+      if (locks.has(lockId)) return failed('Another operation is in progress. Please wait.');
+      locks.add(lockId);
+      try {
+        await ready;
+        await pause();
+        if (stillAuthorized && !stillAuthorized()) return failed('Your Operator session changed. Log in and try again.');
+        if (failure === 'operator-profile') { failure = undefined; return failed('The demo service could not save this change. Please try again.'); }
+        const fields = validateOperatorProfile(values);
+        if (Object.keys(fields).length) return { ok: false, message: 'Check the highlighted fields.', fields };
+        if (!avatarPickerOrder.includes(values.avatarId)) return failed('Choose one of the supplied profile photos.');
+        if (avatarInUse(avatars.getSnapshot(), operator.ownerId, operator.id, values.avatarId)) return failed('This profile photo is in use by another account. Choose another photo.');
+
+        const updated: Cashier = { ...operator, name: values.name.trim(), avatarId: values.avatarId };
+        const next = records.map(item => item.id === operator.id ? updated : item);
+        try {
+          const result = avatars.replace(operator.ownerId, operator.id, values.avatarId, () => {
+            persistRecords(next);
+            records = next;
+          });
+          if (!result.ok) return failed(result.message);
+          emit();
+          return { ok: true, value: updated };
+        } catch { return failed('Your Operator profile could not be saved. Please try again.'); }
+      } catch {
+        return failed('The demo service is unavailable. Please try again.');
+      } finally { locks.delete(lockId); }
+    },
     operatorPermissions: operatorId => permissions.get(operatorId) ?? defaultOperatorPermissions,
     setOperatorPermission(owner, operatorId, group, allowed, stillAuthorized) {
       // BACKEND TODO: Authorize current Owner/store from session, enforce the fixed
@@ -255,5 +297,5 @@ const failure = __DEV__ ? process.env.EXPO_PUBLIC_SETTINGS_FAIL_NEXT : undefined
 export const settingsService = createMockSettingsService({
   empty: __DEV__ && process.env.EXPO_PUBLIC_SETTINGS_EMPTY === 'true',
   scenario: scenario && Object.prototype.hasOwnProperty.call(syncFixtures, scenario) ? scenario as SyncStatus : undefined,
-  failNext: ['create', 'change-pin', 'reset-pin', 'sync', 'clear-cache', 'permission', 'operator-status'].includes(failure ?? '') ? failure as SettingsOperation : undefined,
+  failNext: ['create', 'change-pin', 'reset-pin', 'sync', 'clear-cache', 'permission', 'operator-status', 'operator-profile'].includes(failure ?? '') ? failure as SettingsOperation : undefined,
 });

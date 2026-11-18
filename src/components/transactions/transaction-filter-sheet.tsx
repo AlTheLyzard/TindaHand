@@ -31,30 +31,33 @@ export function TransactionFilterSheet({ applied, onApply, onClose }: {
       <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <ResizableSheet testID="transaction-filters" title={calendar ? 'Choose Date Range' : 'Filter Transactions'}
+            subtitle={calendar ? undefined : 'Choose a payment method or date range.'} alwaysShowSubtitle
             onClose={() => calendar ? setCalendar(false) : dismiss()}
-            footer={!calendar && <View style={{ gap: 12, paddingTop: 12, paddingBottom: Math.max(insets.bottom, 16) }}>
+            footer={!calendar && <View style={{ gap: 12, paddingVertical: 12, paddingBottom: insets.bottom + 12 }}>
               {!!error && <Text accessibilityRole="alert" className="font-poppins text-[12px] text-[#972020]">{error}</Text>}
               <View className="flex-row gap-3">
-                <Button variant="secondary" fullWidth={false} style={{ flex: 1 }} onPress={() => { Keyboard.dismiss(); setDraft(emptyTransactionFilters()); }}>Reset</Button>
-                <Button fullWidth={false} style={{ flex: 2 }} disabled={!!error} onPress={() => { if (!error) { onApply({ ...draft }); dismiss(); } }}>Apply Filters</Button>
+                <View className="flex-1"><Button compact variant="secondary" onPress={() => { Keyboard.dismiss(); setDraft(emptyTransactionFilters()); }}>Reset</Button></View>
+                <View className="flex-[2]"><Button compact disabled={!!error} onPress={() => { if (!error) { onApply({ ...draft }); dismiss(); } }}>Apply Filter</Button></View>
               </View>
             </View>}>
             {calendar ? <View style={{ paddingBottom: Math.max(insets.bottom, 16) }}><DateRangePicker value={{ from: draft.from, to: draft.to }} onChange={range => { setDraft(previous => ({ ...previous, ...range })); setCalendar(false); }} onClose={() => setCalendar(false)} /></View> :
-              <View className="gap-5 pb-3">
-                <Text className="font-poppins-semibold text-[14px] text-brand">Date range</Text>
-                <Text className="font-poppins text-[12px] text-text-secondary">Dates include the entire day in the store timezone (Asia/Manila). Leave blank for any date.</Text>
-                <QuickAddField date required={false} label="Start date" value={draft.from} placeholder="YYYY-MM-DD" maxLength={10}
-                  onChangeText={from => setDraft(previous => ({ ...previous, from }))} onPickDate={() => { Keyboard.dismiss(); setCalendar(true); }}
-                  autoCapitalize="none" returnKeyType="next" onSubmitEditing={() => toInput.current?.focus()} />
-                <QuickAddField ref={toInput} date required={false} label="End date" value={draft.to} placeholder="YYYY-MM-DD" maxLength={10}
-                  onChangeText={to => setDraft(previous => ({ ...previous, to }))} onPickDate={() => { Keyboard.dismiss(); setCalendar(true); }}
-                  autoCapitalize="none" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
-                <View className="gap-1">
+              <View className="gap-4 pb-3">
+                <View className="gap-2">
                   <Text className="font-poppins-semibold text-[14px] text-brand">Payment method</Text>
                   <View accessibilityRole="radiogroup" accessibilityLabel="Payment method" className="flex-row flex-wrap gap-x-2">
                     {transactionMethods.map(method => <PosChip key={method.value} radio label={method.label} selected={draft.paymentMethod === method.value}
                       onPress={() => setDraft(previous => ({ ...previous, paymentMethod: method.value }))} />)}
                   </View>
+                </View>
+                <View className="gap-2">
+                  <Text className="font-poppins-semibold text-[14px] text-brand">Date range</Text>
+                  <Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">Dates include the entire day in the store timezone (Asia/Manila). Leave blank for any date.</Text>
+                  <QuickAddField date required={false} label="Start date" value={draft.from} placeholder="YYYY-MM-DD" maxLength={10}
+                    onChangeText={from => setDraft(previous => ({ ...previous, from }))} onPickDate={() => { Keyboard.dismiss(); setCalendar(true); }}
+                    autoCapitalize="none" returnKeyType="next" onSubmitEditing={() => toInput.current?.focus()} />
+                  <QuickAddField ref={toInput} date required={false} label="End date" value={draft.to} placeholder="YYYY-MM-DD" maxLength={10}
+                    onChangeText={to => setDraft(previous => ({ ...previous, to }))} onPickDate={() => { Keyboard.dismiss(); setCalendar(true); }}
+                    autoCapitalize="none" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
                 </View>
               </View>}
           </ResizableSheet>

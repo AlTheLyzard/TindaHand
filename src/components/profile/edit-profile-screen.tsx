@@ -1,7 +1,7 @@
 import { useCallback, useReducer, useRef, useState } from 'react';
 import { router, useFocusEffect, usePreventRemove } from 'expo-router';
 import { Keyboard, Text, View, type TextInputInstance } from 'react-native';
-import { useAvatarSnapshot, useOwnerProfile } from '@/hooks/use-owner-profile';
+import { useOwnerProfile } from '@/hooks/use-owner-profile';
 import { useAuthFlow } from '@/state/auth-flow';
 import { authenticationService } from '@/services/authentication';
 import { AVATAR_IN_USE, avatarInUse } from '@/services/avatars';
@@ -10,13 +10,13 @@ import { Button } from '@/components/ui/button';
 import { PosDialog } from '@/components/pos/pos-dialog';
 import { SettingsCard } from '@/components/settings/settings-ui';
 import { SettingsIcon } from '@/components/settings/settings-icon';
-import { avatarPickerOrder } from '@/constants/profile-avatars';
-import { AvatarOption } from './avatar-option';
-import type { OwnerProfile, ProfileDraft } from '@/types/profile';
+import { resolveOwnerAvatarId } from '@/constants/profile-avatar-ids';
+import type { AvatarId, OwnerProfile, ProfileDraft } from '@/types/profile';
 import { PROFILE_LIMITS, profileChanged, profileDraft, validateProfile } from '@/utils/profile';
 import { createProfileEditor, profileEditor } from '@/utils/profile-editor';
 import { ProfileFrame, profileRoot } from './profile-frame';
 import { OwnerProfileAvatar as ProfileAvatar, ProfileError, ProfileNotice, ProfileSection, ProfileText, ProfileUnavailable } from './profile-ui';
+import { ProfilePhotoSelectionScreen } from './profile-photo-selection-screen';
 
 export function EditProfileScreen() {
   const { profile, loading, error, reload } = useOwnerProfile();
@@ -24,7 +24,6 @@ export function EditProfileScreen() {
   return <ProfileEditor profile={profile} />;
 }
 function ProfileEditor({ profile }: { profile: OwnerProfile }) {
-  const avatars = useAvatarSnapshot();
   const [state, dispatch] = useReducer(profileEditor, profileDraft(profile), createProfileEditor);
   const { owner } = useAuthFlow();
   const [touched, setTouched] = useState<Partial<Record<keyof ProfileDraft, boolean>>>({});
@@ -65,11 +64,11 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
     if (errors.email) { emailInput.current?.focus(); return; }
     if (dirty && !requestLock.current) { Keyboard.dismiss(); setDialog('save'); }
   }
-  function applyAvatar() {
-    if (state.preview && avatarInUse(authenticationService.profile.avatars.getSnapshot(), profile.ownerId, profile.ownerId, state.preview)) {
+  function applyAvatar(avatarId: AvatarId) {
+    if (avatarInUse(authenticationService.profile.avatars.getSnapshot(), profile.ownerId, profile.ownerId, avatarId)) {
       setFailure(AVATAR_IN_USE); return;
     }
-    setFailure(''); dispatch({ type: 'apply-avatar' });
+    setFailure(''); dispatch({ type: 'apply-avatar', avatarId });
   }
   async function save() {
     setPinTouched(true);
@@ -90,18 +89,11 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
     } catch { if (active.current) setFailure('Unable to save your profile. Your draft is intact. Enter your PIN and retry.'); }
     finally { requestLock.current = false; if (active.current) setBusy(false); }
   }
-  const title = state.phase === 'avatar' ? 'Select Profile Photo' : state.phase === 'verify' ? 'Verify Your Identity' : 'Edit Profile';
-  return <ProfileFrame title={title} subtitle={state.phase === 'avatar' ? 'Choose a photo to personalize your profile.' : state.phase === 'verify' ? 'Enter your current PIN to confirm your identity.' : 'Update your personal details.'} onBack={back} onNavigate={requestExit} busy={busy}>
-    {state.phase === 'avatar' ? <>
-      <View className="mb-5 items-center"><ProfileAvatar size={104} avatarId={state.preview} /></View>
-      <SettingsCard><View className="flex-row flex-wrap" accessibilityRole="radiogroup" accessibilityLabel="Preset profile avatars">
-        {avatarPickerOrder.map((id, index) => <View key={id} testID={`avatar-cell-${id}`} style={{ width: '33.333%', alignItems: 'center', paddingVertical: 8 }}>
-          <AvatarOption id={id} index={index} selected={state.preview === id} inUse={avatarInUse(avatars, profile.ownerId, profile.ownerId, id)} onSelect={() => { setFailure(''); dispatch({ type: 'preview', avatarId: id }); }} />
-        </View>)}
-      </View></SettingsCard>
-      {!!failure && <ProfileError message={failure} />}
-      <View className="min-h-8 flex-1" /><View className="gap-3 pt-6"><Button disabled={!!state.preview && avatarInUse(avatars, profile.ownerId, profile.ownerId, state.preview)} onPress={applyAvatar}>Apply</Button><Button variant="secondary" onPress={cancelStep}>Cancel</Button></View>
-    </> : state.phase === 'verify' ? <>
+  if (state.phase === 'avatar') return <ProfilePhotoSelectionScreen storeId={profile.ownerId} accountId={profile.ownerId}
+    currentAvatarId={resolveOwnerAvatarId(state.preview ?? state.draft.avatarId)} failure={failure}
+    onApply={applyAvatar} onCancel={cancelStep} onNavigate={requestExit} onSelectionChange={() => setFailure('')} />;
+  return <ProfileFrame title={state.phase === 'verify' ? 'Verify Your Identity' : 'Edit Profile'} subtitle={state.phase === 'verify' ? 'Enter your current PIN to confirm your identity.' : 'Update your personal details.'} onBack={back} onNavigate={requestExit} busy={busy}>
+    {state.phase === 'verify' ? <>
       <View className="mb-6 h-20 w-20 items-center justify-center rounded-pill bg-[#D1E2F8]"><SettingsIcon name="security" /></View>
       <FormField key={pinEpoch} ref={pinInput} label="Enter your Current PIN" requiredIndicator="asterisk" pin pinIndicators pinVisibilityToggle keyboardType="number-pad" maxLength={4} autoComplete="off" textContentType="none" value={pin} editable={!busy}
         onChangeText={value => { setPin(value.replace(/[^0-9]/g, '').slice(0, 4)); setPinTouched(true); setFailure(''); }} onBlur={() => setPinTouched(true)}

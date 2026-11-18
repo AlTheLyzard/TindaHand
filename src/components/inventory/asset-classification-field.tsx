@@ -7,7 +7,7 @@ import tokens from '@/constants/design-tokens.json';
 import type { AssetClassification } from '@/types/inventory';
 import { assetLabels } from '@/utils/inventory';
 
-const illustrations = {
+export const assetClassificationIllustrations = {
   current: require('@/assets/images/inventory/asset-current.svg'),
   equipment: require('@/assets/images/inventory/asset-equipment.svg'),
   furniture: require('@/assets/images/inventory/asset-furniture.svg'),
@@ -32,7 +32,7 @@ export function AssetClassificationField({ label, value, onChange, error }: {
           onPress={() => { Keyboard.dismiss(); onChange(key); }}
           style={{ minHeight: 100, flexDirection: 'row', alignItems: 'center', gap: 20, padding: tokens.spacing.three,
             borderWidth: 1, borderColor: error ? '#D32F2F' : tokens.color.borderOutline, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard }}>
-          <Image source={illustrations[key]} accessible={false} contentFit="contain" style={{ width: 26, height: 26, flexShrink: 0 }} />
+          <Image source={assetClassificationIllustrations[key]} accessible={false} contentFit="contain" style={{ width: 26, height: 26, flexShrink: 0 }} />
           <View style={{ flex: 1, minWidth: 0, gap: 4, paddingRight: 20 }}>
             <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 14, lineHeight: 21, color: tokens.button.primary.default }}>{assetLabels[key]}</Text>
             <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18, color: tokens.color.textSecondary }}>{descriptions[key]}</Text>

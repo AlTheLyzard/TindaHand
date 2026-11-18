@@ -27,6 +27,12 @@ export function toStockBatches(batches: readonly BatchDraft[]): StockBatch[] {
 export function draftQuantity(batches: readonly BatchDraft[]) {
   return batches.reduce((sum, batch) => sum + (/^\d+$/.test(batch.quantity) ? Number(batch.quantity) : 0), 0);
 }
+export function batchDraftsChanged(batches: readonly BatchDraft[], initial: readonly BatchDraft[]) {
+  return batches.length !== initial.length || batches.some((batch, index) => {
+    const original = initial[index];
+    return !original || batch.quantity !== original.quantity || batch.noExpiry !== original.noExpiry || batch.expirationDate !== original.expirationDate;
+  });
+}
 export function detailsErrors(details: ProductDraft, today: string) {
   return validateProduct({ ...details, quantity: '1', expirationDate: today }, 'add', today);
 }

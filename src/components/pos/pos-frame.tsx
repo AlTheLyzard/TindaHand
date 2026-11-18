@@ -1,16 +1,15 @@
 import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Image, Keyboard, Text, View } from 'react-native';
+import { Keyboard, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
-import { DashboardAction, DashboardIcon, dashboardIcons } from '@/components/dashboard/dashboard-ui';
-import { OwnerAvatar } from '@/components/profile/profile-ui';
+import { MainHeader } from '@/components/dashboard/main-header';
+import { OperatorHeader } from '@/components/operator/operator-header';
 import { Button } from '@/components/ui/button';
 import { PosBackButton } from '@/components/pos/pos-back-button';
 import { useNavigationHeight } from '@/state/navigation-motion';
-import { useAuthFlow } from '@/state/auth-flow';
 import type { NavigationLabelKey } from '@/i18n';
 import { useTranslation } from '@/i18n/use-translation';
 import type { OwnerIdentity } from '@/types/auth';
@@ -30,7 +29,6 @@ export function PosFrame({ owner, step, onPos, children, backAction, basePath = 
   basePath?: PosRouteBase;
 }) {
   const { t } = useTranslation();
-  const { deviceSession } = useAuthFlow();
   const metrics = usePosMetrics();
   const insets = useSafeAreaInsets();
   const navigationHeight = useNavigationHeight();
@@ -43,22 +41,8 @@ export function PosFrame({ owner, step, onPos, children, backAction, basePath = 
   }, []);
   const navigationSpace = navigationHeight + insets.bottom;
   const showNavigation = step !== 'payment' && !keyboardVisible;
-  const operatorSession = basePath === '/operator-pos' && deviceSession?.role === 'operator' ? deviceSession : null;
   return <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-canvas">
-    <View className="border-b border-[#ADC9EE] bg-white">
-      <View className="w-full max-w-[460px] flex-row items-center gap-2 self-center px-5 py-2">
-        <Image source={require('@/assets/images/brand/tindahand-mark.png')} style={{ width: 32, height: 34 }} resizeMode="contain" accessible={false} />
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} className="min-w-0 flex-1 font-poppins-bold text-[20px] leading-[30px] text-brand">TindaHand</Text>
-        {owner && basePath === '/owner-pos' && <>
-          <DashboardAction label={t('navigation.settings')} onPress={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'settings' } })}><DashboardIcon source={dashboardIcons.settings} size={26} /></DashboardAction>
-          <DashboardAction label={t('navigation.profile')} onPress={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'profile' } })}><OwnerAvatar /></DashboardAction>
-        </>}
-        {operatorSession && <View accessible accessibilityLabel={`Operator ${operatorSession.displayName}; store ${owner.name}; store owner ID ${operatorSession.ownerId}`} className="ml-auto max-w-[146px] items-end">
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} className="font-poppins-bold text-[11px] leading-[16px] text-brand">{operatorSession.displayName}</Text>
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} className="font-poppins text-[10px] leading-[14px] text-text-secondary">{owner.name}</Text>
-        </View>}
-      </View>
-    </View>
+    {owner && basePath === '/owner-pos' ? <MainHeader /> : <OperatorHeader />}
     <View className="w-full max-w-[460px] self-center" style={{ paddingHorizontal: metrics.gutter, paddingTop: metrics.titleTop }}>
       <View className="flex-row items-center gap-2">
         {backAction && <PosBackButton {...backAction} />}

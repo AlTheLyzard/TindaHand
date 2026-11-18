@@ -6,7 +6,7 @@ import { ProductCatalog } from './product-catalog';
 import { useInventory } from '@/state/inventory';
 import tokens from '@/constants/design-tokens.json';
 import type { ProductSelection } from '@/types/pos';
-import { removeSelectedProduct, selectProduct, selectionSummary, setSelectedQuantity, stockConflicts } from '@/utils/pos';
+import { selectProduct, selectionSummary, stockConflicts } from '@/utils/pos';
 import { formatPesos } from '@/utils/dashboard';
 
 /** Selection is a local transaction. Confirm publishes snapshots to the debt
@@ -35,10 +35,6 @@ export function CreditProductBrowser({ name, selection, onConfirm, onReturn }: {
       <ProductCatalog products={products} selection={draft} onAdd={id => {
         const product = products.find(item => item.id === id);
         if (product) setDraft(previous => selectProduct(previous, product));
-      }} onDecrease={id => {
-        const product = products.find(item => item.id === id);
-        setDraft(previous => !previous[id] ? previous : previous[id].quantity === 1 ? removeSelectedProduct(previous, id)
-          : product ? setSelectedQuantity(previous, product, previous[id].quantity - 1) : previous);
       }} />
       <View style={{ padding: 16, gap: 12, borderTopWidth: 1, borderColor: tokens.color.borderOutline, backgroundColor: '#FFFFFF' }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 }}>
