@@ -6,6 +6,7 @@ import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
 import { getKaheraId, getRole, getToken } from '@/services/token-storage';
 import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
+import { defaultOperatorPermissions } from '@/utils/operator-access';
 
 const emptyDraft: RegistrationFormValues = {
   name: '', email: '', password: '', confirmPassword: '', pin: '', confirmPin: '',
@@ -104,7 +105,7 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
               ownerId: me.formatted_id,
               operatorId: kaheraId,
               displayName: me.name,
-              operator: { id: kaheraId, name: me.name, permissions: [] },
+              operator: { id: kaheraId, name: me.name, permissions: [...defaultOperatorPermissions] },
               expiresAt: Date.now() + 8 * 60 * 60 * 1000,
               locked: false,
             };

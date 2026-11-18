@@ -135,20 +135,20 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
           <AuthHeader onBack={onBack} backDisabled={busy} />
           {(loggedOut || pinReset) && <Text accessibilityRole="alert" className="mt-3 font-poppins text-[12px] text-[#1D5D21]">{pinReset ? 'Your PIN has been updated. Log in to continue.' : 'Logged out successfully.'}</Text>}
           <View className="mt-12 px-2" style={{ flexShrink: 0 }}>
-            {owner && <Text className="font-poppins-bold text-[12px] text-[#2675DB]" style={{ lineHeight: 18 * fontScale }}>{owner ? 'OWNER · STORE OWNER' : 'OPERATOR · STORE OPERATOR'}</Text>}
-            <Text accessibilityRole="header" className="mt-2 font-poppins-bold text-[30px] text-brand" style={{ lineHeight: 42 * fontScale }}>{owner ? 'Owner Login' : 'Operator Login'}</Text>
-            <Text className="mt-2 font-poppins text-[10px] text-text-secondary" style={{ lineHeight: 15 * fontScale }}>{password ? rememberedId ? 'Log in with your password to authenticate this device.' : 'Log in with your permanent Owner ID and password to authenticate this device.' : owner ? 'Welcome back. Enter your four-digit PIN to unlock your store.' : rememberedId ? 'Log in with your assigned four-digit Operator PIN.' : 'Log in with your store\'s Owner ID and your assigned four-digit Operator PIN.'}</Text>
+            <Text className="font-poppins-bold text-[12px] text-[#2675DB]" style={{ lineHeight: 18 * fontScale }}>{owner ? 'OWNER · STORE OWNER' : 'KAHERA · STORE CASHIER'}</Text>
+            <Text accessibilityRole="header" className="mt-2 font-poppins-bold text-[30px] text-brand" style={{ lineHeight: 42 * fontScale }}>{owner ? 'May-Ari Login' : 'Kahera Login'}</Text>
+            <Text className="mt-2 font-poppins text-[10px] text-text-secondary" style={{ lineHeight: 15 * fontScale }}>{password ? rememberedId ? 'Log in with your password to authenticate this device.' : 'Log in with your permanent May-Ari ID and password to authenticate this device.' : owner ? 'Welcome back. Enter your four-digit PIN to unlock your store.' : rememberedId ? 'Log in with your assigned four-digit PIN.' : 'Enter your store\'s May-Ari ID and your assigned four-digit PIN.'}</Text>
             {flow.restoring ? <Text accessibilityRole="alert" className="mt-5 font-poppins text-[12px] text-brand">Restoring login details…</Text> : <>
               <View className="px-3" style={{ marginTop: tokens.spacing.four, gap: tokens.spacing.three, flexShrink: 0 }}>
-                {(!rememberedId || !owner) && <FormField ref={idInput} label="Owner ID" requiredIndicator="asterisk" value={id}
+                {(!rememberedId || !owner) && <FormField ref={idInput} label={owner ? 'Owner ID' : 'May-Ari ID'} requiredIndicator="asterisk" value={id}
                   error={owner ? submitted || touched.id ? validation.id : undefined : submitted && operatorState === 'invalid' ? validation.id : undefined} editable={!busy}
-                  help="Enter your permanent Owner ID." placeholder="TH-MA-0001" placeholderTextColor="#A3AFBF"
+                  help={owner ? 'Enter your permanent Owner ID.' : 'Enter your store\'s May-Ari ID.'} placeholder="TH-MA-0001" placeholderTextColor="#A3AFBF"
                   selection={idSelection} onSelectionChange={event => { selection.current = event.nativeEvent.selection; setIdSelection(current => current?.start === selection.current.start && current.end === selection.current.end ? undefined : current); }}
                   onChangeText={value => { const edit = editOwnerId(id, value, selection.current); setId(edit.text); selection.current = edit.selection; setIdSelection(edit.selection); setTouched(current => ({ ...current, id: true })); updateOperatorValidation(edit.text, credential); setNotice(''); }}
                   onBlur={() => setTouched(current => ({ ...current, id: true }))}
                   autoCapitalize="characters" smartInsertDelete={false} autoComplete="username" returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => credentialInput.current?.focus()} />}
                 {pinIdentity}
-                <FormField ref={credentialInput} label={password ? 'Password' : owner ? 'PIN' : 'Operator PIN'} requiredIndicator="asterisk" value={credential}
+                <FormField ref={credentialInput} label={password ? 'Password' : 'PIN'} requiredIndicator="asterisk" value={credential}
                   leadingContent={pinIdentity ? undefined : identity}
                   keyboardScrollAfter={pinIdentity ? pinLoginButtonHeight + tokens.spacing.four : 0}
                   allowFontScaling
