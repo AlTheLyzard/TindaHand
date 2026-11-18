@@ -1,8 +1,11 @@
+import { demoOwner } from '@/data/mock-auth';
+
 export type InputSelection = { start: number; end: number };
 
 const compact = (value: string) => value.replace(/-/g, '').trim().toUpperCase();
 
 // Dash boundaries for the standard TH-MA-XXXX format: after position 2 and 4.
+// Fixed — never switch based on content, which would shift dashes mid-typing and jump the cursor.
 const BOUNDARIES = [2, 4];
 
 /** Formats a raw string into TH-MA-XXXX style as the user types. */
@@ -19,7 +22,8 @@ export function formatOwnerId(value: string) {
 }
 
 export function isOwnerId(value: string) {
-  return /^TH-MA-[0-9]{4}$/.test(value);
+  // Accept standard real-account IDs and the demo account ID for mock-auth mode.
+  return /^TH-MA-[0-9]{4}$/.test(value) || value === demoOwner.id;
 }
 
 /** Map the native edit's caret through formatting instead of moving it to the end. */
