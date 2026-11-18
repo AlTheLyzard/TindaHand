@@ -57,6 +57,7 @@ export interface AuthenticationService {
   readonly ready: Promise<void>;
   subscribeAccountDirectory(listener: () => void): () => void;
   getAccountDirectorySnapshot(): AccountDirectorySnapshot;
+  seedRealOwner(owner: RegisteredOwner): void;
   registerOwner: RegistrationService;
   authenticateOwner(input: { ownerId: string; password: string }): Promise<AuthResult<DeviceSession>>;
   unlockOwner(input: { ownerId: string; pin: string }): Promise<AuthResult<DeviceSession>>;

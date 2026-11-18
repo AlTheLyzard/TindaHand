@@ -146,6 +146,14 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       return () => { directoryListeners.delete(listener); };
     },
     getAccountDirectorySnapshot: () => accountDirectory,
+    // BACKEND INTEGRATION: Called by auth-flow when a real JWT is restored so
+    // the mock directory check in login.tsx sees at least one owner.
+    seedRealOwner(owner: RegisteredOwner) {
+      if (!identities.has(owner.id)) {
+        identities.set(owner.id, owner);
+        publishAccountDirectory();
+      }
+    },
     // BACKEND INTEGRATION: Replace this adapter as one unit. Never fall back to
     // mock success on an API failure. See docs/authentication-handoff.md.
     async registerOwner(values) {

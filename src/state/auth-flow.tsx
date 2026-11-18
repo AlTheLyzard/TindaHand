@@ -91,14 +91,17 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
         if (me) {
           // Build a DeviceSession from the real API response so the rest of
           // the app (screens, navigation gates) sees an active, unlocked session.
+          const owner = { id: me.formatted_id, name: me.name };
           const realSession: DeviceSession = {
             kind: 'mock',           // discriminant reused; not sent anywhere
             id: token,
             role: 'owner',
-            owner: { id: me.formatted_id, name: me.name },
+            owner,
             expiresAt: Date.now() + 8 * 60 * 60 * 1000,
             locked: false,
           };
+          // Seed the mock directory so login.tsx's directory.owners.length check passes.
+          authenticationService.seedRealOwner(owner);
           setDeviceSession(realSession);
           return realSession;
         }
