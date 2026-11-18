@@ -25,7 +25,7 @@ import tokens from '@/constants/design-tokens.json';
 const sorting = { stockDesc: 'High-to-Low Stock', stockAsc: 'Low-to-High Stock', fast: 'Fast-selling', slow: 'Slow-selling', expiry: 'Expiring Soon' } as const;
 const statuses = { good: 'In Stock', low: 'Low Stock', out: 'Out of Stock' } as const;
 
-export function InventoryScreen() {
+export function InventoryScreen({ readOnly = false }: { readOnly?: boolean }) {
   const push = usePushOnce();
   const { tab, status: routeStatus } = useLocalSearchParams<{ tab?: string; status?: string }>();
   const { store: liveStore } = useInventory();
@@ -59,11 +59,11 @@ export function InventoryScreen() {
     <PosIcon name="search" size={18} /><TextInput accessibilityLabel={assets ? 'Search assets' : 'Search products'} placeholder={assets ? 'Search Assets' : 'Search Products'} placeholderTextColor={tokens.color.textSecondary} underlineColorAndroid="transparent" value={query} onChangeText={setQuery} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} autoCapitalize="none" autoCorrect={false} returnKeyType="search" onSubmitEditing={Keyboard.dismiss} className="min-w-0 flex-1 font-poppins text-[12px]" style={{ minHeight: Math.max(tokens.size.touchTarget, Math.ceil(fontScale * 18) + 24), paddingVertical: 12, textAlignVertical: 'center', color: tokens.color.textPrimary, opacity: 1 }} />
     {!!query && <IconButton accessibilityLabel="Clear search" onPress={() => setQuery('')} icon={props => <PosIcon name="close" {...props} />} />}
   </View>;
-  const emptyList = (isAsset: boolean) => <EmptyState icon={searching ? 'search' : 'inventory'}
-    title={!(isAsset ? store.assets.length : store.products.length) ? isAsset ? 'No assets yet' : 'No products yet' : searching ? isAsset ? 'No assets match your search' : 'No products match your search' : isAsset ? 'No assets in this filter' : 'No products in these filters'}
-    description={!(isAsset ? store.assets.length : store.products.length) ? isAsset ? 'Add your first business asset to track its value.' : 'Add your first product to start tracking stock.' : 'Try another name or reset search and filters.'}
-    action={!(isAsset ? store.assets.length : store.products.length) ? isAsset ? 'Add Asset' : 'Add Product' : 'Reset search and filters'}
-    onAction={() => { if ((isAsset ? store.assets.length : store.products.length)) resetResults(); else { preview.reset(); push(isAsset ? { pathname: '/owner-inventory/asset', params: { mode: 'add' } } : { pathname: '/owner-inventory/product', params: { mode: 'add' } }); } }} />;
+  const emptyList = (isAsset: boolean) => { const hasItems = !!(isAsset ? store.assets.length : store.products.length); return <EmptyState icon={searching ? 'search' : 'inventory'}
+    title={!hasItems ? isAsset ? 'No assets yet' : 'No products yet' : searching ? isAsset ? 'No assets match your search' : 'No products match your search' : isAsset ? 'No assets in this filter' : 'No products in these filters'}
+    description={!hasItems ? isAsset ? 'Add your first business asset to track its value.' : 'Add your first product to start tracking stock.' : 'Try another name or reset search and filters.'}
+    action={hasItems ? 'Reset search and filters' : readOnly ? undefined : isAsset ? 'Add Asset' : 'Add Product'}
+    onAction={() => { if (hasItems) resetResults(); else if (!readOnly) { preview.reset(); push(isAsset ? { pathname: '/owner-inventory/asset', params: { mode: 'add' } } : { pathname: '/owner-inventory/product', params: { mode: 'add' } }); } }} />; };
   return <InventoryFrame title="Inventory" background><MotionContent changeKey={assets + ':' + preview.mode} className="gap-3">
     <SegmentedSelector tone="subtle" options={[{ label: 'Products', value: 'products' }, { label: 'Assets', value: 'assets' }]} value={assets ? 'assets' : 'products'} onChange={value => { setAssets(value === 'assets'); setQuery(''); }} />
     {!assets ? <>
@@ -74,7 +74,7 @@ export function InventoryScreen() {
       <View className="flex-row flex-wrap gap-x-2">{(['good', 'low', 'out', 'nearExpiry'] as const).map(status => <Pressable key={status} accessibilityRole="button" accessibilityLabel={'Filter ' + (status === 'good' ? 'In Stock' : status === 'low' ? 'Low Stock' : status === 'out' ? 'Out of Stock' : 'Nearing Expiry')} accessibilityState={{ selected: filters.status === status }} onPress={() => setFilters({ ...filters, status: filters.status === status ? 'all' : status })} className="min-h-12 min-w-[44%] flex-1 justify-center">
         <View className="rounded-md border px-2 py-1" style={inventoryStatusAppearance(status)}><InvText size={11} color={inventoryStatusAppearance(status).color}>● {preview.loading ? '…' : status === 'low' ? summary.low + summary.critical : summary[status]} {status === 'good' ? 'Good' : status === 'nearExpiry' ? 'Nearing expiry' : statuses[status]}</InvText></View>
       </Pressable>)}</View>
-      <View className="flex-row gap-3"><View className="flex-1"><Button compact onPress={() => push({ pathname: '/owner-inventory/product', params: { mode: 'add' } })}>Add Product</Button></View><View className="flex-1"><Button compact variant="secondary" disabled={preview.loading || !store.products.length} onPress={() => { Keyboard.dismiss(); setRestockQuery(''); setRestockOpen(true); }}>Restock</Button></View></View>
+      <View className="flex-row gap-3">{!readOnly && <View className="flex-1"><Button compact onPress={() => push({ pathname: '/owner-inventory/product', params: { mode: 'add' } })}>Add Product</Button></View>}<View className="flex-1"><Button compact variant={readOnly ? 'primary' : 'secondary'} disabled={preview.loading || !store.products.length} onPress={() => { Keyboard.dismiss(); setRestockQuery(''); setRestockOpen(true); }}>Restock</Button></View></View>
       <View className="mt-1 flex-row items-center justify-between"><InvText bold color="#102342">Products</InvText><InventoryFilterControl onPress={openFilters} /></View>
       {search}
       {suggestions.length > 0 && <MotionRegion><InvCard>{suggestions.map(p => <Pressable key={p.id} accessibilityRole="button" onPress={() => { setQuery(p.name); setFocused(false); Keyboard.dismiss(); }} className="min-h-12 justify-center"><InvText>{p.name}</InvText></Pressable>)}</InvCard></MotionRegion>}
@@ -88,7 +88,7 @@ export function InventoryScreen() {
             <View className="min-w-0 flex-1 gap-2"><InvText bold size={13} color="#102342">{p.name}</InvText><View className="flex-row flex-wrap items-start justify-between gap-x-2 gap-y-1"><View className="min-w-[60px] flex-1"><InvText size={11}>{categoryLabels[p.category]}</InvText></View><InvText size={11}>{productStock(p)} PCS</InvText></View><View className="flex-row flex-wrap gap-x-2 gap-y-1"><InvText bold color="#112F6F">{formatPesos(p.unitPriceCentavos)}</InvText><InvText bold size={11} color={inventoryStatusAppearance(status).color}>{statuses[status]}</InvText></View></View>
           </Pressable>
           {(expiry.expired || expiry.nearExpiry) && <View className="flex-row flex-wrap gap-2">{expiry.expired && <InvText size={11} color="#972020">● Expired stock</InvText>}{expiry.nearExpiry && <InvText size={11} color="#805000">● Nearing expiry</InvText>}</View>}
-          <View className="flex-row gap-3"><View className="min-w-0 flex-1"><Button compact variant="secondary" onPress={() => productRoute(p.id, 'edit')}>Edit</Button></View><View className="min-w-0 flex-1"><Button compact onPress={() => productRoute(p.id, 'restock')}>Restock</Button></View></View>
+          <View className="flex-row gap-3">{!readOnly && <View className="min-w-0 flex-1"><Button compact variant="secondary" onPress={() => productRoute(p.id, 'edit')}>Edit</Button></View>}<View className="min-w-0 flex-1"><Button compact onPress={() => productRoute(p.id, 'restock')}>Restock</Button></View></View>
         </InvCard>;
       })}
       <Button compact variant="text" onPress={() => setLettersOpen(value => !value)}>{lettersOpen ? 'Hide first-letter filter' : 'Filter by first letter'}</Button>
@@ -97,7 +97,7 @@ export function InventoryScreen() {
       <View className="mt-3 gap-3 rounded-card bg-action p-4"><InvText size={12} color="#FFFFFF">Total business asset value</InvText><SkeletonMetric loading={preview.loading}><InvText bold size={28} color="#FFFFFF">{formatPesos(assetTotals.total)}</InvText></SkeletonMetric><View className="items-end"><InvText bold size={11} color="#FFFFFF">{store.assets.length} asset entries</InvText></View></View>
       <View className="flex-row flex-wrap gap-3">{[['Current assets', assetTotals.current], ['Non-current assets', assetTotals.equipment + assetTotals.furniture]].map(([label, amount]) => <View key={label} className="min-w-[130px] flex-1"><InvCard><InvText>{label}</InvText><SkeletonMetric loading={preview.loading}><InvText bold size={18} color="#112F6F">{formatPesos(Number(amount))}</InvText></SkeletonMetric></InvCard></View>)}</View>
       <InvCard>{[['Equipment', assetTotals.equipment], ['Furniture & Fixtures', assetTotals.furniture]].map(([label, amount]) => <View key={label} className="flex-row flex-wrap items-start justify-between gap-3 py-2"><View className="min-w-[120px] flex-1"><InvText color="#102342">{label}</InvText></View><InvText bold color="#112F6F">{formatPesos(Number(amount))}</InvText></View>)}</InvCard>
-      <View className="py-3"><Button onPress={() => push({ pathname: '/owner-inventory/asset', params: { mode: 'add' } })}>Add Asset</Button></View>
+      {!readOnly && <View className="py-3"><Button onPress={() => push({ pathname: '/owner-inventory/asset', params: { mode: 'add' } })}>Add Asset</Button></View>}
       <View testID="business-assets-heading" className="flex-row items-center gap-2"><View className="min-w-0 flex-1"><InvText bold color="#112F6F">Business assets</InvText></View>
         <InventoryFilterControl onPress={openFilters} />
       </View><AssetCategoryChips value={assetFilter} onChange={setAssetFilter} />
