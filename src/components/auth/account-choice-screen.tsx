@@ -25,36 +25,39 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
     authenticationService.getAccountDirectorySnapshot, authenticationService.getAccountDirectorySnapshot);
   const ownerOption = accountOptions[0];
   const operatorOption = accountOptions[1];
-    const [serverOwner, setServerOwner] = useState<{ id: string; name: string } | null>(null);
+  const [serverOwner, setServerOwner] = useState<{ id: string; name: string } | null>(null);
+  const [realHasOwner, setRealHasOwner] = useState(false);
   const [realHasKaheras, setRealHasKaheras] = useState(false);
 
   useFocusEffect(useCallback(() => {
     (async () => {
-      // 1. Try to restore owner identity from a previous session JWT.
-      const token = await getToken();
-      if (token) {
-        const me = await fetchMe(token);
-        if (me && me.role === 'may_ari') {
-          setServerOwner({ id: me.formatted_id, name: me.full_name });
-        }
-      }
+      if (MOCK_AUTH_ENABLED) return;
 
-      // 2. Check whether this owner has any Kaheras — using the public endpoint
-      //    so it works even when the JWT has expired or the user is not logged in.
-      //    We read the stored owner ID from the last successful login.
-      if (!MOCK_AUTH_ENABLED) {
-        const storedOwnerId = await getOwnerId();
-        if (storedOwnerId) {
-          const hasOps = await hasKaheraOperators(storedOwnerId);
-          setRealHasKaheras(hasOps);
+      // Read the owner ID saved from the last successful login.
+      // This exists even if the JWT has since expired — it's enough to show the cards.
+      const storedOwnerId = await getOwnerId();
+      if (storedOwnerId) {
+        setRealHasOwner(true);
+
+        // Also try to restore the owner's name if the JWT is still valid.
+        const token = await getToken();
+        if (token) {
+          const me = await fetchMe(token);
+          if (me && me.role === 'may_ari') {
+            setServerOwner({ id: me.formatted_id, name: me.full_name });
+          }
         }
+
+        // Check Kaheras via the public endpoint — no JWT required.
+        const hasOps = await hasKaheraOperators(storedOwnerId);
+        setRealHasKaheras(hasOps);
       }
     })();
   }, []));
 
   // Show one generic May-Ari card when any owner exists (mock directory or real JWT),
   // not one card per owner — matching the design intent.
-  const hasOwners = directory.owners.length > 0 || serverOwner !== null;
+  const hasOwners = directory.owners.length > 0 || serverOwner !== null || realHasOwner;
   const hasOperators = MOCK_AUTH_ENABLED ? directory.hasOperators : realHasKaheras;
   const hasAccounts = hasOwners || hasOperators;
 
