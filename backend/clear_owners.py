@@ -1,8 +1,9 @@
-from database import engine
-from sqlalchemy import text
+"""Quick dev utility — deletes all may_ari rows so you can re-register with the same emails."""
+from database import SessionLocal
+from models import MayAri
 
-with engine.connect() as conn:
-    conn.execute(text("DELETE FROM kahera"))
-    conn.execute(text("DELETE FROM may_ari"))
-    conn.commit()
-    print("done")
+db = SessionLocal()
+count = db.query(MayAri).delete()
+db.commit()
+db.close()
+print(f"Deleted {count} owner(s).")
