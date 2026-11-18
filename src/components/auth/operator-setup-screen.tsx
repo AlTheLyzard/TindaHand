@@ -11,8 +11,9 @@ import { OwnerStoreCard } from '@/components/settings/settings-ui';
 import { Button } from '@/components/ui/button';
 import { useLeaveOnce } from '@/hooks/use-leave-once';
 import { useAuthFlow } from '@/state/auth-flow';
-import { authenticationService } from '@/services/authentication';
+import { createKahera } from '@/services/kahera-api';
 import type { Cashier } from '@/types/settings';
+import type { AvatarId } from '@/types/profile';
 
 export function OperatorSetupScreen() {
   const { owner, completion } = useAuthFlow();
@@ -34,7 +35,18 @@ export function OperatorSetupScreen() {
         <Text className="mb-6 mt-2 text-center font-poppins text-[10px] text-brand">Add an Operator to help you manage your store.</Text>
         <OwnerStoreCard owner={owner} compact />
         <View className="flex-1">
-          <CredentialForm mode="create" fieldsCard onCancel={dashboard} onSave={values => authenticationService.createOperator(values)} onSuccess={value => { setCreated(value); setToast(Date.now() + 15000); }} />
+          <CredentialForm mode="create" fieldsCard onCancel={dashboard} onSave={async values => {
+              const result = await createKahera({ name: values.name, pin: values.pin });
+              if (!result.ok) return result;
+              const cashier: Cashier = {
+                id: result.value.id,
+                ownerId: result.value.ownerId,
+                name: result.value.name,
+                status: result.value.status,
+                avatarId: (result.value.avatarId ?? 'avatar-01') as AvatarId,
+              };
+              return { ok: true as const, value: cashier };
+            }} onSuccess={value => { setCreated(value); setToast(Date.now() + 15000); }} />
         </View>
       </> : <>
         <RegistrationToast expiresAt={toast} onDismiss={dismiss} />
