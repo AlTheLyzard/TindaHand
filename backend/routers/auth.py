@@ -242,7 +242,28 @@ def create_kahera(
     }
 
 
-# ── 5. LIST KAHERAS ──────────────────────────────────────────────────────────
+# ── 5. HAS KAHERAS (public — no JWT required) ────────────────────────────────
+
+@router.get("/kahera/has-operators")
+def has_kahera_operators(owner_id: str, db: Session = Depends(get_db)):
+    """
+    Public endpoint — no auth required.
+    Returns { has_operators: bool } for a given owner ID (e.g. TH-MA-0001).
+    Used by the Choose Account screen to decide whether to show the Kahera login card.
+    """
+    try:
+        numeric_id = int(owner_id.strip().upper().split("-")[-1])
+    except (ValueError, IndexError):
+        return {"has_operators": False}
+
+    count = db.query(Kahera).filter(
+        Kahera.owner_id == numeric_id,
+        Kahera.is_active == True,
+    ).count()
+    return {"has_operators": count > 0}
+
+
+# ── 6. LIST KAHERAS ──────────────────────────────────────────────────────────
 
 @router.get("/kahera/list")
 def list_kaheras(

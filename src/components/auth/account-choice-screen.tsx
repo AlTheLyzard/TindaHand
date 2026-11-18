@@ -2,9 +2,9 @@ import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/i18n/use-translation';
 import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
-import { getToken } from '@/services/token-storage';
+import { getToken, getOwnerId } from '@/services/token-storage';
 import { useAuthFlow } from '@/state/auth-flow';
-import { listKaheras } from '@/services/kahera-api';
+import { hasKaheraOperators } from '@/services/kahera-api';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import type { AccountRole } from '@/types/auth';
 import { useFocusEffect } from 'expo-router';
@@ -29,23 +29,28 @@ export function AccountChoiceScreen({ onBack, onSelect, onCreateAccount }: {
   const [realHasKaheras, setRealHasKaheras] = useState(false);
 
   useFocusEffect(useCallback(() => {
-  (async () => {
-    const token = await getToken();
-    if (!token) return;
-    const me = await fetchMe(token);
-    if (me && me.role === 'may_ari') {
-      setServerOwner({
-        id: me.formatted_id,
-        name: me.full_name,
-      });
-      // If owner is logged in, check if they have any Kaheras so the cashier card shows.
-      if (!MOCK_AUTH_ENABLED) {
-        const kaheras = await listKaheras();
-        setRealHasKaheras(kaheras.length > 0);
+    (async () => {
+      // 1. Try to restore owner identity from a previous session JWT.
+      const token = await getToken();
+      if (token) {
+        const me = await fetchMe(token);
+        if (me && me.role === 'may_ari') {
+          setServerOwner({ id: me.formatted_id, name: me.full_name });
+        }
       }
-    }
-  })();
-}, []));
+
+      // 2. Check whether this owner has any Kaheras — using the public endpoint
+      //    so it works even when the JWT has expired or the user is not logged in.
+      //    We read the stored owner ID from the last successful login.
+      if (!MOCK_AUTH_ENABLED) {
+        const storedOwnerId = await getOwnerId();
+        if (storedOwnerId) {
+          const hasOps = await hasKaheraOperators(storedOwnerId);
+          setRealHasKaheras(hasOps);
+        }
+      }
+    })();
+  }, []));
 
   // Show one generic May-Ari card when any owner exists (mock directory or real JWT),
   // not one card per owner — matching the design intent.

@@ -14,6 +14,26 @@ export interface KaheraRecord {
 }
 
 /**
+ * GET /auth/kahera/has-operators?owner_id=TH-MA-XXXX
+ * Public — no JWT required.
+ * Returns true if the given owner has at least one active Kahera.
+ * Used by the Choose Account screen (user is not logged in yet).
+ */
+export async function hasKaheraOperators(ownerId: string): Promise<boolean> {
+  try {
+    const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.254.103:8000';
+    const res = await fetch(
+      `${API_URL}/auth/kahera/has-operators?owner_id=${encodeURIComponent(ownerId)}`,
+    );
+    if (!res.ok) return false;
+    const data = await res.json() as { has_operators: boolean };
+    return data.has_operators;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * GET /auth/kahera/list
  * Returns all Kahera accounts for the logged-in owner.
  * Requires a valid May-Ari (owner) JWT.
