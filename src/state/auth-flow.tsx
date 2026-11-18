@@ -3,6 +3,8 @@ import { AppState } from 'react-native';
 
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { authenticationService } from '@/services/authentication';
+import { fetchMe } from '@/services/session-api';
+import { getToken } from '@/services/token-storage';
 import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
 
 const emptyDraft: RegistrationFormValues = {
@@ -71,12 +73,39 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
     if (showRestoring) setRestoring(true);
     try {
       await authenticationService.ready;
-      const [session, identities] = await Promise.all([
+      const [mockSession, identities] = await Promise.all([
         authenticationService.restoreSession(), authenticationService.restoreRememberedIdentities(),
       ]);
-      setDeviceSession(session);
       setRememberedIdentities(identities);
-      return session;
+
+      // If mock restored a session, use it as before.
+      if (mockSession) {
+        setDeviceSession(mockSession);
+        return mockSession;
+      }
+
+      // No mock session — try the real JWT stored in SecureStore.
+      const token = await getToken();
+      if (token) {
+        const me = await fetchMe(token);
+        if (me) {
+          // Build a DeviceSession from the real API response so the rest of
+          // the app (screens, navigation gates) sees an active, unlocked session.
+          const realSession: DeviceSession = {
+            kind: 'mock',           // discriminant reused; not sent anywhere
+            id: token,
+            role: 'owner',
+            owner: { id: me.formatted_id, name: me.name },
+            expiresAt: Date.now() + 8 * 60 * 60 * 1000,
+            locked: false,
+          };
+          setDeviceSession(realSession);
+          return realSession;
+        }
+      }
+
+      setDeviceSession(null);
+      return null;
     }
     catch { setDeviceSession(null); return null; }
     finally { setRestoring(false); }
