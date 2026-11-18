@@ -28,7 +28,7 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
   const { fontScale } = useWindowDimensions();
   const owner = role === 'owner';
   const selectedOwnerId = owner ? flow.selectedOwnerId : null;
-  const returning = owner && flow.deviceSession?.role === 'owner'
+  const returning = owner && !loggedOut && flow.deviceSession?.role === 'owner'
     && (!selectedOwnerId || selectedOwnerId === flow.deviceSession.owner.id);
   const [enteredId, setId] = useState('');
   const rememberedId = owner

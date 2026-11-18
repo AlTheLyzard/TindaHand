@@ -39,5 +39,6 @@ export async function getOwnerId(): Promise<string | null> {
 export async function clearToken(): Promise<void> {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
   await SecureStore.deleteItemAsync(OWNER_NAME_KEY);
-  await SecureStore.deleteItemAsync(OWNER_ID_KEY);
+  // Keep OWNER_ID_KEY — the Choose Account screen needs it to show the
+  // May-Ari and Kahera cards even after logout and after the JWT expires.
 }
