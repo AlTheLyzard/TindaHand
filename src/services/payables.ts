@@ -5,12 +5,11 @@ import type { QuickAddDraft } from '@/types/quick-add';
 import { payableAsQuickAdd, payableBalance, payablePaymentError } from '@/utils/payables';
 import { quickAddErrors, quickAddTotal } from '@/utils/quick-add';
 import { parsePaymentAmount } from '@/utils/pos-payment';
+import { apiFetch } from '@/services/api';
 
+// ── Legacy in-memory repository (used by quick-add service — do not remove) ──────────────
 const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
 
-/** Replaceable in-memory repository. No cash, inventory or expense posting. */
-// TODO(BACKEND): Authorize owner/store, transact creditor/debt/payment writes,
-// enforce current balance and durable idempotency, return canonical records.
 export function createPayablesRepository(seed: PayablesLedger = payablesSeed) {
   let ledger: PayablesLedger = {
     creditors: seed.creditors.map(row => ({ ...row })), debts: seed.debts.map(row => ({ ...row })), payments: seed.payments.map(row => ({ ...row })),
@@ -33,8 +32,6 @@ export function createPayablesRepository(seed: PayablesLedger = payablesSeed) {
       if (previous) return payableAsQuickAdd(ledger.debts.find(row => row.id === previous && row.ownerId === owner.id)!, ledger.payments);
       if (draft.kind !== 'storeDebt' || Object.keys(quickAddErrors(draft)).length) throw new Error('Check the highlighted fields.');
       const creditors = read(owner).creditors;
-      // Backend: resolve the selected creditor ID, or normalize/resolve a new
-      // name within this owner scope, in the same transaction as debt creation.
       let creditor = draft.creditorId ? creditors.find(row => row.id === draft.creditorId) : creditors.find(row => nameKey(row.name) === nameKey(draft.name));
       if (draft.creditorId && !creditor) throw new Error('Select an available creditor.');
       if (!creditor) creditor = { id: `creditor-${token}`, ownerId: owner.id, name: draft.name.trim() };
@@ -63,4 +60,75 @@ export function createPayablesRepository(seed: PayablesLedger = payablesSeed) {
       return payment;
     },
   };
+}
+
+// ── Real API functions ────────────────────────────────────────────────────────────────────
+
+export interface StoreCreditor {
+  id: number;
+  name: string;
+}
+
+export interface StoreDebt {
+  id: number;
+  creditorId: number;
+  creditorName: string;
+  amountCentavos: number;
+  dueDate: string | null;
+  details: string;
+  occurredAt: string;
+}
+
+export interface StoreDebtPayment {
+  id: number;
+  debtId: number;
+  amountCentavos: number;
+  occurredAt: string;
+}
+
+/** List all creditors. */
+export async function getCreditors(): Promise<StoreCreditor[]> {
+  return apiFetch<StoreCreditor[]>('/payables/creditors');
+}
+
+/** Create a creditor. */
+export async function createCreditor(name: string): Promise<StoreCreditor> {
+  return apiFetch<StoreCreditor>('/payables/creditors', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+}
+
+/** List all store debts (accounts payable). */
+export async function getPayables(): Promise<StoreDebt[]> {
+  return apiFetch<StoreDebt[]>('/payables');
+}
+
+/** Record a new store debt. */
+export async function createPayable(data: {
+  creditorName: string;
+  amountCentavos: number;
+  dueDate?: string;
+  details?: string;
+}): Promise<StoreDebt> {
+  return apiFetch<StoreDebt>('/payables', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/** List AP payments. */
+export async function getPayablePayments(): Promise<StoreDebtPayment[]> {
+  return apiFetch<StoreDebtPayment[]>('/payables/payments');
+}
+
+/** Record a payment against a store debt. */
+export async function createPayablePayment(data: {
+  debtId: number;
+  amountCentavos: number;
+}): Promise<StoreDebtPayment> {
+  return apiFetch<StoreDebtPayment>('/payables/payments', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }

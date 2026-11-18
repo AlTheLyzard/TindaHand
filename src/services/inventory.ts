@@ -6,9 +6,9 @@ import { emptyPosLedger } from '@/utils/pos-checkout';
 import { saleLines } from '@/utils/pos-records';
 import { receivablesSeed } from '@/data/receivables';
 import { hasCapability } from '@/utils/operator-access';
+import { apiFetch } from '@/services/api';
 
-// TODO(BACKEND): Replace seed loading with store-scoped reads; search/filter/ranking
-// currently use complete local collections, without pagination. See docs/backend-handoff.md#inventory-and-pos.
+// ── Legacy in-memory helpers (used by state/inventory.tsx — do not remove) ──────────────
 export function loadMockInventory(): InventoryStore {
   return { products: inventoryProducts.map(product => ({ ...product })),
     assets: businessAssets.map(asset => ({ ...asset })), restocks: [],
@@ -20,20 +20,133 @@ export function getInventorySales(sales: readonly MockSale[]) {
   return [...inventorySales, ...saleLines(sales)];
 }
 
-// TODO(BACKEND): These synchronous mock writes simulate success. Authorize every
-// command on the server, validate current data, and await confirmed writes before
-// updating UI. Sale + tender + customer/debt + stock, and restock + stock, require
-// atomic transactions and durable idempotency. See docs/api-contract.md#inventory-and-pos.
 export function applyInventoryAction(store: InventoryStore, owner: OwnerIdentity | null, action: InventoryAction): InventoryStore {
   if (!owner || ('command' in action && action.command.ownerId !== owner.id)) return store;
   return inventoryReducer(store, action);
 }
 
-/** Operators may commit POS sales only; every other inventory action stays Owner-only. */
 export function applyOperatorPosAction(store: InventoryStore, session: DeviceSession | null,
   action: Extract<InventoryAction, { type: 'completeSale' }>): InventoryStore {
   if (!session || session.role !== 'operator' || session.ownerId !== session.owner.id
     || action.command.ownerId !== session.ownerId || !hasCapability(session, 'pos')
     || (action.command.draft.method === 'partial' && !hasCapability(session, 'receivables'))) return store;
   return inventoryReducer(store, action);
+}
+
+// ── Real API functions ────────────────────────────────────────────────────────────────────
+
+export interface ApiProduct {
+  id: number;
+  name: string;
+  category: string;
+  priceCentavos: number;
+  stockQuantity: number;
+  reorderPoint: number | null;
+  expirationDate: string | null;
+  barcode: string | null;
+}
+
+export interface ApiAsset {
+  id: number;
+  name: string;
+  classification: string;
+  purchasePriceCentavos: number;
+  purchasedAt: string;
+}
+
+export interface ExpiryAlert {
+  productId: number;
+  productName: string;
+  expirationDate: string;
+  daysUntilExpiry: number;
+  stockQuantity: number;
+}
+
+export interface RestockRecord {
+  id: number;
+  productId: number;
+  productName: string;
+  quantityAdded: number;
+  costPerUnitCentavos: number;
+  expirationDate: string | null;
+  occurredAt: string;
+}
+
+/** List all products for this store. */
+export async function getProducts(): Promise<ApiProduct[]> {
+  return apiFetch<ApiProduct[]>('/inventory/products');
+}
+
+/** Create a new product. */
+export async function createProduct(data: {
+  name: string;
+  category: string;
+  priceCentavos: number;
+  reorderPoint?: number;
+  barcode?: string;
+}): Promise<ApiProduct> {
+  return apiFetch<ApiProduct>('/inventory/products', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Update a product. */
+export async function updateProduct(id: number, data: Partial<{
+  name: string;
+  category: string;
+  priceCentavos: number;
+  reorderPoint: number;
+  barcode: string;
+}>): Promise<ApiProduct> {
+  return apiFetch<ApiProduct>(`/inventory/products/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Delete a product. */
+export async function deleteProduct(id: number): Promise<void> {
+  return apiFetch<void>(`/inventory/products/${id}`, { method: 'DELETE' });
+}
+
+/** Get expiry alerts — products expiring within `daysAhead` days, sorted by soonest first. */
+export async function getExpiryAlerts(daysAhead = 30): Promise<ExpiryAlert[]> {
+  return apiFetch<ExpiryAlert[]>(`/inventory/expiry-alerts?days_ahead=${daysAhead}`);
+}
+
+/** List all assets. */
+export async function getAssets(): Promise<ApiAsset[]> {
+  return apiFetch<ApiAsset[]>('/inventory/assets');
+}
+
+/** Create an asset. */
+export async function createAsset(data: {
+  name: string;
+  classification: string;
+  purchasePriceCentavos: number;
+  purchasedAt: string;
+}): Promise<ApiAsset> {
+  return apiFetch<ApiAsset>('/inventory/assets', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/** List restocks. */
+export async function getRestocks(): Promise<RestockRecord[]> {
+  return apiFetch<RestockRecord[]>('/inventory/restocks');
+}
+
+/** Add a restock batch for a product. */
+export async function addRestock(data: {
+  productId: number;
+  quantityAdded: number;
+  costPerUnitCentavos: number;
+  expirationDate?: string;
+}): Promise<RestockRecord> {
+  return apiFetch<RestockRecord>('/inventory/restocks', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }

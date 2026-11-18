@@ -257,3 +257,63 @@ export const settingsService = createMockSettingsService({
   scenario: scenario && Object.prototype.hasOwnProperty.call(syncFixtures, scenario) ? scenario as SyncStatus : undefined,
   failNext: ['create', 'change-pin', 'reset-pin', 'sync', 'clear-cache', 'permission', 'operator-status'].includes(failure ?? '') ? failure as SettingsOperation : undefined,
 });
+
+// ── Real API functions ────────────────────────────────────────────────────────────────────
+import { apiFetch } from '@/services/api';
+
+export interface ApiCashier {
+  id: string;        // e.g. "TH-KH-0001"
+  ownerId: string;   // e.g. "TH-MA-0001"
+  name: string;
+  status: 'active' | 'inactive';
+  avatarId: string;
+}
+
+export interface OwnerProfile {
+  id: string;        // e.g. "TH-MA-0001"
+  name: string;
+  storeName: string;
+  avatarId: string;
+}
+
+/** Get the owner's profile from the backend. */
+export async function getOwnerProfile(): Promise<OwnerProfile> {
+  return apiFetch<OwnerProfile>('/settings/profile');
+}
+
+/** Update name, storeName, or avatarId. */
+export async function updateOwnerProfile(data: Partial<{
+  name: string;
+  storeName: string;
+  avatarId: string;
+}>): Promise<OwnerProfile> {
+  return apiFetch<OwnerProfile>('/settings/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Change the owner's PIN (requires current PIN for verification). */
+export async function changeOwnerPin(currentPin: string, newPin: string): Promise<void> {
+  return apiFetch<void>('/settings/change-pin', {
+    method: 'POST',
+    body: JSON.stringify({ currentPin, newPin }),
+  });
+}
+
+/** List all cashiers for this store. */
+export async function getCashiers(): Promise<ApiCashier[]> {
+  return apiFetch<ApiCashier[]>('/settings/cashiers');
+}
+
+/** Update a cashier's name, avatar, or active status. */
+export async function updateCashier(kahera_id: string, data: Partial<{
+  name: string;
+  avatarId: string;
+  isActive: boolean;
+}>): Promise<ApiCashier> {
+  return apiFetch<ApiCashier>(`/settings/cashiers/${kahera_id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}

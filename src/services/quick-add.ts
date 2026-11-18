@@ -2,12 +2,9 @@ import type { OwnerIdentity } from '@/types/auth';
 import type { QuickAddDraft, QuickAddRecord } from '@/types/quick-add';
 import { quickAddErrors, quickAddTotal } from '@/utils/quick-add';
 import { createPayablesRepository } from '@/services/payables';
+import { apiFetch } from '@/services/api';
 
-/** Record-only mock boundary. No cash, sales, revenue, or inventory effects are authorized. */
-// TODO(BACKEND): Replace this local Map with authorized debt/expense writes and
-// durable owner-scoped idempotency. Revalidate amounts, dates and item snapshots;
-// resolve only after server confirmation. Posting/customer linking rules remain
-// open; see docs/backend-handoff.md#quick-add-and-expenses and docs/api-contract.md#customers-and-debts.
+// ── Legacy in-memory service (used by existing quick-add screens — do not remove) ────────
 export function createQuickAddService() {
   const saved = new Map<string, QuickAddRecord>();
   const payables = createPayablesRepository();
@@ -36,4 +33,33 @@ export function createQuickAddService() {
       return record;
     },
   };
+}
+
+// ── Real API function ─────────────────────────────────────────────────────────────────────
+
+export interface QuickAddResponse {
+  id: number;
+  kind: 'expense' | 'customerDebt' | 'storeDebt';
+  name: string;
+  amountCentavos: number;
+  occurredAt: string;
+}
+
+/**
+ * Submit a Quick Add entry to the backend.
+ * The backend auto-creates the customer or creditor if the name is new.
+ */
+export async function submitQuickAdd(data: {
+  kind: 'expense' | 'customerDebt' | 'storeDebt';
+  name: string;
+  amountCentavos: number;
+  category?: string;
+  details?: string;
+  dueDate?: string;
+  expenseDate?: string;
+}): Promise<QuickAddResponse> {
+  return apiFetch<QuickAddResponse>('/quick-add', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
