@@ -8,6 +8,7 @@ export type PosProduct = {
   category: ProductCategory;
   unitPriceCentavos: number;
   stock: number;
+  photoUri?: string;
 };
 export type ProductSelection = Readonly<Record<string, {
   productId: string;

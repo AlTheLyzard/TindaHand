@@ -27,9 +27,10 @@ function SessionInventory({ children }: { children: ReactNode }) {
         name: p.name,
         category: p.category as InventoryProduct['category'],
         unitPriceCentavos: p.priceCentavos,
+        costCentavos: p.costCentavos,
         stock: p.stockQuantity,
-        costCentavos: 0,                         // not returned by list endpoint
         expirationDate: p.expirationDate ?? '',
+        photoUri: p.photoUri ?? undefined,
       }));
       // Merge real products into the store, keeping POS/sales/customer state intact.
       setStore(previous => {

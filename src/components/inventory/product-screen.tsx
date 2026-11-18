@@ -179,10 +179,20 @@ export function ProductScreen() {
     const builtProduct = buildDraftProduct(product?.id ?? id, draft);
     if (mode === 'add') {
       try {
+        // Map the draft batches to the shape the backend expects.
+        const apiBatches = (builtProduct.batches ?? []).map(b => ({
+          id: b.id,
+          quantity: b.quantity,
+          noExpiry: b.noExpiry,
+          expirationDate: b.noExpiry ? undefined : b.expirationDate ?? undefined,
+        }));
         const created = await createProduct({
           name: builtProduct.name,
           category: builtProduct.category,
-          priceCentavos: builtProduct.unitPriceCentavos,
+          unitPriceCentavos: builtProduct.unitPriceCentavos,
+          costCentavos: builtProduct.costCentavos,
+          photoUri: builtProduct.photoUri,
+          batches: apiBatches.length > 0 ? apiBatches : undefined,
         });
         // Use the real API id so future checkout/restock calls reference the right record.
         builtProduct.id = String(created.id);
@@ -198,7 +208,9 @@ export function ProductScreen() {
           await updateProduct(numericId, {
             name: builtProduct.name,
             category: builtProduct.category,
-            priceCentavos: builtProduct.unitPriceCentavos,
+            unitPriceCentavos: builtProduct.unitPriceCentavos,
+            costCentavos: builtProduct.costCentavos,
+            photoUri: builtProduct.photoUri,
           });
         } catch {
           // Offline — keep the local edit.

@@ -40,10 +40,12 @@ export interface ApiProduct {
   name: string;
   category: string;
   priceCentavos: number;
+  costCentavos: number;
   stockQuantity: number;
   reorderPoint: number | null;
   expirationDate: string | null;
   barcode: string | null;
+  photoUri: string | null;
 }
 
 export interface ApiAsset {
@@ -81,9 +83,12 @@ export async function getProducts(): Promise<ApiProduct[]> {
 export async function createProduct(data: {
   name: string;
   category: string;
-  priceCentavos: number;
-  reorderPoint?: number;
-  barcode?: string;
+  unitPriceCentavos: number;
+  costCentavos: number;
+  stock?: number;
+  expirationDate?: string;
+  photoUri?: string;
+  batches?: { id?: string; quantity: number; noExpiry: boolean; expirationDate?: string }[];
 }): Promise<ApiProduct> {
   return apiFetch<ApiProduct>('/inventory/products', {
     method: 'POST',
@@ -95,9 +100,10 @@ export async function createProduct(data: {
 export async function updateProduct(id: number, data: Partial<{
   name: string;
   category: string;
-  priceCentavos: number;
-  reorderPoint: number;
-  barcode: string;
+  unitPriceCentavos: number;
+  costCentavos: number;
+  expirationDate: string;
+  photoUri: string;
 }>): Promise<ApiProduct> {
   return apiFetch<ApiProduct>(`/inventory/products/${id}`, {
     method: 'PATCH',
