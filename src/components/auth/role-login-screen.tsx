@@ -27,14 +27,8 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
   const flow = useAuthFlow();
   const { fontScale } = useWindowDimensions();
   const owner = role === 'owner';
-  const selectedOwnerId = owner ? flow.selectedOwnerId : null;
-  const returning = owner && !loggedOut && flow.deviceSession?.role === 'owner'
-    && (!selectedOwnerId || selectedOwnerId === flow.deviceSession.owner.id);
-  const [enteredId, setId] = useState('');
-  const rememberedId = owner
-    ? returning ? flow.deviceSession!.owner.id : selectedOwnerId ?? flow.rememberedIdentities.owner
-    : undefined;
-  const id = rememberedId ?? enteredId;
+  const [id, setId] = useState('');
+  const rememberedId = undefined; // ID is always typed by the user — never auto-filled or locked
   const [credential, setCredential] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [touched, setTouched] = useState({ id: false, credential: false });
@@ -122,10 +116,7 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
     finally { if (!completed) { locked.current = false; if (active.current) setBusy(false); } }
   }
 
-  const identity = rememberedId ? <View testID="remembered-login-identity" style={{ marginBottom: !password ? 0 : tokens.spacing.three, gap: tokens.spacing.one }}>
-    <Text className="font-poppins text-[12px] text-text-secondary" style={{ lineHeight: 18 * fontScale }}>Owner ID</Text>
-    <Text selectable accessibilityLabel={`Owner ID: ${rememberedId}`} className="font-poppins-bold text-[16px]" style={{ color: tokens.color.textPrimary, lineHeight: 24 * fontScale }}>{rememberedId}</Text>
-  </View> : undefined;
+  const identity = undefined; // No static identity display — user always types their ID
   const pinIdentity = !password && owner && rememberedId ? identity : undefined;
   const pinLoginButtonHeight = Math.max(tokens.button.height, tokens.button.lineHeight * fontScale + tokens.button.paddingVertical * 2);
   return <AuthBackground headerWave>
