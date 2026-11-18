@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
-import { getToken } from '@/services/token-storage';
+import { getKaheraId, getRole, getToken } from '@/services/token-storage';
 import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
 
 const emptyDraft: RegistrationFormValues = {
@@ -87,11 +87,32 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
       // No mock session — try the real JWT stored in SecureStore.
       const token = await getToken();
       if (token) {
-        const me = await fetchMe(token);
+        const [me, storedRole, kaheraId] = await Promise.all([
+          fetchMe(token),
+          getRole(),
+          getKaheraId(),
+        ]);
         if (me) {
-          // Build a DeviceSession from the real API response so the rest of
-          // the app (screens, navigation gates) sees an active, unlocked session.
           const owner = { id: me.formatted_id, name: me.name };
+          if (storedRole === 'cashier' && kaheraId) {
+            // Cashier session — build an operator DeviceSession.
+            const realSession: DeviceSession = {
+              kind: 'mock',
+              id: token,
+              role: 'operator',
+              owner,
+              ownerId: me.formatted_id,
+              operatorId: kaheraId,
+              displayName: me.name,
+              operator: { id: kaheraId, name: me.name, permissions: [] },
+              expiresAt: Date.now() + 8 * 60 * 60 * 1000,
+              locked: false,
+            };
+            authenticationService.seedRealOwner(owner);
+            setDeviceSession(realSession);
+            return realSession;
+          }
+          // Owner session.
           const realSession: DeviceSession = {
             kind: 'mock',           // discriminant reused; not sent anywhere
             id: token,

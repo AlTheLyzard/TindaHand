@@ -25,6 +25,7 @@ export type KaheraLoginResult =
   | { status: 'ok'; token: string; name: string; kaheraId: string; ownerId: string }
   | { status: 'invalid' }
   | { status: 'locked' }
+  | { status: 'notFound' }
   | { status: 'error'; message: string };
 
 /**

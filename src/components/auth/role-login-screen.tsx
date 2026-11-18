@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { KeyboardViewport as KeyboardAvoidingView, KeyboardAwareScrollView as ScrollView } from '@/components/ui/keyboard-aware-scroll-view';
 import tokens from '@/constants/design-tokens.json';
-import { loginOwner } from '@/services/mock-auth';
+import { loginKahera, loginOwner } from '@/services/mock-auth';
 import { saveToken } from '@/services/token-storage';
 import { useAuthFlow } from '@/state/auth-flow';
 import type { AccountRole } from '@/types/auth';
@@ -75,8 +75,8 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
         if (!active.current) return;
         if (result.status === 'ok') {
           const me = await fetchMe(result.token);
-          const ownerId = me ? `TH-MA-${String(me.id).padStart(4, '0')}` : '';
-          await saveToken(result.token, result.name, ownerId);
+          const ownerId = me ? me.formatted_id : '';
+          await saveToken(result.token, result.name, ownerId, 'owner');
           setCredential('');
           await flow.refreshSession();
           flow.setSelectedRole(role);
@@ -92,9 +92,30 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
         }
         return;
       }
-      // Operator login — not yet wired to backend
-      setOperatorState('failed');
-      setNotice('Operator login is not connected yet.');
+      // Kahera (operator) login — real API
+      const result = await loginKahera(id, credential);
+      if (!active.current) return;
+      if (result.status === 'ok') {
+        await saveToken(result.token, result.name, result.ownerId, 'cashier', result.kaheraId);
+        setCredential('');
+        await flow.refreshSession();
+        flow.setSelectedRole(role);
+        flow.notifyLogin();
+        completed = true;
+        onSuccess();
+      } else if (result.status === 'locked') {
+        setOperatorState('failed');
+        setNotice('Account locked due to too many failed attempts. Try again later.');
+      } else if (result.status === 'notFound') {
+        setOperatorState('invalid');
+        setNotice('No active cashier found for this store. Ask your owner to set up your account.');
+      } else if (result.status === 'invalid') {
+        setOperatorState('invalid');
+        setNotice('Invalid Owner ID or PIN. Check your credentials and try again.');
+      } else {
+        setOperatorState('failed');
+        setNotice('Unable to log in. Please try again.');
+      }
     } catch { if (active.current) { if (!owner) setOperatorState('failed'); setNotice('Unable to log in. Please try again.'); } }
     finally { if (!completed) { locked.current = false; if (active.current) setBusy(false); } }
   }
