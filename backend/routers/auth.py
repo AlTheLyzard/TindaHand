@@ -169,27 +169,30 @@ def kahera_login_by_pin(body: KaheraLoginByPinRequest, db: Session = Depends(get
         raise HTTPException(429, "Account locked. Try again later.")
 
     # Try to match PIN against each unlocked candidate.
+    # Do NOT increment failed_attempts during the scan — we don't know yet
+    # which Kahera the person is trying to log in as. Only the one matched
+    # (on success) or all unlocked ones (on total failure) get updated.
     matched = None
-    for kahera in candidates:
-        if kahera.locked_until and kahera.locked_until > now:
-            continue
+    unlocked = [k for k in candidates if not (k.locked_until and k.locked_until > now)]
+    for kahera in unlocked:
         if verify_pin(body.pin, kahera.pin_hash):
             matched = kahera
             break
-        # Increment failed attempts on mismatch.
-        kahera.failed_attempts += 1
-        if kahera.failed_attempts >= MAX_FAILED_ATTEMPTS:
-            kahera.locked_until = now + timedelta(minutes=LOCKOUT_MINUTES)
-            kahera.failed_attempts = 0
 
-    db.commit()
-
-    if not matched:
+    if matched:
+        matched.failed_attempts = 0
+        matched.locked_until = None
+        db.commit()
+    else:
+        # Real failed attempt — increment every unlocked candidate equally
+        # (we can't know which one was intended without a Kahera ID field).
+        for kahera in unlocked:
+            kahera.failed_attempts += 1
+            if kahera.failed_attempts >= MAX_FAILED_ATTEMPTS:
+                kahera.locked_until = now + timedelta(minutes=LOCKOUT_MINUTES)
+                kahera.failed_attempts = 0
+        db.commit()
         raise HTTPException(401, "Invalid Owner ID or PIN.")
-
-    matched.failed_attempts = 0
-    matched.locked_until = None
-    db.commit()
 
     token = create_access_token({
         "sub":      str(matched.id),
