@@ -17,7 +17,7 @@ PIN      = "1234"          # ← change to your actual PIN
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 print(f"Logging in as {OWNER_ID}…")
-r = requests.post(f"{BASE}/auth/owner/login", json={"owner_id": OWNER_ID, "pin": PIN})
+r = requests.post(f"{BASE}/auth/login", json={"owner_id": OWNER_ID, "pin": PIN})
 if r.status_code != 200:
     print(f"Login failed ({r.status_code}): {r.text}")
     sys.exit(1)
