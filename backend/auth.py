@@ -73,9 +73,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_token(token: str) -> TokenData:
+def decode_token(token: str) -> dict:
     """
     Decode and validate a JWT from a request header.
+    Returns a dict with keys: db_id (int), role (str), owner_db_id (int|None).
     Raises 401 if the token is invalid, expired, or tampered with.
     """
     credentials_exception = HTTPException(
@@ -84,15 +85,21 @@ def decode_token(token: str) -> TokenData:
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int  = payload.get("sub")
-        role: str     = payload.get("role")
-        owner_id: int = payload.get("owner_id")   # only present in kahera tokens
+        payload  = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        sub      = payload.get("sub")
+        role     = payload.get("role")
+        owner_id = payload.get("owner_id")   # only present in cashier tokens
 
-        if user_id is None or role is None:
+        if sub is None or role is None:
             raise credentials_exception
 
-        return TokenData(user_id=user_id, role=role, owner_id=owner_id)
+        # Normalise roles: old tokens may say "may_ari"; new ones say "owner"
+        if role == "may_ari":
+            role = "owner"
+        if role == "kahera":
+            role = "cashier"
+
+        return {"db_id": int(sub), "role": role, "owner_db_id": owner_id}
 
     except JWTError:
         raise credentials_exception
@@ -105,10 +112,10 @@ bearer_scheme = HTTPBearer()
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-) -> TokenData:
+) -> dict:
     """
     Extracts and validates the JWT from the Authorization header.
-    Every protected route depends on this.
+    Every protected route depends on this. Returns dict with db_id, role.
     """
     return decode_token(credentials.credentials)
 
@@ -119,18 +126,15 @@ def require_role(*allowed_roles: str):
 
     Usage in a route:
         @router.get("/owner-only")
-        def owner_only(user = Depends(require_role("may_ari"))):
+        def owner_only(user = Depends(require_role("owner"))):
             ...
 
         @router.get("/both-can-access")
-        def both(user = Depends(require_role("may_ari", "kahera"))):
+        def both(user = Depends(require_role("owner", "cashier"))):
             ...
-
-    Why: Instead of checking roles inside every function body, we declare
-    access rules at the route level — cleaner and harder to accidentally skip.
     """
-    def _gate(user: TokenData = Depends(get_current_user)) -> TokenData:
-        if user.role not in allowed_roles:
+    def _gate(user: dict = Depends(get_current_user)) -> dict:
+        if user["role"] not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Access denied. Required role: {' or '.join(allowed_roles)}"

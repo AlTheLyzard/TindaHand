@@ -1,226 +1,240 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from typing import Optional
 
 from database import get_db
 from models import MayAri, Kahera
-from schemas import (
-    MayAriRegister, MayAriLogin, MayAriOut,
-    KaheraCreate, KaheraLogin, KaheraOut,
-    Token
-)
 from auth import (
     hash_password, verify_password,
     hash_pin, verify_pin,
     create_access_token, require_role, get_current_user,
-    build_offline_cache_payload
+    build_offline_cache_payload,
 )
-from schemas import TokenData
+from schemas import (
+    RegisterRequest, LoginRequest,
+    KaheraLoginRequest, KaheraCreateRequest, KaheraStatusRequest,
+    TokenResponse, MeResponse, OkResponse,
+)
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-MAX_FAILED_ATTEMPTS = 5   # lock account after 5 wrong PINs
-LOCKOUT_MINUTES     = 15  # locked for 15 minutes
+MAX_FAILED_ATTEMPTS = 5
+LOCKOUT_MINUTES     = 15
 
 
-# ── 1. REGISTER (May-Ari only) ───────────────────────────────────
+# ── 1. REGISTER (May-Ari) ────────────────────────────────────────────────────
 
-@router.post("/register", response_model=None, status_code=201)
-def register(payload: MayAriRegister, db: Session = Depends(get_db)):
-    """
-    Create a new store owner account.
-    Password is hashed with bcrypt before saving — plain text never touches the DB.
-    """
-    existing = db.query(MayAri).filter(MayAri.email == payload.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+@router.post("/register", status_code=201)
+def register(body: RegisterRequest, db: Session = Depends(get_db)):
+    """Create a new store owner account. Password is bcrypt-hashed; PIN is Argon2id."""
+    if db.query(MayAri).filter(MayAri.email == body.email).first():
+        raise HTTPException(400, "Email already registered")
 
     owner = MayAri(
-        full_name     = payload.full_name,
-        email         = payload.email,
-        password_hash = hash_password(payload.password),
-        pin_hash      = hash_pin(payload.pin),
+        full_name     = body.full_name.strip(),
+        email         = body.email,
+        password_hash = hash_password(body.password),
+        pin_hash      = hash_pin(body.pin) if body.pin else None,
+        store_name    = body.store_name,
     )
-
     db.add(owner)
     db.commit()
     db.refresh(owner)
-    token = create_access_token({"sub": str(owner.id), "role": "may_ari"})
+
+    token = create_access_token({"sub": str(owner.id), "role": "owner"})
     return {
-        "id": owner.id,
-        "full_name": owner.full_name,
-        "email": owner.email,
-        "is_active": owner.is_active,
-        "created_at": owner.created_at,
         "access_token": token,
+        "token_type": "bearer",
+        "full_name": owner.full_name,
+        "id": f"TH-MA-{owner.id:04d}",
     }
 
 
-# ── 2. MAY-ARI LOGIN ─────────────────────────────────────────────
+# ── 2. MAY-ARI LOGIN ─────────────────────────────────────────────────────────
 
-@router.post("/login", response_model=Token)
-def login_may_ari(payload: MayAriLogin, db: Session = Depends(get_db)):
+@router.post("/login", response_model=TokenResponse)
+def login(body: LoginRequest, db: Session = Depends(get_db)):
     """
-    May-Ari logs in with their display ID (TH-MA-0001) + 4-digit PIN.
-    Password is only used for PIN recovery via email, not for login.
+    May-Ari logs in with their display ID (TH-MA-XXXX) + 4-digit PIN.
+    Returns a JWT valid for 8 hours.
     """
     try:
-        numeric_id = int(payload.owner_id.split("-")[-1])
+        numeric_id = int(body.owner_id.strip().upper().split("-")[-1])
     except (ValueError, IndexError):
-        raise HTTPException(status_code=400, detail="Invalid owner ID format. Expected TH-MA-XXXX.")
+        raise HTTPException(400, "Invalid owner ID format. Expected TH-MA-XXXX.")
 
     owner = db.query(MayAri).filter(MayAri.id == numeric_id).first()
 
-    if not owner or not verify_pin(payload.pin, owner.pin_hash):
-        raise HTTPException(status_code=401, detail="Invalid ID or PIN")
+    if not owner or not owner.pin_hash:
+        raise HTTPException(401, "Invalid ID or PIN")
+
+    if not verify_pin(body.pin, owner.pin_hash):
+        raise HTTPException(401, "Invalid ID or PIN")
 
     if not owner.is_active:
-        raise HTTPException(status_code=403, detail="Account is deactivated")
+        raise HTTPException(403, "Account is deactivated")
 
-    token = create_access_token({"sub": str(owner.id), "role": "may_ari"})
-    return Token(access_token=token, role="may_ari", expires_in=8 * 3600, full_name=owner.full_name)
+    # ← Token creation is at this indentation level, NOT inside the is_active check above
+    token = create_access_token({"sub": str(owner.id), "role": "owner"})
+    return TokenResponse(access_token=token, full_name=owner.full_name)
 
-# ── 3. KAHERA LOGIN ──────────────────────────────────────────────
 
-@router.post("/kahera/login", response_model=Token)
-def login_kahera(payload: KaheraLogin, db: Session = Depends(get_db)):
+# ── 3. KAHERA LOGIN ──────────────────────────────────────────────────────────
+
+@router.post("/kahera/login")
+def kahera_login(body: KaheraLoginRequest, db: Session = Depends(get_db)):
     """
-    Cashier logs in with their PIN + May-Ari's ID.
-    - Checks account is active (activation/deactivation feature)
-    - Checks for brute-force lockout
-    - Verifies PIN against Argon2id hash
-    - Returns JWT with role='kahera' and owner_id embedded
-    - Returns offline cache payload so app can store it for offline login
+    Cashier logs in with owner ID + cashier ID + PIN.
+    Checks lockout, verifies Argon2id PIN, returns JWT + offline cache payload.
     """
+    try:
+        owner_numeric   = int(body.owner_id.strip().upper().split("-")[-1])
+        kahera_numeric  = int(body.kahera_id.strip().upper().split("-")[-1])
+    except (ValueError, IndexError):
+        raise HTTPException(400, "Invalid ID format. Expected TH-MA-XXXX and TH-KH-XXXX.")
+
     kahera = db.query(Kahera).filter(
-        Kahera.owner_id == payload.owner_id
+        Kahera.id == kahera_numeric,
+        Kahera.owner_id == owner_numeric,
     ).first()
 
     if not kahera:
-        raise HTTPException(status_code=404, detail="Cashier not found for this store")
+        raise HTTPException(404, "Cashier not found for this store")
 
-    # Account activation check
     if not kahera.is_active:
-        raise HTTPException(status_code=403, detail="This cashier account has been deactivated")
+        raise HTTPException(403, "This cashier account has been deactivated")
 
-    # Brute-force lockout check
     if kahera.locked_until and kahera.locked_until > datetime.now(timezone.utc):
-        raise HTTPException(
-            status_code=429,
-            detail=f"Account locked due to too many failed attempts. Try again after {kahera.locked_until.strftime('%H:%M')} UTC"
-        )
+        raise HTTPException(429, f"Account locked. Try again after {kahera.locked_until.strftime('%H:%M')} UTC")
 
-    # Verify PIN (Argon2id)
-    if not verify_pin(payload.pin, kahera.pin_hash):
+    if not verify_pin(body.pin, kahera.pin_hash):
         kahera.failed_attempts += 1
         if kahera.failed_attempts >= MAX_FAILED_ATTEMPTS:
-            from datetime import timedelta
-            kahera.locked_until = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)
+            kahera.locked_until    = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)
             kahera.failed_attempts = 0
             db.commit()
-            raise HTTPException(status_code=429, detail=f"Too many failed attempts. Account locked for {LOCKOUT_MINUTES} minutes.")
+            raise HTTPException(429, f"Too many failed attempts. Locked for {LOCKOUT_MINUTES} minutes.")
         db.commit()
-        raise HTTPException(status_code=401, detail=f"Invalid PIN. {MAX_FAILED_ATTEMPTS - kahera.failed_attempts} attempts remaining.")
+        raise HTTPException(401, f"Invalid PIN. {MAX_FAILED_ATTEMPTS - kahera.failed_attempts} attempts remaining.")
 
-    # PIN correct — reset failed attempts
     kahera.failed_attempts = 0
     kahera.locked_until    = None
     db.commit()
 
     token = create_access_token({
         "sub":      str(kahera.id),
-        "role":     "kahera",
-        "owner_id": kahera.owner_id,   # embedded so routes know which store
+        "role":     "cashier",
+        "owner_id": kahera.owner_id,
     })
-
-    # Build offline cache payload (app encrypts and stores this locally)
     offline_cache = build_offline_cache_payload(kahera.id, kahera.pin_hash)
 
     return {
         "access_token":  token,
         "token_type":    "bearer",
-        "role":          "kahera",
+        "full_name":     kahera.full_name,
+        "role":          "cashier",
         "expires_in":    8 * 3600,
-        "offline_cache": offline_cache,   # app stores this for offline login
+        "offline_cache": offline_cache,
     }
 
 
-# ── 4. CREATE KAHERA (May-Ari only) ─────────────────────────────
+# ── 4. CREATE KAHERA (May-Ari only) ──────────────────────────────────────────
 
-@router.post("/kahera/create", response_model=KaheraOut, status_code=201)
+@router.post("/kahera/create", status_code=201)
 def create_kahera(
-    payload: KaheraCreate,
-    db:   Session   = Depends(get_db),
-    user: TokenData = Depends(require_role("may_ari")),   # RBAC gate: only owners
+    body: KaheraCreateRequest,
+    db:   Session = Depends(get_db),
+    current_user  = Depends(require_role("owner")),
 ):
-    """
-    May-Ari creates a cashier account.
-    PIN is hashed with Argon2id before saving.
-    RBAC gate ensures only a logged-in May-Ari can call this.
-    """
+    """May-Ari creates a cashier account. PIN is hashed with Argon2id."""
+    owner_id = current_user["db_id"]
+    pin_hash = hash_pin(body.pin)
+
     kahera = Kahera(
-        full_name      = payload.full_name,
-        pin_hash       = hash_pin(payload.pin),   # Argon2id hash
-        owner_id       = user.user_id,
-        pin_hash_cache = hash_pin(payload.pin),   # same hash stored for offline use
+        full_name      = body.full_name.strip(),
+        pin_hash       = pin_hash,
+        pin_hash_cache = pin_hash,
+        avatar_id      = body.avatar_id,
+        owner_id       = owner_id,
     )
     db.add(kahera)
     db.commit()
     db.refresh(kahera)
-    return kahera
+
+    return {
+        "id":       f"TH-KH-{kahera.id:04d}",
+        "ownerId":  f"TH-MA-{owner_id:04d}",
+        "name":     kahera.full_name,
+        "status":   "active",
+        "avatarId": kahera.avatar_id,
+    }
 
 
-# ── 5. ACTIVATE / DEACTIVATE KAHERA (May-Ari only) ──────────────
+# ── 5. ACTIVATE / DEACTIVATE KAHERA ──────────────────────────────────────────
 
-@router.patch("/kahera/{kahera_id}/status", response_model=KaheraOut)
+@router.patch("/kahera/{kahera_id}/status", response_model=OkResponse)
 def toggle_kahera_status(
-    kahera_id: int,
-    is_active: bool,
-    db:   Session   = Depends(get_db),
-    user: TokenData = Depends(require_role("may_ari")),   # RBAC gate
+    kahera_id: str,
+    body: KaheraStatusRequest,
+    db:   Session = Depends(get_db),
+    current_user  = Depends(require_role("owner")),
 ):
-    """
-    Instantly enable or disable a cashier account.
-    Use case: employee leaves, account is compromised, end of employment.
-    RBAC gate: only the owning May-Ari can do this.
-    """
+    owner_id = current_user["db_id"]
+    try:
+        numeric_id = int(kahera_id.strip().upper().replace("TH-KH-", ""))
+    except ValueError:
+        raise HTTPException(422, "Invalid cashier ID format")
+
     kahera = db.query(Kahera).filter(
-        Kahera.id == kahera_id,
-        Kahera.owner_id == user.user_id   # can only manage YOUR cashiers
+        Kahera.id == numeric_id,
+        Kahera.owner_id == owner_id,
     ).first()
-
     if not kahera:
-        raise HTTPException(status_code=404, detail="Cashier not found")
+        raise HTTPException(404, "Cashier not found")
 
-    kahera.is_active = is_active
+    kahera.is_active = body.is_active
+    if body.is_active:
+        kahera.failed_attempts = 0
+        kahera.locked_until    = None
     db.commit()
-    db.refresh(kahera)
-    return kahera
+    return OkResponse(message=f"Cashier {'activated' if body.is_active else 'deactivated'}")
 
 
-# ── 6. /ME — WHO AM I? ──────────────────────────────────────────
+# ── 6. /ME — WHO AM I? ───────────────────────────────────────────────────────
 
-@router.get("/me")
+@router.get("/me", response_model=MeResponse)
 def get_me(
-    db:   Session   = Depends(get_db),
-    user: TokenData = Depends(get_current_user),
+    db:          Session = Depends(get_db),
+    current_user         = Depends(get_current_user),
 ):
     """
-    Returns the currently logged-in user's info based on their JWT.
-    Frontend calls this on app load to restore session state.
-    Works for both roles.
+    Returns the current user's id, name and role.
+    id is formatted as TH-MA-XXXX or TH-KH-XXXX.
+    name is the first (display) name, not full_name.
+    role is 'owner' or 'cashier'.
     """
-    if user.role == "may_ari":
-        owner = db.query(MayAri).filter(MayAri.id == user.user_id).first()
+    role     = current_user["role"]
+    db_id    = current_user["db_id"]
+
+    if role == "owner":
+        owner = db.query(MayAri).filter(MayAri.id == db_id).first()
         if not owner or not owner.is_active:
-            raise HTTPException(status_code=404, detail="Account not found or deactivated")
-        return {"id": owner.id, "name": owner.full_name, "role": "may_ari", "email": owner.email}
+            raise HTTPException(404, "Account not found or deactivated")
+        return MeResponse(
+            id=f"TH-MA-{owner.id:04d}",
+            name=owner.full_name.split()[0],   # first name
+            role="owner",
+        )
 
-    elif user.role == "kahera":
-        kahera = db.query(Kahera).filter(Kahera.id == user.user_id).first()
+    elif role == "cashier":
+        kahera = db.query(Kahera).filter(Kahera.id == db_id).first()
         if not kahera or not kahera.is_active:
-            raise HTTPException(status_code=404, detail="Account not found or deactivated")
-        return {"id": kahera.id, "name": kahera.full_name, "role": "kahera", "owner_id": kahera.owner_id}
+            raise HTTPException(404, "Account not found or deactivated")
+        return MeResponse(
+            id=f"TH-KH-{kahera.id:04d}",
+            name=kahera.full_name.split()[0],
+            role="cashier",
+        )
 
-
+    raise HTTPException(401, "Unknown role")

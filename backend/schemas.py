@@ -1,84 +1,485 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+"""
+Pydantic schemas — the shapes of JSON that go in and come out of every endpoint.
+Field names and types mirror the TypeScript types in src/types/* exactly.
+All money is integer centavos; dates are ISO strings (YYYY-MM-DD or ISO-8601 timestamp).
+"""
+
+from __future__ import annotations
+from typing import Optional, Literal, Dict, List
+from pydantic import BaseModel, Field, EmailStr
 from datetime import datetime
 
 
-# ── MAY-ARI SCHEMAS ──────────────────────────────────────────────
-
-class MayAriRegister(BaseModel):
-    """What the app sends when registering a new store owner."""
-    full_name: str
-    email:     EmailStr
-    password:  str    # bcrypt — stored for PIN recovery via email
-    pin:       str    # 4-digit Argon2id — used for every login
-
-
-class MayAriLogin(BaseModel):
-    """What the app sends when a May-Ari logs in."""
-    owner_id: str   # e.g. "TH-MA-0001"
-    pin:      str   # 4-digit PIN
-
-
-class MayAriOut(BaseModel):
-    """What we send BACK — notice: no password_hash ever leaves the server."""
-    id:        int
-    full_name: str
-    email:     str
-    is_active: bool
-    created_at: datetime
-
-    class Config:
-        from_attributes = True   # lets Pydantic read SQLAlchemy model objects directly
-
-
-# ── KAHERA SCHEMAS ───────────────────────────────────────────────
-
-class KaheraCreate(BaseModel):
-    """May-Ari sends this to create a cashier account."""
-    full_name: str
-    pin:       str   # 4-6 digit PIN, plain text in transit, Argon2id-hashed before saving
-
-
-class KaheraLogin(BaseModel):
-    """
-    What the app sends when a Kahera logs in.
-    Needs both the PIN and the May-Ari ID so we know which store they belong to.
-    """
-    owner_id: int   # May-Ari's ID (the store they're logging into)
-    pin:      str
-
-
-class KaheraOut(BaseModel):
-    """Cashier info returned after login — no PIN hash."""
-    id:        int
-    full_name: str
-    is_active: bool
-    owner_id:  int
-
-    class Config:
-        from_attributes = True
-
-
-# ── TOKEN SCHEMAS ────────────────────────────────────────────────
-
-class Token(BaseModel):
-    """
-    Returned after any successful login.
-    - access_token: JWT the app stores and sends in every request header
-    - token_type: always "bearer"
-    - role: "may_ari" or "kahera" — the app uses this to show the right screens
-    - expires_in: seconds until the token expires (token expiry feature)
-    - full_name: display name for the logged-in user
-    """
-    access_token: str
-    token_type:   str = "bearer"
-    role:         str
-    expires_in:   int
-    full_name:    str = ""
-
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# AUTH
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 class TokenData(BaseModel):
-    """Decoded contents of a JWT — used internally by the auth middleware."""
-    user_id:  Optional[int] = None
-    role:     Optional[str] = None   # "may_ari" or "kahera"
-    owner_id: Optional[int] = None   # only set for kahera tokens
+    """Internal model decoded from a JWT — not sent to clients."""
+    user_id:  str
+    role:     str                   # 'owner' or 'cashier'
+    owner_id: Optional[int] = None  # only set in cashier tokens
+
+
+class RegisterRequest(BaseModel):
+    full_name: str
+    email: EmailStr
+    password: str
+    pin: Optional[str] = None
+    store_name: Optional[str] = None
+
+class LoginRequest(BaseModel):
+    owner_id: str         # TH-MA-XXXX
+    pin: str
+
+class KaheraLoginRequest(BaseModel):
+    owner_id: str         # TH-MA-XXXX — which store to log into
+    kahera_id: str        # TH-KH-XXXX
+    pin: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    full_name: str
+
+class MeResponse(BaseModel):
+    id: str               # TH-MA-XXXX or TH-KH-XXXX
+    name: str             # first name or display name
+    role: Literal["owner", "cashier"]
+
+class KaheraCreateRequest(BaseModel):
+    full_name: str
+    pin: str
+    avatar_id: Optional[str] = None
+
+class KaheraStatusRequest(BaseModel):
+    is_active: bool
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# PRODUCTS & INVENTORY
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ProductCategory = Literal[
+    "drinks", "canned", "snacks", "coldCuts",
+    "groceries", "household", "personalCare"
+]
+
+class StockBatchOut(BaseModel):
+    id: str
+    quantity: int
+    noExpiry: bool
+    expirationDate: Optional[str]   # null when noExpiry=True
+
+class StockBatchIn(BaseModel):
+    id: str
+    quantity: int
+    noExpiry: bool
+    expirationDate: Optional[str] = None
+
+class ProductOut(BaseModel):
+    """Shape returned by GET /inventory/products — matches PosProduct + InventoryProduct."""
+    id: str
+    name: str
+    category: ProductCategory
+    unitPriceCentavos: int
+    costCentavos: int
+    stock: int
+    expirationDate: Optional[str] = None
+    photoUri: Optional[str] = None
+    batches: Optional[List[StockBatchOut]] = None
+
+class ProductCreate(BaseModel):
+    name: str
+    category: ProductCategory
+    unitPriceCentavos: int
+    costCentavos: int
+    stock: int = 0
+    expirationDate: Optional[str] = None
+    photoUri: Optional[str] = None
+    batches: Optional[List[StockBatchIn]] = None
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[ProductCategory] = None
+    unitPriceCentavos: Optional[int] = None
+    costCentavos: Optional[int] = None
+    expirationDate: Optional[str] = None
+    photoUri: Optional[str] = None
+
+class RestockIn(BaseModel):
+    """Body for POST /inventory/products/{id}/restock"""
+    quantity: int
+    stockDate: str         # YYYY-MM-DD
+    expirationDate: str    # YYYY-MM-DD or 'noExpiry'
+    batchId: Optional[str] = None
+
+class RestockOut(BaseModel):
+    id: str
+    productId: str
+    itemName: str
+    quantity: int
+    stockDate: str
+    expirationDate: str
+    recordedAt: str
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ASSETS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AssetClassification = Literal["current", "equipment", "furniture"]
+
+class AssetOut(BaseModel):
+    id: str
+    name: str
+    valueCentavos: int
+    usefulLifeYears: int
+    classification: AssetClassification
+    recordedDate: str
+
+class AssetCreate(BaseModel):
+    name: str
+    valueCentavos: int
+    usefulLifeYears: int
+    classification: AssetClassification
+    recordedDate: str
+
+class AssetUpdate(BaseModel):
+    name: Optional[str] = None
+    valueCentavos: Optional[int] = None
+    usefulLifeYears: Optional[int] = None
+    classification: Optional[AssetClassification] = None
+    recordedDate: Optional[str] = None
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# POINT OF SALE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class ProductSelectionLine(BaseModel):
+    productId: str
+    itemName: str
+    unitPriceCentavos: int
+    quantity: int
+
+# Dict[productId, ProductSelectionLine]
+ProductSelection = Dict[str, ProductSelectionLine]
+
+PaymentMethod = Literal["cash", "gcash", "split", "partial"]
+
+class PaymentDraft(BaseModel):
+    method: PaymentMethod
+    cashRaw: Optional[str] = None      # raw input string e.g. "120.00"
+    gcashRaw: Optional[str] = None
+    reference: str = ""
+    customerName: str = ""
+    customerId: Optional[str] = None
+    partialMethod: Optional[Literal["cash", "gcash"]] = None
+
+class CheckoutCommand(BaseModel):
+    """Body for POST /pos/checkout — mirrors CheckoutCommand in TypeScript."""
+    id: str
+    occurredAt: str                    # ISO timestamp
+    selection: ProductSelection
+    draft: PaymentDraft
+    kahera_id: Optional[int] = None    # set when a cashier initiates the sale
+
+class SaleTenderOut(BaseModel):
+    method: Literal["cash", "gcash"]
+    receivedCentavos: int
+    reference: Optional[str]
+
+class SalePaymentOut(BaseModel):
+    id: str
+    saleId: str
+    method: PaymentMethod
+    tenders: List[SaleTenderOut]
+    receivedCentavos: int
+    appliedCentavos: int
+    cashChangeCentavos: int
+
+class SaleOut(BaseModel):
+    id: str
+    ownerId: str
+    occurredAt: str
+    customerId: Optional[str]
+    items: ProductSelection
+    totalCentavos: int
+    remainingCentavos: int
+    paymentStatus: Literal["paid", "partial", "unpaid"]
+    payment: SalePaymentOut
+
+class ChangeBreakdown(BaseModel):
+    """Greedy coin change result — which denominations make up the change."""
+    totalChangeCentavos: int
+    breakdown: Dict[int, int]          # { 100000: 1, 50000: 0, ... } (centavo denomination → count)
+
+class CheckoutResult(BaseModel):
+    sale: SaleOut
+    change: Optional[ChangeBreakdown]  # null for GCash-only sales
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CUSTOMERS (AR side)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class CustomerOut(BaseModel):
+    id: str
+    ownerId: str
+    name: str
+
+class CustomerCreate(BaseModel):
+    name: str
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ACCOUNTS RECEIVABLE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class CustomerDebtOut(BaseModel):
+    id: str
+    ownerId: str
+    customerId: Optional[str]
+    saleId: Optional[str]
+    name: str
+    originalAmountCentavos: int
+    amountCentavos: int
+    paidCentavos: Optional[int]
+    borrowing: Optional[Literal["cash", "product"]]
+    items: Optional[ProductSelection]
+    dueDate: Optional[str]
+    details: Optional[str]
+    paymentStatus: Literal["paid", "partial", "unpaid"]
+    occurredAt: str
+
+class CustomerDebtCreate(BaseModel):
+    name: str
+    customerId: Optional[str] = None
+    amountCentavos: int
+    borrowing: Optional[Literal["cash", "product"]] = "cash"
+    items: Optional[ProductSelection] = None
+    dueDate: Optional[str] = None
+    details: Optional[str] = None
+    occurredAt: str
+
+class ReceivablePaymentOut(BaseModel):
+    id: str
+    ownerId: str
+    debtId: str
+    amountCentavos: int
+    reference: Optional[str]
+    occurredAt: str
+
+class ReceivablePaymentCreate(BaseModel):
+    debtId: str
+    amountCentavos: int
+    reference: Optional[str] = None
+    occurredAt: str
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ACCOUNTS PAYABLE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class CreditorOut(BaseModel):
+    id: str
+    ownerId: str
+    name: str
+
+class CreditorCreate(BaseModel):
+    name: str
+
+class StoreDebtOut(BaseModel):
+    id: str
+    ownerId: str
+    creditorId: str
+    name: str
+    originalAmountCentavos: int
+    paidCentavos: int              # sum of all payments
+    remainingCentavos: int
+    dueDate: Optional[str]
+    details: Optional[str]
+    occurredAt: str
+
+class StoreDebtCreate(BaseModel):
+    creditorId: str
+    name: str
+    originalAmountCentavos: int
+    dueDate: Optional[str] = None
+    details: Optional[str] = None
+    occurredAt: str
+
+class StoreDebtPaymentOut(BaseModel):
+    id: str
+    ownerId: str
+    debtId: str
+    amountCentavos: int
+    occurredAt: str
+
+class StoreDebtPaymentCreate(BaseModel):
+    debtId: str
+    amountCentavos: int
+    occurredAt: str
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# EXPENSES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ExpenseCategory = Literal[
+    "Electricity Expense", "Water Expense", "Others Expense"
+]
+
+class ExpenseOut(BaseModel):
+    id: str
+    ownerId: str
+    name: str
+    category: Optional[str]
+    amountCentavos: int
+    details: Optional[str]
+    expenseDate: str                # YYYY-MM-DD
+    occurredAt: str
+
+class ExpenseCreate(BaseModel):
+    name: str
+    category: str
+    amountCentavos: int
+    details: Optional[str] = None
+    expenseDate: str
+    occurredAt: str
+
+class ExpenseCategorySuggestion(BaseModel):
+    """TF-IDF + Naive Bayes result for auto-categorising an expense."""
+    suggested: str
+    confidence: float               # 0.0 – 1.0
+    candidates: List[str]           # all categories ranked by score
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# QUICK ADD (unified entry point)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+QuickAddKind = Literal["customerDebt", "storeDebt", "expense"]
+
+class QuickAddCreate(BaseModel):
+    """
+    Single body for POST /quick-add — dispatches internally to the
+    right sub-resource (expense / customerDebt / storeDebt).
+    """
+    kind: QuickAddKind
+    name: str = ""
+    amountCentavos: int = 0
+    category: Optional[str] = None
+    details: Optional[str] = None
+    expenseDate: Optional[str] = None
+    dueDate: Optional[str] = None
+    borrowing: Optional[Literal["cash", "product"]] = None
+    items: Optional[ProductSelection] = None
+    customerId: Optional[str] = None
+    creditorId: Optional[str] = None
+    occurredAt: str
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# TRANSACTIONS (read-only log)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TransactionType = Literal["sale", "customerPayment", "expense"]
+TransactionDirection = Literal["in", "out", "neutral"]
+
+class TransactionOut(BaseModel):
+    id: str
+    sourceId: str
+    ownerId: str
+    transactionNumber: str
+    type: TransactionType
+    occurredAt: str
+    description: str
+    partyName: Optional[str]
+    paymentMethod: Optional[str]
+    amountCentavos: int
+    direction: TransactionDirection
+    saleId: Optional[str] = None
+    debtId: Optional[str] = None
+    saleTotalCentavos: Optional[int] = None
+    amountReceivedCentavos: Optional[int] = None
+    outstandingCentavos: Optional[int] = None
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# DASHBOARD
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class TopProduct(BaseModel):
+    """Max-Heap Top-K result entry."""
+    productId: str
+    name: str
+    quantitySold: int
+    revenueCentavos: int
+
+class CashMovementOut(BaseModel):
+    id: str
+    amountCentavos: int
+    occurredAt: str
+
+class CashMovementCreate(BaseModel):
+    amountCentavos: int
+    occurredAt: str
+
+class DashboardSummary(BaseModel):
+    """Snapshot of key numbers shown at the top of the dashboard."""
+    cashBalanceCentavos: int
+    totalSalesTodayCentavos: int
+    totalSalesThisMonthCentavos: int
+    totalReceivablesCentavos: int    # sum of unpaid + partial customer debts
+    totalPayablesCentavos: int       # sum of unpaid store debts
+    topProducts: List[TopProduct]    # top-5 by revenue, via Max-Heap
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# EXPIRY ALERTS (Min-Heap EEF)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class ExpiryAlert(BaseModel):
+    productId: str
+    name: str
+    stock: int
+    expirationDate: str
+    daysUntilExpiry: int            # negative = already expired
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SETTINGS / PROFILE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class ProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    store_name: Optional[str] = None
+    avatar_id: Optional[str] = None
+
+class PinChangeRequest(BaseModel):
+    current_pin: str
+    new_pin: str
+
+class CashierOut(BaseModel):
+    """Shape for settings → cashier list; matches Cashier type in src/types/settings.ts."""
+    id: str                          # TH-KH-XXXX
+    ownerId: str                     # TH-MA-XXXX
+    name: str
+    status: Literal["active", "inactive"]
+    avatarId: Optional[str]
+
+class CashierUpdate(BaseModel):
+    full_name: Optional[str] = None
+    avatar_id: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GENERIC RESPONSES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class OkResponse(BaseModel):
+    ok: bool = True
+    message: Optional[str] = None
