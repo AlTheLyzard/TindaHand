@@ -36,24 +36,29 @@ export function applyOperatorPosAction(store: InventoryStore, session: DeviceSes
 // ── Real API functions ────────────────────────────────────────────────────────────────────
 
 export interface ApiProduct {
-  id: number;
+  id: string;                    // "prod-abc123" — matches backend ProductOut.id: str
   name: string;
   category: string;
-  priceCentavos: number;
+  unitPriceCentavos: number;     // backend field name (not priceCentavos)
   costCentavos: number;
-  stockQuantity: number;
-  reorderPoint: number | null;
+  stock: number;                 // backend field name (not stockQuantity)
   expirationDate: string | null;
-  barcode: string | null;
   photoUri: string | null;
+  batches?: {
+    id: string;
+    quantity: number;
+    noExpiry: boolean;
+    expirationDate: string | null;
+  }[] | null;
 }
 
 export interface ApiAsset {
-  id: number;
+  id: string;    // "asset-abc123" — matches backend AssetOut.id: str
   name: string;
   classification: string;
-  purchasePriceCentavos: number;
-  purchasedAt: string;
+  valueCentavos: number;         // backend field (not purchasePriceCentavos)
+  usefulLifeYears: number;
+  recordedDate: string;          // backend field (not purchasedAt)
 }
 
 export interface ExpiryAlert {
@@ -97,7 +102,7 @@ export async function createProduct(data: {
 }
 
 /** Update a product. */
-export async function updateProduct(id: number, data: Partial<{
+export async function updateProduct(id: string, data: Partial<{
   name: string;
   category: string;
   unitPriceCentavos: number;
@@ -112,7 +117,7 @@ export async function updateProduct(id: number, data: Partial<{
 }
 
 /** Delete a product. */
-export async function deleteProduct(id: number): Promise<void> {
+export async function deleteProduct(id: string): Promise<void> {
   return apiFetch<void>(`/inventory/products/${id}`, { method: 'DELETE' });
 }
 
@@ -130,8 +135,9 @@ export async function getAssets(): Promise<ApiAsset[]> {
 export async function createAsset(data: {
   name: string;
   classification: string;
-  purchasePriceCentavos: number;
-  purchasedAt: string;
+  valueCentavos: number;
+  usefulLifeYears: number;
+  recordedDate: string;
 }): Promise<ApiAsset> {
   return apiFetch<ApiAsset>('/inventory/assets', {
     method: 'POST',
@@ -144,25 +150,26 @@ export async function getRestocks(): Promise<RestockRecord[]> {
   return apiFetch<RestockRecord[]>('/inventory/restocks');
 }
 
-/** Add a restock batch for a product. */
-export async function addRestock(data: {
-  productId: number;
-  quantityAdded: number;
-  costPerUnitCentavos: number;
-  expirationDate?: string;
+/** Add a restock for a product. */
+export async function addRestock(productId: string, data: {
+  quantity: number;
+  stockDate: string;        // YYYY-MM-DD
+  expirationDate: string;   // YYYY-MM-DD or "noExpiry"
+  batchId?: string;
 }): Promise<RestockRecord> {
-  return apiFetch<RestockRecord>('/inventory/restocks', {
+  return apiFetch<RestockRecord>(`/inventory/products/${productId}/restock`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 /** Update an asset. */
-export async function updateAsset(id: number, data: Partial<{
+export async function updateAsset(id: string, data: Partial<{
   name: string;
   classification: string;
-  purchasePriceCentavos: number;
-  purchasedAt: string;
+  valueCentavos: number;
+  usefulLifeYears: number;
+  recordedDate: string;
 }>): Promise<ApiAsset> {
   return apiFetch<ApiAsset>(`/inventory/assets/${id}`, {
     method: 'PATCH',
@@ -171,6 +178,6 @@ export async function updateAsset(id: number, data: Partial<{
 }
 
 /** Delete an asset. */
-export async function deleteAsset(id: number): Promise<void> {
+export async function deleteAsset(id: string): Promise<void> {
   return apiFetch<void>(`/inventory/assets/${id}`, { method: 'DELETE' });
 }

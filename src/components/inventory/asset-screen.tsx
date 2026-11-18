@@ -63,23 +63,24 @@ export function AssetScreen() {
         const created = await createAsset({
           name: record.name,
           classification: record.classification,
-          purchasePriceCentavos: record.valueCentavos,
-          purchasedAt: record.recordedDate,
+          valueCentavos: record.valueCentavos,
+          usefulLifeYears: record.usefulLifeYears,
+          recordedDate: record.recordedDate,
         });
         // Use the real API id so future edits/deletes reference the right record.
-        record.id = String(created.id);
+        record.id = created.id;
       } catch {
         // Offline — asset will be saved locally with a temporary id.
       }
     } else if (asset) {
-      const numericId = Number(asset.id);
-      if (!isNaN(numericId) && numericId > 0) {
+      if (asset.id.startsWith('asset-')) {
         try {
-          await updateAssetApi(numericId, {
+          await updateAssetApi(asset.id, {
             name: record.name,
             classification: record.classification,
-            purchasePriceCentavos: record.valueCentavos,
-            purchasedAt: record.recordedDate,
+            valueCentavos: record.valueCentavos,
+            usefulLifeYears: record.usefulLifeYears,
+            recordedDate: record.recordedDate,
           });
         } catch {
           // Offline — keep the local edit.
@@ -93,10 +94,9 @@ export function AssetScreen() {
   async function remove() {
     if (!asset || submitted.current) return;
     submitted.current = true;
-    const numericId = Number(asset.id);
-    if (!isNaN(numericId) && numericId > 0) {
+    if (asset.id.startsWith('asset-')) {
       try {
-        await deleteAssetApi(numericId);
+        await deleteAssetApi(asset.id);
       } catch {
         // Offline — allow local delete anyway.
       }

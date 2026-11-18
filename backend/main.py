@@ -1,7 +1,12 @@
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 import models   # import so SQLAlchemy sees all models before create_all
+
+logging.basicConfig(level=logging.DEBUG)
 
 # Create all tables on startup (safe to run repeatedly — skips existing tables)
 Base.metadata.create_all(bind=engine)
@@ -43,6 +48,23 @@ app.include_router(dashboard_router)
 app.include_router(transactions_router)
 app.include_router(quick_add_router)
 app.include_router(settings_router)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    import json
+    body = await request.body()
+    logging.error("=== 422 VALIDATION ERROR ===")
+    logging.error(f"Path: {request.url.path}")
+    logging.error(f"Errors: {json.dumps(exc.errors(), indent=2)}")
+    try:
+        logging.error(f"Body: {body.decode('utf-8')[:2000]}")
+    except Exception:
+        logging.error(f"Body (raw): {body[:500]}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()},
+    )
 
 
 @app.get("/")

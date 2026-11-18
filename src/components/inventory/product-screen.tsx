@@ -151,21 +151,17 @@ export function ProductScreen() {
 
     // ── Restock ──────────────────────────────────────────────────────────────
     if (mode === 'restock' && product) {
-      // If the product has a numeric API id (real product), call the backend.
-      const numericId = Number(product.id);
-      if (!isNaN(numericId) && numericId > 0) {
+      // If the product has a real API id (starts with "prod-"), call the backend.
+      if (product.id.startsWith('prod-')) {
         try {
-          // Earliest expiry from the draft batches (if any expiry set).
           const expiryBatch = draft.batches.find(b => !b.noExpiry && b.expirationDate);
-          await addRestockApi({
-            productId: numericId,
-            quantityAdded: total,
-            costPerUnitCentavos: 0,
-            expirationDate: expiryBatch?.expirationDate,
+          await addRestockApi(product.id, {
+            quantity: total,
+            stockDate: draft.details.stockDate || today,
+            expirationDate: expiryBatch?.expirationDate ?? 'noExpiry',
           });
         } catch {
-          // Offline or server error — fall through and dispatch locally anyway
-          // so the owner's local store still reflects the restock.
+          // Offline or server error — fall through and dispatch locally anyway.
         }
       }
       const saved = dispatch({ type: 'restock', record: { id: restockId, productId: product.id, itemName: product.name,
@@ -202,10 +198,9 @@ export function ProductScreen() {
         // with the real server list, so this draft will be lost until reconnected.
       }
     } else if (mode === 'edit' && product) {
-      const numericId = Number(product.id);
-      if (!isNaN(numericId) && numericId > 0) {
+      if (product.id.startsWith('prod-')) {
         try {
-          await updateProduct(numericId, {
+          await updateProduct(product.id, {
             name: builtProduct.name,
             category: builtProduct.category,
             unitPriceCentavos: builtProduct.unitPriceCentavos,
@@ -224,10 +219,9 @@ export function ProductScreen() {
   async function removeProduct() {
     if (busy.current || !product) return;
     busy.current = true; setSaving(true);
-    const numericId = Number(product.id);
-    if (!isNaN(numericId) && numericId > 0) {
+    if (product.id.startsWith('prod-')) {
       try {
-        await deleteProductApi(numericId);
+        await deleteProductApi(product.id);
       } catch {
         // Offline — allow local delete anyway so the owner's view stays clean.
       }

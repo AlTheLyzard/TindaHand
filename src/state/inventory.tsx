@@ -23,14 +23,20 @@ function SessionInventory({ children }: { children: ReactNode }) {
     getProducts().then(apiProducts => {
       if (cancelled) return;
       const realProducts: InventoryProduct[] = apiProducts.map(p => ({
-        id: String(p.id),
+        id: p.id,                                        // already a string "prod-abc123"
         name: p.name,
         category: p.category as InventoryProduct['category'],
-        unitPriceCentavos: p.priceCentavos,
+        unitPriceCentavos: p.unitPriceCentavos,          // correct field name
         costCentavos: p.costCentavos,
-        stock: p.stockQuantity,
+        stock: p.stock,                                  // correct field name
         expirationDate: p.expirationDate ?? '',
         photoUri: p.photoUri ?? undefined,
+        batches: p.batches?.map(b => ({
+          id: b.id,
+          quantity: b.quantity,
+          noExpiry: b.noExpiry,
+          expirationDate: b.expirationDate ?? undefined,
+        })),
       }));
       // Merge real products into the store, keeping POS/sales/customer state intact.
       setStore(previous => {
