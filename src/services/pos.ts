@@ -1,47 +1,48 @@
 /**
  * POS API service — checkout and sales history.
- * The existing inventory state reducer handles the current mock POS flow.
- * These functions are the backend replacement for POST /pos/checkout.
  */
 
 import { apiFetch } from '@/services/api';
+import type { ChangeBreakdown, CheckoutApiResult, PaymentDraft, ProductSelection } from '@/types/pos';
 
-export type PaymentMethod = 'cash' | 'gcash' | 'split' | 'partial';
+export type { ChangeBreakdown };
 
-export interface CheckoutItem {
-  productId: number;
-  quantity: number;
-}
-
-export interface CheckoutPayment {
-  method: PaymentMethod;
-  amountCentavos: number;
-}
-
-export interface ChangeBreakdown {
-  totalChangeCentavos: number;
-  breakdown: Record<number, number>; // denomination → count
-}
-
-export interface CheckoutResult {
-  saleId: number;
-  totalCentavos: number;
+export interface CheckoutResponse {
+  sale: { id: string };
   change: ChangeBreakdown | null;
-  customerDebtId: number | null;
-  occurredAt: string;
-}
-
-export interface Sale {
-  id: number;
-  totalCentavos: number;
-  paymentMethod: PaymentMethod;
-  customerId: number | null;
-  occurredAt: string;
 }
 
 export interface Customer {
-  id: number;
+  id: string;
   name: string;
+}
+
+/**
+ * Maps the frontend PaymentDraft → the flat shape the backend expects.
+ * Backend PaymentDraft fields: method, cashRaw, gcashRaw, reference,
+ * customerName, customerId, partialMethod.
+ */
+function mapDraft(draft: PaymentDraft): object {
+  const base = {
+    method: draft.method,
+    customerName: draft.customerName ?? '',
+    customerId: draft.customerId ?? null,
+    partialMethod: draft.partialMethod ?? null,
+  };
+
+  if (draft.method === 'cash') {
+    return { ...base, cashRaw: draft.cashAmount, gcashRaw: null, reference: '' };
+  }
+  if (draft.method === 'gcash') {
+    return { ...base, cashRaw: null, gcashRaw: draft.gcashAmount, reference: draft.gcashReference };
+  }
+  if (draft.method === 'split') {
+    return { ...base, cashRaw: draft.splitCashAmount, gcashRaw: draft.splitGcashAmount, reference: draft.splitReference };
+  }
+  // partial
+  const partialCash  = draft.partialMethod === 'cash'  ? draft.partialAmount : null;
+  const partialGcash = draft.partialMethod === 'gcash' ? draft.partialAmount : null;
+  return { ...base, cashRaw: partialCash, gcashRaw: partialGcash, reference: draft.partialReference };
 }
 
 /**
@@ -49,37 +50,41 @@ export interface Customer {
  * runs Greedy Coin Change for cash payments, and handles partial (debt) sales.
  */
 export async function checkout(data: {
-  items: CheckoutItem[];
-  payments: CheckoutPayment[];
-  customerId?: number;
-  customerName?: string;
-}): Promise<CheckoutResult> {
-  return apiFetch<CheckoutResult>('/pos/checkout', {
+  id: string;
+  occurredAt: string;
+  selection: ProductSelection;
+  draft: PaymentDraft;
+  kaheraId?: string | null;
+}): Promise<CheckoutApiResult> {
+  // Parse numeric Kahera ID from "TH-KH-XXXX" format
+  let kahera_id: number | null = null;
+  if (data.kaheraId) {
+    const numeric = parseInt(data.kaheraId.replace(/^TH-KH-/i, ''), 10);
+    if (!isNaN(numeric)) kahera_id = numeric;
+  }
+
+  const body = {
+    id: data.id,
+    occurredAt: data.occurredAt,
+    selection: data.selection,
+    draft: mapDraft(data.draft),
+    kahera_id,
+  };
+
+  const result = await apiFetch<CheckoutResponse>('/pos/checkout', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify(body),
   });
+
+  return { saleId: result.sale.id, change: result.change };
 }
 
-/** List sales (optionally filtered by date range). */
-export async function getSales(params?: { fromDate?: string; toDate?: string }): Promise<Sale[]> {
-  const query = new URLSearchParams();
-  if (params?.fromDate) query.set('from_date', params.fromDate);
-  if (params?.toDate) query.set('to_date', params.toDate);
-  const qs = query.toString();
-  return apiFetch<Sale[]>(`/pos/sales${qs ? `?${qs}` : ''}`);
-}
-
-/** Get a single sale by ID. */
-export async function getSale(id: number): Promise<Sale> {
-  return apiFetch<Sale>(`/pos/sales/${id}`);
-}
-
-/** List customers. */
+/** List customers for the current store. */
 export async function getCustomers(): Promise<Customer[]> {
   return apiFetch<Customer[]>('/pos/customers');
 }
 
-/** Create a customer. */
+/** Create a new customer. */
 export async function createCustomer(name: string): Promise<Customer> {
   return apiFetch<Customer>('/pos/customers', {
     method: 'POST',

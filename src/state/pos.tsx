@@ -3,9 +3,10 @@ import { createContext, useContext, useRef, useState, type ReactNode } from 'rea
 import { useInventory } from '@/state/inventory';
 import { useAuthFlow } from '@/state/auth-flow';
 import { hasCapability } from '@/utils/operator-access';
-import type { PaymentDraft, ProductSelection } from '@/types/pos';
+import type { ChangeBreakdown, PaymentDraft, ProductSelection } from '@/types/pos';
 import { removeSelectedProduct, selectProduct, setSelectedQuantity, stockConflicts } from '@/utils/pos';
 import { emptyPaymentDraft } from '@/utils/pos-payment';
+import { checkout } from '@/services/pos';
 
 let orderSequence = 0;
 const newOrderId = () => `pos-${Date.now()}-${++orderSequence}`;
@@ -17,11 +18,12 @@ function usePosState() {
   const [paymentDraft, setPaymentDraft] = useState(emptyPaymentDraft);
   const [toastExpiresAt, setToastExpiresAt] = useState<number | null>(null);
   const [checkoutDebtId, setCheckoutDebtId] = useState<string | null>(null);
+  const [changeBreakdown, setChangeBreakdown] = useState<ChangeBreakdown | null>(null);
   const feedbackConsumed = useRef(false);
   const [orderId, setOrderId] = useState(newOrderId);
   const completed = useRef(new Set<string>());
   return {
-    selection, paymentDraft, toastExpiresAt, customers: pos?.customers ?? [],
+    selection, paymentDraft, toastExpiresAt, changeBreakdown, customers: pos?.customers ?? [],
     hasStockConflict: stockConflicts(selection, products).length > 0,
     updatePayment(patch: Partial<PaymentDraft>) { setPaymentDraft(previous => ({ ...previous, ...patch })); },
     dismissPreviewToast() {
@@ -29,32 +31,52 @@ function usePosState() {
       feedbackConsumed.current = true;
       setToastExpiresAt(null);
       setCheckoutDebtId(null);
+      setChangeBreakdown(null);
       return checkoutDebtId;
     },
-    completeOrder() {
-      // TODO(BACKEND): Success currently means one local inventory service commit.
-      // Make this flow async and keep the draft until the server confirms the
-      // atomic sale; reconcile retries/conflicts. See docs/backend-handoff.md#inventory-and-pos.
+    async completeOrder(): Promise<{ success: boolean; change: ChangeBreakdown | null }> {
       if (!deviceSession || !hasCapability(deviceSession, 'pos')
         || (paymentDraft.method === 'partial' && !hasCapability(deviceSession, 'receivables'))
-        || completed.current.has(orderId)) return false;
+        || completed.current.has(orderId)) return { success: false, change: null };
+
       completed.current.add(orderId);
+      const ownerId = deviceSession.role === 'operator' ? deviceSession.ownerId : deviceSession.owner.id;
+      const kaheraId = deviceSession.role === 'operator' ? deviceSession.operatorId : null;
+      const occurredAt = new Date().toISOString();
+
+      // 1. Commit to backend (stock deduction, sale record, greedy coin change).
+      let change: ChangeBreakdown | null = null;
+      try {
+        const result = await checkout({
+          id: orderId,
+          occurredAt,
+          selection,
+          draft: paymentDraft,
+          kaheraId,
+        });
+        change = result.change;
+      } catch {
+        // Offline or server error — fall back to local-only commit below.
+      }
+
+      // 2. Mirror into local inventory state so the UI stays consistent offline.
       let saved = false;
       try {
-        const ownerId = deviceSession.role === 'operator' ? deviceSession.ownerId : deviceSession.owner.id;
-        saved = dispatch({ type: 'completeSale', command: { id: orderId, ownerId, occurredAt: new Date().toISOString(), selection, draft: paymentDraft } });
+        saved = dispatch({ type: 'completeSale', command: { id: orderId, ownerId, occurredAt, selection, draft: paymentDraft } });
       } catch {
         completed.current.delete(orderId);
-        return false;
+        return { success: false, change: null };
       }
-      if (!saved) { completed.current.delete(orderId); return false; }
+      if (!saved) { completed.current.delete(orderId); return { success: false, change: null }; }
+
       feedbackConsumed.current = false;
+      setChangeBreakdown(change);
       setCheckoutDebtId(paymentDraft.method === 'partial' ? `debt-${orderId}` : null);
       setSelection({});
       setPaymentDraft(emptyPaymentDraft());
       setOrderId(newOrderId());
       setToastExpiresAt(Date.now() + 15000);
-      return true;
+      return { success: true, change };
     },
     add(productId: string) {
       const product = products.find(item => item.id === productId);

@@ -45,3 +45,15 @@ export type MockSale = {
 
 export type PosLedger = { customers: Customer[]; sales: MockSale[]; debts: QuickAddRecord[] };
 export type CheckoutCommand = { id: string; ownerId: string; occurredAt: string; selection: ProductSelection; draft: PaymentDraft };
+
+/** Greedy coin change breakdown returned by the backend after a cash sale. */
+export type ChangeBreakdown = {
+  totalChangeCentavos: number;
+  /** denomination in centavos → count, e.g. { 10000: 1, 500: 1, 200: 1 } */
+  breakdown: Record<number, number>;
+};
+
+export type CheckoutApiResult = {
+  saleId: string;
+  change: ChangeBreakdown | null;
+};
