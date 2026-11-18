@@ -1,26 +1,25 @@
-import { demoOwner } from '@/data/mock-auth';
-
 export type InputSelection = { start: number; end: number };
 
 const compact = (value: string) => value.replace(/-/g, '').trim().toUpperCase();
 
-/** The documented ID is TH-MA-0001; retain the existing fictional demo login. */
+// Dash boundaries for the standard TH-MA-XXXX format: after position 2 and 4.
+const BOUNDARIES = [2, 4];
+
+/** Formats a raw string into TH-MA-XXXX style as the user types. */
 export function formatOwnerId(value: string) {
   const characters = compact(value);
-  const demo = compact(demoOwner.id).startsWith(characters);
-  const boundaries = [2, demo ? 6 : 4];
   let formatted = '';
   for (let index = 0; index < characters.length; index++) {
-    if (boundaries.includes(index)) formatted += '-';
+    if (BOUNDARIES.includes(index)) formatted += '-';
     formatted += characters[index];
   }
   // A manually entered separator at a group boundary is also accepted.
-  if (value.endsWith('-') && boundaries.includes(characters.length)) formatted += '-';
+  if (value.endsWith('-') && BOUNDARIES.includes(characters.length)) formatted += '-';
   return formatted;
 }
 
 export function isOwnerId(value: string) {
-  return /^TH-MA-[0-9]{4}$/.test(value) || value === demoOwner.id;
+  return /^TH-MA-[0-9]{4}$/.test(value);
 }
 
 /** Map the native edit's caret through formatting instead of moving it to the end. */
