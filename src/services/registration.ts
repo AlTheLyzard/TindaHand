@@ -6,7 +6,7 @@ import { API_URL } from '@/services/api';
 export async function registerOwner(values: RegistrationFormValues): Promise<RegistrationResult> {
   const res = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     body: JSON.stringify({
       full_name: values.name.trim(),
       email: values.email.trim().toLowerCase(),

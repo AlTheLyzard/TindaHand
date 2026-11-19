@@ -22,7 +22,9 @@ export interface KaheraRecord {
 /** Public — no JWT needed. Returns whether any active owners/kaheras exist on the server. */
 export async function fetchHasAccounts(): Promise<{ has_owners: boolean; has_kaheras: boolean }> {
   try {
-    const res = await fetch(`${API_URL}/auth/has-accounts`);
+    const res = await fetch(`${API_URL}/auth/has-accounts`, {
+      headers: { 'ngrok-skip-browser-warning': 'true' },
+    });
     if (!res.ok) return { has_owners: false, has_kaheras: false };
     return res.json() as Promise<{ has_owners: boolean; has_kaheras: boolean }>;
   } catch {
@@ -34,6 +36,7 @@ export async function hasKaheraOperators(ownerId: string): Promise<boolean> {
   try {
     const res = await fetch(
       `${API_URL}/auth/kahera/has-operators?owner_id=${encodeURIComponent(ownerId)}`,
+      { headers: { 'ngrok-skip-browser-warning': 'true' } },
     );
     if (!res.ok) return false;
     const data = await res.json() as { has_operators: boolean };
