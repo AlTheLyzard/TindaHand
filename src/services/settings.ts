@@ -92,7 +92,7 @@ export function createMockSettingsService(options: Options = {}) {
   function duplicate(ownerId: string, pin: string, exceptId?: string) {
     return records.some(item => item.ownerId === ownerId && item.status === 'active' && item.id !== exceptId && cashierPins.get(item.id) === pin);
   }
-  const duplicateError = (): SettingsResult<never> => ({ ok: false, message: 'This PIN is assigned to another active Operator. Choose a different PIN.', fields: { pin: 'Choose a distinct Operator PIN.' } });
+  const duplicateError = (): SettingsResult<never> => ({ ok: false, message: 'This PIN is assigned to another active Kahera. Choose a different PIN.', fields: { pin: 'Choose a distinct Kahera PIN.' } });
   const service: SettingsService = {
     ready,
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
@@ -109,7 +109,7 @@ export function createMockSettingsService(options: Options = {}) {
         // BACKEND TODO: Allocate the first free preset and create the account in one
         // transaction; enforce store-wide uniqueness even for inactive Operators.
         try { await secretStorage.write(operatorPinKey(id), values.pin); }
-        catch { return failed('The Operator account could not be saved. Please try again.'); }
+        catch { return failed('The Kahera account could not be saved. Please try again.'); }
         const result = avatars.allocate(owner.id, id, avatarId => {
           cashier = Object.freeze({ id, name: values.name.trim(), ownerId: owner.id, status: 'active', avatarId });
         });
@@ -124,7 +124,7 @@ export function createMockSettingsService(options: Options = {}) {
         } catch {
           try { await secretStorage.remove(operatorPinKey(id)); } catch { /* Best-effort rollback. */ }
           avatars.rollbackAllocation(owner.id, id);
-          return failed('The Operator account could not be saved. Please try again.');
+          return failed('The Kahera account could not be saved. Please try again.');
         }
         cashierPins.set(id, values.pin); nextId++;
         records = next; emit();
@@ -136,7 +136,7 @@ export function createMockSettingsService(options: Options = {}) {
         const error = verify(owner, values);
         if (error) return error;
         try { await secretStorage.write(ownerPinKey(owner.id), values.pin); }
-        catch { return failed('The Owner PIN could not be saved. Please try again.'); }
+        catch { return failed('The May-Ari PIN could not be saved. Please try again.'); }
         ownerPins.set(owner.id, values.pin);
         return { ok: true, value: undefined };
       });
@@ -146,10 +146,10 @@ export function createMockSettingsService(options: Options = {}) {
         const error = verify(owner, values);
         if (error && !error.ok) return error;
         const cashier = records.find(item => item.id === cashierId && item.ownerId === owner.id);
-        if (!cashier) return failed('This Operator does not belong to the current store.');
+        if (!cashier) return failed('This Kahera does not belong to the current store.');
         if (duplicate(owner.id, values.pin, cashier.id)) return duplicateError();
         try { await secretStorage.write(operatorPinKey(cashier.id), values.pin); }
-        catch { return failed('The Operator PIN could not be saved. Please try again.'); }
+        catch { return failed('The Kahera PIN could not be saved. Please try again.'); }
         cashierPins.set(cashier.id, values.pin);
         revisions.set(cashier.id, (revisions.get(cashier.id) ?? 0) + 1);
         return { ok: true, value: cashier };
@@ -160,12 +160,12 @@ export function createMockSettingsService(options: Options = {}) {
       // deleting history/attribution or permissions, audit actor, revoke active sessions.
       return operation(owner, 'operator-status', async () => {
         const operator = records.find(item => item.id === operatorId && item.ownerId === owner.id);
-        if (!operator) return failed('Operator unavailable.');
+        if (!operator) return failed('Kahera unavailable.');
         if (active && duplicate(owner.id, cashierPins.get(operator.id)!, operator.id)) return duplicateError();
         const updated: Cashier = { ...operator, status: active ? 'active' : 'inactive' };
         const next = records.map(item => item.id === operator.id ? updated : item);
         try { persistRecords(next); }
-        catch { return failed('The Operator account could not be saved. Please try again.'); }
+        catch { return failed('The Kahera account could not be saved. Please try again.'); }
         revisions.set(operator.id, (revisions.get(operator.id) ?? 0) + 1);
         records = next; emit();
         return { ok: true, value: updated };

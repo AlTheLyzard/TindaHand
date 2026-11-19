@@ -53,7 +53,7 @@ export function AccountRoleCard({ option, selected, onPress, action, account }: 
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={account
-        ? `${account.name}, Owner ID ${account.id}, ${t(option.action)}`
+        ? `${account.name}, May-Ari ID ${account.id}, ${t(option.action)}`
         : t('auth.choice.roleAccessibility', { name: t(option.name), description: t(option.description), action: t(action ?? option.action) })}
       accessibilityHint={account ? t('auth.choice.ownerAccountHint') : t(action === 'auth.choice.addCashier' ? 'auth.choice.cashierUnavailable' : action === 'auth.choice.createOwner' ? 'auth.choice.createOwnerHint' : 'auth.choice.roleHint')}
       accessibilityState={{ selected }}
@@ -69,7 +69,7 @@ export function AccountRoleCard({ option, selected, onPress, action, account }: 
         <RoleIcon owner={owner} />
         <View className="min-w-0 flex-1">
           <Text style={{ color }} className="font-poppins text-[16px] leading-6">{account?.name ?? t(option.name)}</Text>
-          <Text style={{ color }} className="font-poppins text-[10px] leading-[15px]">{account ? `Owner ID: ${account.id}` : t(option.description)}</Text>
+          <Text style={{ color }} className="font-poppins text-[10px] leading-[15px]">{account ? `May-Ari ID: ${account.id}` : t(option.description)}</Text>
         </View>
       </View>
       <View style={{ borderTopWidth: 1, borderColor: color }} className="min-h-12 flex-row items-center justify-between gap-3 pt-2">

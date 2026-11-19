@@ -27,7 +27,7 @@ function RecoveryFrame({ children, onBack = backToLogin }: { children: ReactNode
 }
 function RecoveryHeading({ title, children }: { title: string; children?: ReactNode }) {
   return <View className="mb-8 mt-12 px-2">
-    <Text className="font-poppins-bold text-[12px] text-[#2675DB]">OWNER · STORE OWNER</Text>
+    <Text className="font-poppins-bold text-[12px] text-[#2675DB]">MAY-ARI · STORE OWNER</Text>
     <Text accessibilityRole="header" className="mt-2 font-poppins-bold text-[28px] leading-[40px] text-brand">{title}</Text>
     {children && <Text className="mt-2 font-poppins text-[10px] leading-[15px] text-text-secondary">{children}</Text>}
   </View>;
@@ -132,7 +132,7 @@ export function ResetPinScreen() {
     finally { if (!completed) { locked.current = false; if (active.current) setBusy(false); } }
   }
   return <RecoveryFrame>
-    <RecoveryHeading title="Create New PIN">Enter a new four-digit PIN for your Owner account.</RecoveryHeading>
+    <RecoveryHeading title="Create New PIN">Enter a new four-digit PIN for your May-Ari account.</RecoveryHeading>
     {status === 'verifying' && <Text accessibilityRole="alert" className="font-poppins text-[14px] text-brand">Verifying recovery link…</Text>}
     {status === 'ready' && <>
       <Text className="mb-4 font-poppins text-[10px] text-text-secondary">Fields marked * are required.</Text>

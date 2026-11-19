@@ -108,10 +108,10 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
         setNotice('Account locked due to too many failed attempts. Try again later.');
       } else if (result.status === 'notFound') {
         setOperatorState('invalid');
-        setNotice('No active cashier found for this store. Ask your owner to set up your account.');
+        setNotice('No active Kahera found for this store. Ask your May-Ari to set up your account.');
       } else if (result.status === 'invalid') {
         setOperatorState('invalid');
-        setNotice('Invalid Owner ID or PIN. Check your credentials and try again.');
+        setNotice('Invalid May-Ari ID or PIN. Check your credentials and try again.');
       } else {
         setOperatorState('failed');
         setNotice('Unable to log in. Please try again.');
@@ -130,14 +130,14 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
           <AuthHeader onBack={onBack} backDisabled={busy} />
           {(loggedOut || pinReset) && <Text accessibilityRole="alert" className="mt-3 font-poppins text-[12px] text-[#1D5D21]">{pinReset ? 'PIN reset successfully.' : 'Logged out successfully.'}</Text>}
           <View className="mt-12 px-2" style={{ flexShrink: 0 }}>
-            <Text className="font-poppins-bold text-[12px] text-[#2675DB]" style={{ lineHeight: 18 * fontScale }}>{owner ? 'OWNER · STORE OWNER' : 'KAHERA · STORE CASHIER'}</Text>
+            <Text className="font-poppins-bold text-[12px] text-[#2675DB]" style={{ lineHeight: 18 * fontScale }}>{owner ? 'MAY-ARI · STORE OWNER' : 'KAHERA · STORE CASHIER'}</Text>
             <Text accessibilityRole="header" className="mt-2 font-poppins-bold text-[30px] text-brand" style={{ lineHeight: 42 * fontScale }}>{owner ? 'May-Ari Login' : 'Kahera Login'}</Text>
             <Text className="mt-2 font-poppins text-[10px] text-text-secondary" style={{ lineHeight: 15 * fontScale }}>{password ? rememberedId ? 'Log in with your password to authenticate this device.' : 'Log in with your permanent May-Ari ID and password to authenticate this device.' : owner ? 'Welcome back. Enter your four-digit PIN to unlock your store.' : rememberedId ? 'Log in with your assigned four-digit PIN.' : 'Enter your store\'s May-Ari ID and your assigned four-digit PIN.'}</Text>
             {flow.restoring ? <Text accessibilityRole="alert" className="mt-5 font-poppins text-[12px] text-brand">Restoring login details…</Text> : <>
               <View className="px-3" style={{ marginTop: tokens.spacing.four, gap: tokens.spacing.three, flexShrink: 0 }}>
-                {(!rememberedId || !owner) && <FormField ref={idInput} label={owner ? 'Owner ID' : 'May-Ari ID'} requiredIndicator="asterisk" value={id}
+                {(!rememberedId || !owner) && <FormField ref={idInput} label={owner ? 'May-Ari ID' : 'May-Ari ID'} requiredIndicator="asterisk" value={id}
                   error={owner ? submitted || touched.id ? validation.id : undefined : submitted && operatorState === 'invalid' ? validation.id : undefined} editable={!busy}
-                  help={owner ? 'Enter your permanent Owner ID.' : 'Enter your store\'s May-Ari ID.'} placeholder="TH-MA-0001" placeholderTextColor="#A3AFBF"
+                  help={owner ? 'Enter your permanent May-Ari ID.' : 'Enter your store\'s May-Ari ID.'} placeholder="TH-MA-0001" placeholderTextColor="#A3AFBF"
                   selection={idSelection} onSelectionChange={event => {
                     const reported = event.nativeEvent.selection;
                     const pending = pendingIdRestore.current;
@@ -189,7 +189,7 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
           <View className="mx-3 mt-4 gap-2 rounded-[10px] border border-[#7399CC] bg-[#D9E7F5CC] px-5 py-4">
             <SettingsIcon name="security" />
             <Text className="font-poppins-bold text-[12px] text-action">One ID, every time</Text>
-            <Text className="font-poppins text-[10px] text-brand" style={{ lineHeight: 15 * fontScale }}>Your Owner ID stays the same. Logging in or resetting a PIN never creates a new ID.</Text>
+            <Text className="font-poppins text-[10px] text-brand" style={{ lineHeight: 15 * fontScale }}>Your May-Ari ID stays the same. Logging in or resetting a PIN never creates a new ID.</Text>
           </View>
         </View>
       </ScrollView>

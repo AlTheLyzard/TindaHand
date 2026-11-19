@@ -80,7 +80,7 @@ export async function createKahera(
   } catch (err) {
     if (err instanceof ApiError) {
       if (err.status === 401 || err.status === 403)
-        return { ok: false, message: 'You must be logged in as an Owner to add Operators.' };
+        return { ok: false, message: 'You must be logged in as the May-Ari to add Kahera.' };
       if (err.status === 422)
         return { ok: false, message: 'Invalid details. Check the name and PIN and try again.' };
       return { ok: false, message: `Server error (${err.status}). Please try again.` };
