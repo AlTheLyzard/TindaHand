@@ -177,8 +177,7 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
         if (!_lockSuppressed) void lock();
       } else void refreshSession();
     });
-    const timer = setInterval(() => { void refreshSession(); }, 15000);
-    return () => { subscription.remove(); clearInterval(timer); };
+    return () => { subscription.remove(); };
   }, [refreshSession]);
   // SECURITY: Navigation gates only. Backend authorization is required for every
   // read/write. Neither registration completion nor a remembered ID grants access.
