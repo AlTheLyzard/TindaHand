@@ -25,5 +25,5 @@ export function validateOperatorProfile(values: OperatorProfileValues): Settings
   return errors;
 }
 export function canClearCache(state: SyncState): boolean {
-  return state.pendingRecords === 0 && state.status !== 'syncing';
+  return state.pendingRecords === 0 && (state.status === 'up-to-date' || state.status === 'complete');
 }

@@ -6,6 +6,9 @@ import { projectTransactions, type TransactionSources } from '@/utils/transactio
  * for canonical transaction events. Accept page and limit alongside search/category/date/
  * payment filters, return rows plus a total count, and derive store access from the session.
  * See docs/transaction-history.md and docs/api-contract.md. */
-export async function readTransactions(ownerId: string, sources: TransactionSources) {
-  return projectTransactions(ownerId, sources, transactionSeed);
+export async function readTransactions(ownerId: string, sources: TransactionSources, scope: 'owner' | 'operator' = 'owner') {
+  const rows = projectTransactions(ownerId, sources, transactionSeed);
+  // Operators can review sales and customer receivables for their assigned store.
+  // Owner expenses, store payables, and supplier payments stay out of this read view.
+  return scope === 'operator' ? rows.filter(row => ['sale', 'customerPayment', 'customerDebt'].includes(row.type)) : rows;
 }

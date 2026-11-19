@@ -17,15 +17,17 @@ export function createPayablesRepository(seed: PayablesLedger = payablesSeed) {
   };
   const saved = new Map<string, string>();
   const confirmed = new Map<string, string>();
-  function read(owner: OwnerIdentity | null): PayablesLedger {
+  function readForOwner(ownerId: string): PayablesLedger {
     return {
-      creditors: ledger.creditors.filter(row => row.ownerId === owner?.id),
-      debts: ledger.debts.filter(row => row.ownerId === owner?.id),
-      payments: ledger.payments.filter(row => row.ownerId === owner?.id),
+      creditors: ledger.creditors.filter(row => row.ownerId === ownerId),
+      debts: ledger.debts.filter(row => row.ownerId === ownerId),
+      payments: ledger.payments.filter(row => row.ownerId === ownerId),
     };
   }
+  function read(owner: OwnerIdentity | null): PayablesLedger { return readForOwner(owner?.id ?? ''); }
   return {
     read,
+    readForOwner,
     saveDebt(owner: OwnerIdentity | null, token: string, draft: QuickAddDraft) {
       if (!owner || !token) throw new Error('An owner session and save token are required.');
       const key = `${owner.id}:${token}`;

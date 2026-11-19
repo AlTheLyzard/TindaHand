@@ -1,5 +1,5 @@
 import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
-import { applyInventoryAction, applyOperatorPosAction, loadMockInventory } from '@/services/inventory';
+import { applyInventoryAction, applyOperatorInventoryAction, applyOperatorPosAction, loadMockInventory } from '@/services/inventory';
 import { useAuthFlow } from '@/state/auth-flow';
 import { type InventoryAction, type InventoryStore } from '@/utils/inventory';
 import { customerNameKey } from '@/utils/pos-checkout';
@@ -8,15 +8,16 @@ import type { Customer } from '@/types/pos';
 const InventoryContext = createContext<{ store: InventoryStore; getStore: () => InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void } | null>(null);
 function SessionInventory({ children }: { children: ReactNode }) {
   const auth = useAuthFlow();
-  const [store, setStore] = useState<InventoryStore>(loadMockInventory);
+  const [store, setStore] = useState<InventoryStore>(() => loadMockInventory(auth.deviceSession?.role !== 'operator'));
   const current = useRef(store);
   const [feedback, setFeedback] = useState('');
   function dispatch(action: InventoryAction) {
-    const next = auth.owner
-      ? applyInventoryAction(current.current, auth.owner, action)
-      : auth.deviceSession?.role === 'operator' && action.type === 'completeSale'
-        ? applyOperatorPosAction(current.current, auth.deviceSession, action)
-        : current.current;
+    let next = current.current;
+    if (auth.owner) next = applyInventoryAction(current.current, auth.owner, action);
+    else if (auth.deviceSession?.role === 'operator') {
+      if (action.type === 'completeSale') next = applyOperatorPosAction(current.current, auth.deviceSession, action);
+      else if (action.type === 'saveProduct' || action.type === 'restock') next = applyOperatorInventoryAction(current.current, auth.deviceSession, action);
+    }
     if (next === current.current) return false;
     current.current = next;
     setStore(next);

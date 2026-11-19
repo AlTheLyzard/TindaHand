@@ -43,7 +43,7 @@ export type RegistrationCompletion = RegisteredOwner & {
 /** Proposed adapter contracts; no HTTP schema has been agreed. Secrets are request-only. */
 export type AuthFailure = { ok: false; code: 'unavailable' | 'invalid' | 'expired' | 'used' | 'missing' | 'limited'; message: string };
 export type AuthResult<T> = { ok: true; value: T } | AuthFailure;
-export type OperatorPermission = 'pos' | 'inventory-edit' | 'restock' | 'assets-read' | 'receivables' | 'transactions' | 'profile' | 'settings';
+export type OperatorPermission = 'pos' | 'inventory-edit' | 'restock' | 'receivables' | 'transactions' | 'profile' | 'settings';
 export type DeviceSession = {
   kind: 'mock'; id: string; owner: RegisteredOwner; expiresAt: number; locked: boolean;
 } & ({ role: 'owner' } | {

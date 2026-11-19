@@ -13,6 +13,7 @@ export function createQuickAddService() {
   const payables = createPayablesRepository();
   return {
     readPayables: payables.read,
+    readPayablesForOwner: payables.readForOwner,
     confirmPayablePayment: payables.confirmPayment,
     async save(owner: OwnerIdentity | null, token: string, draft: QuickAddDraft): Promise<QuickAddRecord> {
       if (!owner) throw new Error('An owner session is required.');

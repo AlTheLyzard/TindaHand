@@ -11,12 +11,14 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode,
 import { Image, Keyboard, Platform, Text, View, useWindowDimensions, type ImageSourcePropType, type TextInputProps, type ScrollViewInstance, type TextInputInstance, type ViewInstance } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainHeader } from '@/components/dashboard/main-header';
+import { OperatorHeader } from '@/components/operator/operator-header';
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
 import { PosIcon } from '@/components/pos/pos-icon';
 import { Button, IconButton } from '@/components/ui/button';
 import { BackButton } from '@/components/ui/back-button';
 import { useNavigationHeight } from '@/state/navigation-motion';
 import { useInventory } from '@/state/inventory';
+import { useAuthFlow } from '@/state/auth-flow';
 import { FieldLabel, fieldLabel } from '@/components/ui/field-label';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Image as BackgroundImage } from 'expo-image';
@@ -34,7 +36,6 @@ export const inventoryIllustrations = {
   editProduct: require('@/assets/images/inventory/EditProduct.png'),
   expiry: require('@/assets/images/inventory/AddExpiryDate.png'),
   restock: require('@/assets/images/inventory/RestockProduct.png'),
-  asset: require('@/assets/images/inventory/AddAsset.png'),
 };
 
 export function InvText({ children, bold = false, size = 12, color = '#4A607A' }: { children: ReactNode; bold?: boolean; size?: number; color?: string }) {
@@ -46,6 +47,8 @@ export function InventoryFrame({ title, children, back = false, inlineTitle = fa
   illustration?: ImageSourcePropType; subtitle?: string;
 }) {
   useTranslation();
+  const { deviceSession } = useAuthFlow();
+  const operator = deviceSession?.role === 'operator';
   const insets = useSafeAreaInsets();
   const navigationHeight = useNavigationHeight();
   const scroll = useRef<ScrollViewInstance>(null);
@@ -59,11 +62,11 @@ export function InventoryFrame({ title, children, back = false, inlineTitle = fa
   }, [hideNavigationWithKeyboard]);
   const navigate = (action: () => void) => { Keyboard.dismiss(); if (onNavigate) onNavigate(action); else action(); };
   const showNavigation = !hideNavigation && !(hideNavigationWithKeyboard && keyboardVisible);
-  const goBack = () => { Keyboard.dismiss(); if (onBack) onBack(); else if (router.canGoBack()) router.back(); else router.replace('/owner-inventory'); };
+  const goBack = () => { Keyboard.dismiss(); if (onBack) onBack(); else if (router.canGoBack()) router.back(); else router.replace(operator ? '/operator-inventory' : '/owner-inventory'); };
   const backButton = back && <BackButton accessibilityLabel={t('inventory.back')} onPress={goBack} />;
   return <InventoryPresentation.Provider value={background}><View className="flex-1 bg-canvas">
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1" style={{ backgroundColor: 'transparent' }}>
-    <MainHeader onNavigate={navigate} />
+    {operator ? <OperatorHeader onNavigate={navigate} /> : <MainHeader onNavigate={navigate} />}
     <View className="flex-1">
     {background && <View testID="inventory-application-background" pointerEvents="none" accessible={false} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       {/* One viewport-sized image keeps the waves and storefront continuous as content scrolls. */}
@@ -84,7 +87,7 @@ export function InventoryFrame({ title, children, back = false, inlineTitle = fa
       {!!footer && <View className={background ? 'px-5 pt-4' : 'rounded-t-card bg-white px-5 pt-4'} style={{ paddingBottom: insets.bottom + (showNavigation ? navigationHeight : 0) + 12 }}><View className="w-full max-w-[420px] gap-3 self-center">{footer}</View></View>}
     </KeyboardAvoidingView>
     </View>
-    {showNavigation && <DashboardNavigation onHome={() => { Keyboard.dismiss(); router.navigate('/owner-dashboard'); }} onPos={() => { Keyboard.dismiss(); router.navigate('/owner-pos'); }} onUnavailable={() => setNotice(t("inventory.more.tools"))} onNavigate={onNavigate} />}
+    {showNavigation && <DashboardNavigation onHome={() => { Keyboard.dismiss(); router.navigate(operator ? '/operator-pos' : '/owner-dashboard'); }} onPos={() => { Keyboard.dismiss(); router.navigate(operator ? '/operator-pos' : '/owner-pos'); }} onUnavailable={() => setNotice(t("inventory.more.tools"))} onNavigate={onNavigate} />}
     <InvModal visible={!!notice} title={notice} onClose={() => setNotice('')}><InvText>{t("inventory.this.feature.is.not.available.in.this")}</InvText><Button onPress={() => setNotice('')}>{t("inventory.close")}</Button></InvModal>
     {overlay}
     </SafeAreaView>

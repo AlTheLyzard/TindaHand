@@ -43,6 +43,8 @@ export const transactionCategories = [
   { value: 'customerDebt', label: 'Customer Debts' }, { value: 'storeDebt', label: 'Store Debts' },
   { value: 'supplierPayment', label: 'Supplier Payments' },
 ] as const;
+export const operatorTransactionCategories = transactionCategories.filter(item =>
+  item.value === 'all' || item.value === 'sale' || item.value === 'customerPayment' || item.value === 'customerDebt');
 export const transactionMethods = [
   { value: 'all', label: 'All' }, { value: 'cash', label: 'Cash' },
   { value: 'gcash', label: 'GCash' }, { value: 'split', label: 'Split' },

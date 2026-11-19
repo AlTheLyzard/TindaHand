@@ -5,6 +5,7 @@ import { FlatList, Keyboard, Platform, ScrollView, StyleSheet, Text, View, useWi
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
 import { MainHeader } from '@/components/dashboard/main-header';
+import { OperatorHeader } from '@/components/operator/operator-header';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { PosChip } from '@/components/pos/pos-chip';
 import { PosIcon } from '@/components/pos/pos-icon';
@@ -12,7 +13,7 @@ import { Button, IconButton } from '@/components/ui/button';
 import { BackButton } from '@/components/ui/back-button';
 import { Skeleton, SkeletonBar } from '@/components/ui/content-state';
 import tokens from '@/constants/design-tokens.json';
-import { transactionCategories } from '@/data/transactions';
+import { operatorTransactionCategories, transactionCategories } from '@/data/transactions';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useNavigationHeight } from '@/state/navigation-motion';
 import type { TransactionCategory, TransactionFilters, TransactionRecord } from '@/types/transactions';
@@ -47,7 +48,7 @@ function TransactionSkeleton() {
   )}</View></Skeleton>;
 }
 
-export function TransactionHistoryScreen() {
+export function TransactionHistoryScreen({ operator = false }: { operator?: boolean }) {
   const { rows, loading, error, retry } = useTransactions();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<TransactionCategory>('all');
@@ -58,6 +59,7 @@ export function TransactionHistoryScreen() {
   const insets = useSafeAreaInsets();
   const navigationHeight = useNavigationHeight();
   const { width, fontScale } = useWindowDimensions();
+  const categories = operator ? operatorTransactionCategories : transactionCategories;
   const filtered = useMemo(() => filterTransactions(rows, query, category, filters), [rows, query, category, filters]);
   const hasFilters = !!filters.from || !!filters.to || filters.paymentMethod !== 'all';
   const pageKey = JSON.stringify([query, category, filters, filtered.map(record => record.id)]);
@@ -77,10 +79,12 @@ export function TransactionHistoryScreen() {
     Keyboard.dismiss();
     moveToTop();
   };
-  function back() { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else router.replace('/owner-dashboard'); }
+  function back() { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else router.replace(operator ? '/operator-pos' : '/owner-dashboard'); }
   return <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: tokens.color.appBackground }}>
     <View style={{ flex: 1, backgroundColor: tokens.color.appBackground }}>
-      <MainHeader onNavigate={action => { Keyboard.dismiss(); action(); }} />
+      {operator
+        ? <OperatorHeader onNavigate={action => { Keyboard.dismiss(); action(); }} />
+        : <MainHeader onNavigate={action => { Keyboard.dismiss(); action(); }} />}
       <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={{ flex: 1, minHeight: 0 }}>
           <View style={styles.controls}>
@@ -105,7 +109,7 @@ export function TransactionHistoryScreen() {
               iconPosition="trailing" icon={props => <PosIcon name="filter" {...props} />}>Filter</Button>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, marginRight: -24 }} contentContainerStyle={{ gap: 8, paddingRight: 24 }}>
-            {transactionCategories.map(item => <PosChip key={item.value} appearance="category" label={item.label} selected={category === item.value}
+            {categories.map(item => <PosChip key={item.value} appearance="category" label={item.label} selected={category === item.value}
               onPress={() => { setCategory(item.value); moveToTop(); }} />)}
           </ScrollView>
         </View>
@@ -116,7 +120,9 @@ export function TransactionHistoryScreen() {
           ListEmptyComponent={loading ? <TransactionSkeleton /> : <View style={styles.empty}>
             <Text accessibilityRole="header" style={styles.emptyTitle}>{error ? 'Unable to load transactions' : rows.length ? 'No matching transactions' : 'No transactions yet'}</Text>
             <Text accessibilityRole={error ? 'alert' : undefined} accessibilityLiveRegion="polite" style={styles.emptyCopy}>
-              {error || (rows.length ? 'Try another search, category, date range, or payment method.' : 'Recorded sales, customer payments, and expenses will appear here.')}
+              {error || (rows.length ? 'Try another search, category, date range, or payment method.' : operator
+                ? 'Recorded sales and customer receivables will appear here.'
+                : 'Recorded sales, customer payments, and expenses will appear here.')}
             </Text>
             {error ? <Button onPress={retry}>Try Again</Button> : (rows.length > 0 || query || category !== 'all' || hasFilters) ? <Button variant="secondary" onPress={reset}>Clear search and filters</Button> : null}
           </View>}
@@ -125,7 +131,8 @@ export function TransactionHistoryScreen() {
           </View> : undefined} />
         </View>
       </KeyboardAvoidingView>
-      <DashboardNavigation onHome={() => router.navigate('/owner-dashboard')} onPos={() => router.navigate('/owner-pos')} onUnavailable={() => {}} />
+      <DashboardNavigation onHome={() => router.navigate(operator ? '/operator-pos' : '/owner-dashboard')}
+        onPos={() => router.navigate(operator ? '/operator-pos' : '/owner-pos')} onUnavailable={() => {}} />
     </View>
     {filterOpen && <TransactionFilterSheet applied={filters} onClose={() => setFilterOpen(false)} onApply={value => { setFilters(value); moveToTop(); }} />}
   </SafeAreaView>;

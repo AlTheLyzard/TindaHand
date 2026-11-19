@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomNavigation, type NavigationIcon } from '@/components/dashboard/bottom-navigation';
 import { OwnerMenuDrawer } from '@/components/menu/owner-menu-drawer';
+import { OperatorMenuDrawer } from '@/components/menu/operator-menu-drawer';
 import type { NavigationLabelKey } from '@/i18n';
 import { useAuthFlow } from '@/state/auth-flow';
 import { navigationItems, useNavigationMotion } from '@/state/navigation-motion';
@@ -38,14 +39,10 @@ export function DashboardNavigation({ onHome, onPos, onUnavailable, onNavigate }
   function navigate(icon: NavigationIcon) {
     const index = navigationItems.findIndex(item => item.icon === icon);
     if (icon === 'menu') {
-      if (owner) {
+      if (owner || operator) {
         Keyboard.dismiss();
         if (!menuOpen) setMenuSelection({ hostId, pathname });
         setMenuOpen(value => !value);
-      } else if (operator) {
-        if (selectedIndex === index) return;
-        const action = () => { Keyboard.dismiss(); router.navigate('/operator-more'); };
-        if (onNavigate) onNavigate(action); else action();
       } else onUnavailable(navigationItems[index].label);
       return;
     }
@@ -63,8 +60,7 @@ export function DashboardNavigation({ onHome, onPos, onUnavailable, onNavigate }
       else if (icon === 'cart' && onPos) onPos();
       else if (icon === 'inventory' && operator) {
         const canOpenInventory = hasCapability(deviceSession, 'inventory-edit')
-          || hasCapability(deviceSession, 'restock')
-          || hasCapability(deviceSession, 'assets-read');
+          || hasCapability(deviceSession, 'restock');
         if (canOpenInventory) router.navigate('/operator-inventory');
         else onUnavailable(navigationItems[index].label);
       }
@@ -82,6 +78,8 @@ export function DashboardNavigation({ onHome, onPos, onUnavailable, onNavigate }
         menuOpen={menuOpen} onPress={navigate} />
     </View>
     {owner && <OwnerMenuDrawer owner={owner} visible={menuOpen} onClose={() => setMenuOpen(false)}
+      onPresentationChange={onMenuPresentationChange} onNavigate={onNavigate} />}
+    {operator && <OperatorMenuDrawer visible={menuOpen} onClose={() => setMenuOpen(false)}
       onPresentationChange={onMenuPresentationChange} onNavigate={onNavigate} />}
   </>;
 }

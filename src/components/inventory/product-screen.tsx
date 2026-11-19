@@ -30,13 +30,20 @@ import { RecordSkeleton } from '@/components/ui/content-skeletons';
 type Step = 'details' | 'stock' | 'review';
 type Confirmation = { kind: 'clear' | 'discard' | 'batchDelete' | 'productDelete' | 'restock'; batchId?: string; action?: () => void };
 const makeId = () => 'inv-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+type InventoryRouteBase = '/owner-inventory' | '/operator-inventory';
 
-export function ProductScreen() {
+export function ProductScreen({ routeBase = '/owner-inventory', canEditProduct = true, canRestockProduct = true, canDeleteProduct = true }: {
+  routeBase?: InventoryRouteBase;
+  canEditProduct?: boolean;
+  canRestockProduct?: boolean;
+  canDeleteProduct?: boolean;
+}) {
   const push = usePushOnce();
   const params = useLocalSearchParams<{ id?: string; mode?: string }>();
   const { store, getStore, dispatch, setFeedback } = useInventory();
   const preview = useContentPreview();
   const mode = ['add', 'edit', 'restock', 'delete', 'details'].includes(params.mode ?? '') ? params.mode! : 'details';
+  const productPath = routeBase === '/owner-inventory' ? '/owner-inventory/product' : '/operator-inventory/product';
   const liveProduct = store.products.find(p => p.id === params.id);
   const [originalProduct] = useState(liveProduct);
   const product = liveProduct ?? originalProduct;
@@ -83,11 +90,11 @@ export function ProductScreen() {
     if (busy.current || picking) return;
     Keyboard.dismiss();
     if (mode === 'add' && step !== 'details') { setStep(step === 'review' ? 'stock' : 'details'); setError(''); return; }
-    navigate(() => router.canGoBack() ? router.back() : router.replace('/owner-inventory'));
+    navigate(() => router.canGoBack() ? router.back() : router.replace(routeBase));
   }
   function finish(message: string) {
     disablePrevention(); setLeaving(true);
-    const action = () => { setFeedback(message); router.dismissTo('/owner-inventory'); };
+    const action = () => { setFeedback(message); router.dismissTo(routeBase); };
     if (confirmation) { pending.current = action; setConfirmation(null); } else action();
   }
   function showSavedSuccess(success: { eventKey: string; value: string; message: string }) {
@@ -202,12 +209,12 @@ export function ProductScreen() {
     {mode === 'restock' ? <View className="min-h-12 flex-row items-center justify-between gap-3 rounded-control bg-[#E7F4E8] px-4 py-3"><InvText bold color="#286B2C">After Restock</InvText><InvText bold size={18} color="#286B2C">{total} PCS</InvText></View>
       : mode !== 'edit' && <View className="min-h-12 flex-row flex-wrap items-center justify-between gap-2 rounded-control bg-[#E7F4E8] px-4 py-3"><InvText bold color="#286B2C">Total Initial Stock</InvText><InvText bold size={18} color="#286B2C">{total} PCS</InvText></View>}
   </>;
-    const footer = !readonly ? mode === 'edit' ? <View className="flex-row gap-3"><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} variant="secondary" disabled={saving || picking} onPress={() => navigate(() => router.canGoBack() ? router.back() : router.replace('/owner-inventory'))}>Cancel</Button></View><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} loading={saving} disabled={!dirty || picking} onPress={save}>Save Changes</Button></View></View>
+  const footer = !readonly ? mode === 'edit' ? <View className="flex-row gap-3"><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} variant="secondary" disabled={saving || picking} onPress={() => navigate(() => router.canGoBack() ? router.back() : router.replace(routeBase))}>Cancel</Button></View><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} loading={saving} disabled={!dirty || picking} onPress={save}>Save Changes</Button></View></View>
     : <><Button loading={saving} disabled={picking || (mode === 'restock' && !dirty)} onPress={mode === 'restock' || step === 'review' ? save : advance}>{mode === 'restock' ? 'Confirm Restock' : step === 'review' ? 'Confirm & Save' : step === 'stock' ? 'Review Product' : 'Stock & Expiry'}</Button><Button variant="secondary" disabled={saving || picking || (mode === 'restock' && !dirty)} onPress={step === 'review' ? () => setStep('details') : clearStep}>{step === 'review' ? 'Edit Details' : 'Clear'}</Button></> : undefined;
   if (mode !== 'add' && preview.loading) return <InventoryFrame title={title} back hideNavigation inlineTitle background>{preview.control}<RecordSkeleton kind={readonly ? 'details' : 'form'} form={mode === 'restock' ? 'restock' : 'product'} deleting={mode === 'delete'} /></InventoryFrame>;
   // Keep the confirmation mounted after our own delete until onHidden completes
   // navigation/feedback. External deletions still show the unavailable state.
-  if (mode !== 'add' && (!liveProduct || preview.empty) && !leaving) return <InventoryFrame title="Product unavailable" back hideNavigation inlineTitle background>{preview.control}<EmptyState title="Product unavailable" description="This product is no longer available. Return to Inventory to choose another product." action="Return to Inventory" onAction={() => { preview.reset(); router.replace('/owner-inventory'); }} /></InventoryFrame>;
+  if (mode !== 'add' && (!liveProduct || preview.empty) && !leaving) return <InventoryFrame title="Product unavailable" back hideNavigation inlineTitle background>{preview.control}<EmptyState title="Product unavailable" description="This product is no longer available. Return to Inventory to choose another product." action="Return to Inventory" onAction={() => { preview.reset(); router.replace(routeBase); }} /></InventoryFrame>;
   const restocks = store.restocks.filter(r => r.productId === product?.id).slice().reverse();
   const reviewProduct = step === 'review' ? buildDraftProduct(id, draft) : null;
   return <InventoryFrame title={title} back inlineTitle hideNavigation background subtitle="Product details for your store." illustration={mode === 'edit' ? inventoryIllustrations.editProduct : mode === 'restock' ? inventoryIllustrations.restock : mode === 'add' && step !== 'review' ? step === 'stock' ? inventoryIllustrations.expiry : inventoryIllustrations.addProduct : undefined} onBack={back} onNavigate={navigate} footer={footer} overlay={<>
@@ -229,7 +236,7 @@ export function ProductScreen() {
         <InvText size={10}>Existing batches keep their quantities and expiry dates.</InvText>
       </View>
     </PosDialog>
-    <MotionModal visible={successVisible} backdropColor={quickAddColors.backdrop} onRequestClose={() => setSuccessVisible(false)} onHidden={() => { if (savedProduct) router.dismissTo('/owner-inventory'); }}>
+    <MotionModal visible={successVisible} backdropColor={quickAddColors.backdrop} onRequestClose={() => setSuccessVisible(false)} onHidden={() => { if (savedProduct) router.dismissTo(routeBase); }}>
       <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
         <KeyboardAwareScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, paddingBottom: Math.max(insets.bottom, 24) }}>
           {savedProduct && <SuccessContent testID="inventory-product-success" title="Changes Saved" value={savedProduct.value} message={savedProduct.message} eventKey={savedProduct.eventKey} visible={successVisible} onClose={() => setSuccessVisible(false)} />}
@@ -241,7 +248,7 @@ export function ProductScreen() {
     {readonly && product ? <>
       <ProductReview product={product} />
       {mode === 'delete' ? <><Button variant="destructiveOutline" onPress={() => setConfirmation({ kind: 'productDelete' })}>Delete Product</Button><Button variant="secondary" onPress={back}>Cancel</Button></> : <>
-        <Button onPress={() => push({ pathname: '/owner-inventory/product', params: { id: product.id, mode: 'edit' } })}>Edit Product</Button><Button variant="secondary" onPress={() => push({ pathname: '/owner-inventory/product', params: { id: product.id, mode: 'restock' } })}>Restock</Button>
+        {(canEditProduct || canRestockProduct) && <View className="gap-3">{canEditProduct && <Button onPress={() => push({ pathname: productPath, params: { id: product.id, mode: 'edit' } })}>Edit Product</Button>}{canRestockProduct && <Button variant="secondary" onPress={() => push({ pathname: productPath, params: { id: product.id, mode: 'restock' } })}>Restock</Button>}</View>}
         <InvText bold color="#112F6F">Restock history</InvText>
         {!restocks.length ? <InvText>No restocks yet.</InvText> : restocks.map(r => <InvCard key={r.id}><InvText bold>+{r.quantity} PCS · {r.stockDate}</InvText>{r.batches ? r.batches.map(b => <InvText key={b.id}>{b.quantity} PCS | {batchExpiryLabel(b)}</InvText>) : <InvText>Expires {r.expirationDate}</InvText>}<InvText size={11}>Recorded {new Date(r.recordedAt).toLocaleString('en-PH', { timeZone: inventoryRules.timeZone })}</InvText></InvCard>)}
       </>}
@@ -262,7 +269,7 @@ export function ProductScreen() {
       {mode === 'edit' && <View className="items-center gap-2 pb-2"><View className="relative"><ProductPhoto uri={draft.details.photoUri} /><Pressable accessibilityRole="button" accessibilityLabel="Edit product photo" accessibilityState={{ disabled: picking }} disabled={picking} onPress={pickPhoto} className="absolute bottom-0 right-0 min-h-12 min-w-12 items-center justify-center rounded-pill border border-[#B0C8E3] bg-white"><ExpoImage source={require('@/assets/images/inventory/edit.svg')} contentFit="contain" style={{ width: 18, height: 18 }} /></Pressable></View>{!!draft.details.photoUri && <Button compact fullWidth={false} variant="text" onPress={() => update('photoUri', undefined)}>Remove photo</Button>}</View>}
       {detailsFields}
       {mode === 'add' ? <><InvText bold color="#245399">Product Photo</InvText>{photoControl}{!!draft.details.photoUri && <Button variant="text" onPress={() => update('photoUri', undefined)}>Remove photo</Button>}</>
-      : <><View className="flex-row items-center justify-between gap-2"><InvText bold color="#245399">Stock Batches</InvText>{mode === 'edit' && <InvText bold color="#102342">{total} PCS</InvText>}</View>{batchCards}<View className="mt-8 gap-2 border-t border-[#B0C8E3] pt-4"><InvText size={10}>This action cannot be undone.</InvText><Button variant="destructiveOutline" disabled={saving || picking} onPress={() => setConfirmation({ kind: 'productDelete' })}>Delete Product</Button></View></>}
+      : <><View className="flex-row items-center justify-between gap-2"><InvText bold color="#245399">Stock Batches</InvText>{mode === 'edit' && <InvText bold color="#102342">{total} PCS</InvText>}</View>{batchCards}{canDeleteProduct && <View className="mt-8 gap-2 border-t border-[#B0C8E3] pt-4"><InvText size={10}>This action cannot be undone.</InvText><Button variant="destructiveOutline" disabled={saving || picking} onPress={() => setConfirmation({ kind: 'productDelete' })}>Delete Product</Button></View>}</>}
     </>}
     {mode !== 'add' && preview.control}
   </InventoryFrame>;

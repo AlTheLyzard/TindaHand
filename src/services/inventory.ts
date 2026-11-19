@@ -9,9 +9,9 @@ import { hasCapability } from '@/utils/operator-access';
 
 // TODO(BACKEND): Replace seed loading with store-scoped reads; search/filter/ranking
 // currently use complete local collections, without pagination. See docs/backend-handoff.md#inventory-and-pos.
-export function loadMockInventory(): InventoryStore {
+export function loadMockInventory(includeAssets = true): InventoryStore {
   return { products: inventoryProducts.map(product => ({ ...product })),
-    assets: businessAssets.map(asset => ({ ...asset })), restocks: [],
+    assets: includeAssets ? businessAssets.map(asset => ({ ...asset })) : [], restocks: [],
     pos: { ...emptyPosLedger(), customers: [...emptyPosLedger().customers, ...receivablesSeed.customers.map(customer => ({ ...customer }))], debts: receivablesSeed.debts.map(debt => ({ ...debt, items: {} })) },
     receivablePayments: receivablesSeed.payments.map(payment => ({ ...payment })) };
 }
@@ -35,5 +35,15 @@ export function applyOperatorPosAction(store: InventoryStore, session: DeviceSes
   if (!session || session.role !== 'operator' || session.ownerId !== session.owner.id
     || action.command.ownerId !== session.ownerId || !hasCapability(session, 'pos')
     || (action.command.draft.method === 'partial' && !hasCapability(session, 'receivables'))) return store;
+  return inventoryReducer(store, action);
+}
+
+/** Operators may edit existing products or restock according to their assigned capability. */
+export function applyOperatorInventoryAction(store: InventoryStore, session: DeviceSession | null,
+  action: Extract<InventoryAction, { type: 'saveProduct' | 'restock' }>): InventoryStore {
+  if (!session || session.role !== 'operator' || session.ownerId !== session.owner.id) return store;
+  if (action.type === 'saveProduct') {
+    if (!hasCapability(session, 'inventory-edit') || !store.products.some(product => product.id === action.product.id)) return store;
+  } else if (!hasCapability(session, 'restock')) return store;
   return inventoryReducer(store, action);
 }

@@ -12,7 +12,7 @@ import { ConfirmationContent } from '@/components/ui/confirmation-content';
 import { SuccessContent } from '@/components/ui/success-content';
 import { quickAddColors } from '@/components/dashboard/quick-add-ui';
 import { Button } from '@/components/ui/button';
-import { InvCard, InvDanger, InvField, InventoryFrame, InvText, inventoryIllustrations } from './inventory-ui';
+import { InvCard, InvDanger, InvField, InventoryFrame, InvText } from './inventory-ui';
 import { AssetClassificationField, assetClassificationIllustrations } from './asset-classification-field';
 import { useInventory } from '@/state/inventory';
 import type { AssetClassification, BusinessAsset } from '@/types/inventory';
@@ -23,6 +23,8 @@ import { EmptyState, useContentPreview } from '@/components/ui/content-state';
 import { RecordSkeleton } from '@/components/ui/content-skeletons';
 
 type AssetStep = 'details' | 'review';
+
+const assetScreenIllustration = require('@/assets/images/inventory/AddAsset.png');
 
 const assetDescriptions: Record<AssetClassification, string> = {
   current: 'Money currently available in your business.',
@@ -148,7 +150,7 @@ export function AssetScreen() {
     <Button variant="secondary" disabled={saving || !!saved} onPress={() => leave()}>{t('inventory.cancel')}</Button>
   </>;
 
-  return <InventoryFrame title={title} back inlineTitle background scrollRef={scrollRef} illustration={!reviewing && !deleting ? inventoryIllustrations.asset : undefined}
+  return <InventoryFrame title={title} back inlineTitle background scrollRef={scrollRef} illustration={!reviewing && !deleting ? assetScreenIllustration : undefined}
     subtitle={reviewing ? 'Review the asset details before saving.' : deleting ? t('inventory.are.you.sure.you.want.to.remove2') : t('inventory.record.your.business.asset.details')}
     hideNavigationWithKeyboard footer={footer} onBack={() => reviewing ? setStep('details') : leave()} overlay={<>
       <MotionModal visible={successVisible} backdropColor={quickAddColors.backdrop} onRequestClose={() => setSuccessVisible(false)} onHidden={() => { if (saved) leave(); }}>
