@@ -1,4 +1,4 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.254.103:8000';
+import { API_URL } from '@/services/api';
 
 /** Shape returned by GET /auth/me */
 interface MeApiResponse {
