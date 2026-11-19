@@ -45,14 +45,14 @@ export default function WelcomeScreen() {
           <View className="gap-2">
             <Button
               onPress={handleGetStarted}
-              accessibilityHint="Opens the Create Owner Account form.">
+              accessibilityHint="Opens the Create May-Ari Account form.">
               Get Started
             </Button>
             <Button
               variant="secondary"
               onPress={handleExistingAccount}
               accessibilityLabel="I Have an Account"
-              accessibilityHint="Opens account selection for Owner or Operator login.">
+              accessibilityHint="Opens account selection for May-Ari or Kahera login.">
               I have an account
             </Button>
           </View>

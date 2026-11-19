@@ -51,12 +51,13 @@ export type DeviceSession = {
   /** Keep the existing permission and profile consumers on the same service identity. */
   operator: { id: string; name: string; permissions: readonly OperatorPermission[] };
 });
-export type RecoveryReceipt = { resendAt: number };
+export type RecoveryReceipt = { resendAt: number; found: boolean };
 export interface AuthenticationService {
   readonly profile: import('./profile').ProfileService;
   readonly ready: Promise<void>;
   subscribeAccountDirectory(listener: () => void): () => void;
   getAccountDirectorySnapshot(): AccountDirectorySnapshot;
+  seedRealOwner(owner: RegisteredOwner): void;
   registerOwner: RegistrationService;
   authenticateOwner(input: { ownerId: string; password: string }): Promise<AuthResult<DeviceSession>>;
   unlockOwner(input: { ownerId: string; pin: string }): Promise<AuthResult<DeviceSession>>;

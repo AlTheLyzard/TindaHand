@@ -12,6 +12,9 @@ import { validateRegistration, validateEmail } from '@/utils/registration';
 import { createMockProfileService } from '@/services/profile';
 import { defaultOperatorPermissions } from '@/utils/operator-access';
 import { isOwnerId } from '@/utils/owner-id';
+import { loginKahera } from '@/services/mock-auth';
+import { saveToken } from '@/services/token-storage';
+import { apiFetch, ApiError } from '@/services/api';
 
 const unavailable = (): AuthFailure => ({ ok: false, code: 'unavailable', message: 'Authentication is not connected. Please try again when the service is available.' });
 const invalid = (): AuthResult<never> => ({ ok: false, code: 'invalid', message: 'Check your credentials and try again.' });
@@ -146,6 +149,14 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       return () => { directoryListeners.delete(listener); };
     },
     getAccountDirectorySnapshot: () => accountDirectory,
+    // BACKEND INTEGRATION: Called by auth-flow when a real JWT is restored so
+    // the mock directory check in login.tsx sees at least one owner.
+    seedRealOwner(owner: RegisteredOwner) {
+      if (!identities.has(owner.id)) {
+        identities.set(owner.id, owner);
+        publishAccountDirectory();
+      }
+    },
     // BACKEND INTEGRATION: Replace this adapter as one unit. Never fall back to
     // mock success on an API failure. See docs/authentication-handoff.md.
     async registerOwner(values) {
@@ -200,24 +211,37 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       return { ok: true, value: { ...session } };
     },
     async loginOperator({ ownerId, pin }) {
-      if (!enabled()) return unavailable();
       await ready;
-      const requestedOwnerId = ownerId.trim();
-      const operator = settingsService.matchOperator(requestedOwnerId, pin);
-      // The Operator record is the source of truth for store membership. The
-      // supplied Owner ID only scopes the credential lookup; never copy it into
-      // the session without confirming it matches the matched record.
-      const linkedOwnerId = operator?.ownerId;
-      const account = linkedOwnerId ? identities.get(linkedOwnerId) : undefined;
-      if (!operator || !linkedOwnerId || linkedOwnerId !== requestedOwnerId || !account || account.id !== linkedOwnerId) return invalid();
-      // BACKEND INTEGRATION: POST { ownerId, pin } to the Operator login endpoint.
-      // Return { role: 'operator', ownerId, operatorId, displayName } with the
-      // authenticated session and allowed capabilities. Enforce exactly one
-      // active Operator match for (ownerId, pin) on the server as well.
-      session = { ...issue(account), role: 'operator', ownerId: linkedOwnerId, operatorId: operator.id, displayName: operator.name,
-        operator: { id: operator.id, name: operator.name, permissions: [...settingsService.operatorPermissions(operator.id)] } };
-      operatorRevision = settingsService.operatorRevision(operator.id);
-      remembered.remember('cashier', linkedOwnerId);
+      // BACKEND INTEGRATION: POST owner_id + pin to /auth/kahera/login-by-pin.
+      // The backend finds the matching active cashier for that store by PIN.
+      const result = await loginKahera(ownerId, pin);
+      if (result.status === 'locked') return { ok: false, code: 'limited', message: 'Account locked due to too many failed attempts. Try again later.' };
+      if (result.status === 'error') return { ok: false, code: 'unavailable', message: result.message };
+      if (result.status !== 'ok') return invalid();
+
+      await saveToken(result.token, result.name, result.kaheraId);
+
+      // Build the owner identity for session scoping.
+      // The cashier belongs to a specific owner — use the ownerId the backend confirmed.
+      const ownerAccount: RegisteredOwner = { id: result.ownerId, name: '' };
+      if (!identities.has(result.ownerId)) {
+        identities.set(result.ownerId, ownerAccount);
+        publishAccountDirectory();
+      }
+
+      session = {
+        ...issue(ownerAccount),
+        role: 'operator',
+        ownerId: result.ownerId,
+        operatorId: result.kaheraId,
+        displayName: result.name,
+        operator: {
+          id: result.kaheraId,
+          name: result.name,
+          permissions: [...defaultOperatorPermissions],
+        },
+      };
+      remembered.remember('cashier', result.ownerId);
       return { ok: true, value: { ...session } };
     },
     // BACKEND RULE: Authorize from the live session; never trust a supplied role
@@ -291,13 +315,29 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       session = null;
     },
     async requestPinRecovery({ email }) {
-      if (!enabled()) return unavailable();
+      // ── Real backend ─────────────────────────────────────────────────────────
+      if (!enabled()) {
+        if (validateEmail(email)) return { ok: false, code: 'invalid', message: 'Enter a valid email address.' };
+        try {
+          const data = await apiFetch<{ found: boolean; resendAt: number }>('/auth/forgot-pin', {
+            method: 'POST',
+            body: JSON.stringify({ email: email.trim().toLowerCase() }),
+          });
+          return { ok: true, value: { found: data.found, resendAt: data.resendAt } };
+        } catch (err) {
+          if (err instanceof ApiError && err.status < 500) {
+            return { ok: false, code: 'invalid', message: err.message };
+          }
+          return { ok: false, code: 'unavailable', message: 'The recovery service is unavailable. Please try again.' };
+        }
+      }
+      // ── Mock / demo path ─────────────────────────────────────────────────────
       await ready;
       if (options.failRecovery || email.trim().toLowerCase() === 'failure@example.test') return { ok: false, code: 'unavailable', message: 'The recovery service is unavailable. Please try again.' };
       if (validateEmail(email)) return { ok: false, code: 'invalid', message: 'Enter a valid email address.' };
       // BACKEND RULE: Neutral response/timing, email delivery and resend/attempt
       // limits belong on the server. Use its absolute resendAt, never a UI timer policy.
-      if (now() < resendAt) return { ok: true, value: { resendAt } };
+      if (now() < resendAt) return { ok: true, value: { found: true, resendAt } };
       resendAt = now() + 30000;
       const ownerId = emails.get(email.trim().toLowerCase());
       if (ownerId) {
@@ -306,16 +346,46 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
         nextRecovery++;
         recoveries.set(token, { ownerId, expiresAt: now() + 15 * 60 * 1000, used: false });
       }
-      return { ok: true, value: { resendAt } };
+      return { ok: true, value: { found: !!ownerId, resendAt } };
     },
     async verifyRecoveryToken({ token }) {
-      if (!enabled()) return unavailable();
+      // ── Real backend ─────────────────────────────────────────────────────────
+      if (!enabled()) {
+        try {
+          const data = await apiFetch<{ expiresAt: number }>(`/auth/verify-recovery/${encodeURIComponent(token)}`);
+          return { ok: true, value: { expiresAt: data.expiresAt } };
+        } catch (err) {
+          if (err instanceof ApiError) {
+            const msg = err.message || 'This recovery link is invalid or has expired. Request a new link.';
+            return { ok: false, code: err.status === 400 ? 'expired' : 'unavailable', message: msg };
+          }
+          return { ok: false, code: 'unavailable', message: 'The recovery service is unavailable. Please try again.' };
+        }
+      }
+      // ── Mock / demo path ─────────────────────────────────────────────────────
       await ready;
       const error = tokenError(token);
       return error ?? { ok: true, value: { expiresAt: recoveries.get(token)!.expiresAt } };
     },
     async resetOwnerPin({ token, pin }) {
-      if (!enabled()) return unavailable();
+      // ── Real backend ─────────────────────────────────────────────────────────
+      if (!enabled()) {
+        if (!/^[0-9]{4}$/.test(pin)) return { ok: false, code: 'invalid', message: 'Enter exactly 4 numeric digits.' };
+        try {
+          await apiFetch('/auth/reset-pin', {
+            method: 'POST',
+            body: JSON.stringify({ token, pin }),
+          });
+          return { ok: true, value: undefined };
+        } catch (err) {
+          if (err instanceof ApiError) {
+            const msg = err.message || 'This recovery link is invalid or has expired. Request a new link.';
+            return { ok: false, code: err.status === 400 ? 'expired' : 'unavailable', message: msg };
+          }
+          return { ok: false, code: 'unavailable', message: 'The recovery service is unavailable. Please try again.' };
+        }
+      }
+      // ── Mock / demo path ─────────────────────────────────────────────────────
       await ready;
       const error = tokenError(token);
       if (error) return error;

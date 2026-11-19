@@ -79,8 +79,8 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
           <Text className="rounded-pill bg-[#D1E2F8] px-2 py-1 font-poppins text-[10px] leading-[15px] text-[#102342]">{t('roles.owner')}</Text>
           <Text className="rounded-pill bg-[#D1E2F8] px-2 py-1 font-poppins text-[10px] leading-[15px] text-[#102342]">{t('dashboard.identity', { id: owner.id, date: today })}</Text>
         </View>
-        <Text accessibilityRole="alert" className="mb-4 mt-3 font-poppins text-[10px] leading-[15px] text-text-secondary">{owner.mode === 'mock' ? t('auth.mock.session') : owner.mode === 'preview' ? t('dashboard.preview') : ''}{t('dashboard.demoDisclosure', { date: new Date(getDashboardData().asOf).toLocaleDateString(getLocaleFormats().date, dateOptions) })}</Text>
-        {onLogout && <View className="mb-4"><Button variant="secondary" onPress={onLogout}>{t('auth.mock.logout')}</Button></View>}
+        {owner.mode !== 'confirmed' && <Text accessibilityRole="alert" className="mb-4 mt-3 font-poppins text-[10px] leading-[15px] text-text-secondary">{owner.mode === 'mock' ? t('auth.mock.session') : owner.mode === 'preview' ? t('dashboard.preview') : ''}{t('dashboard.demoDisclosure', { date: new Date(getDashboardData().asOf).toLocaleDateString(getLocaleFormats().date, dateOptions) })}</Text>}
+        {onLogout && owner.mode !== 'confirmed' && <View className="mb-4"><Button variant="secondary" onPress={onLogout}>{t('auth.mock.logout')}</Button></View>}
         <MotionContent changeKey={preview.mode} className="gap-card-gap">
           {preview.control}
           <FocusRise index={0} testID="dashboard-card-cash">

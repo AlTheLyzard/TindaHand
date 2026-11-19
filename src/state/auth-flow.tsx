@@ -1,9 +1,23 @@
-import { createContext, useContext, useState, useEffect, useCallback, useSyncExternalStore, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { AppState } from 'react-native';
 
-import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
+
+/**
+ * While a system overlay (image picker, camera, share sheet, etc.) is open the
+ * app temporarily moves to the background, which would normally trigger the
+ * auto-lock. Any component that opens a system overlay should call
+ * `suppressAuthLock()` before launching it and `releaseAuthLock()` after the
+ * promise resolves, so the AppState listener skips the lock for that window.
+ */
+let _lockSuppressed = false;
+export function suppressAuthLock() { _lockSuppressed = true; }
+export function releaseAuthLock()  { _lockSuppressed = false; }
 import { authenticationService } from '@/services/authentication';
+import { fetchMe } from '@/services/session-api';
+import { getKaheraId, getRole, getToken } from '@/services/token-storage';
+import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
+import { defaultOperatorPermissions } from '@/utils/operator-access';
 
 const emptyDraft: RegistrationFormValues = {
   name: '', email: '', password: '', confirmPassword: '', pin: '', confirmPin: '',
@@ -71,16 +85,68 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
     if (showRestoring) setRestoring(true);
     try {
       await authenticationService.ready;
-      const [session, identities] = await Promise.all([
+      const [mockSession, identities] = await Promise.all([
         authenticationService.restoreSession(), authenticationService.restoreRememberedIdentities(),
       ]);
-      setDeviceSession(session);
       setRememberedIdentities(identities);
-      return session;
+
+      // If mock restored a session, use it as before.
+      if (mockSession) {
+        setDeviceSession(mockSession);
+        return mockSession;
+      }
+
+      // No mock session — try the real JWT stored in SecureStore.
+      const token = await getToken();
+      if (token) {
+        const [me, storedRole, kaheraId] = await Promise.all([
+          fetchMe(token),
+          getRole(),
+          getKaheraId(),
+        ]);
+        if (me) {
+          const owner = { id: me.formatted_id, name: me.name };
+          if (storedRole === 'cashier' && kaheraId) {
+            // Cashier session — build an operator DeviceSession.
+            const realSession: DeviceSession = {
+              kind: 'mock',
+              id: token,
+              role: 'operator',
+              owner,
+              ownerId: me.formatted_id,
+              operatorId: kaheraId,
+              displayName: me.name,
+              operator: { id: kaheraId, name: me.name, permissions: [...defaultOperatorPermissions] },
+              expiresAt: Date.now() + 8 * 60 * 60 * 1000,
+              locked: false,
+            };
+            authenticationService.seedRealOwner(owner);
+            setDeviceSession(realSession);
+            return realSession;
+          }
+          // Owner session.
+          const realSession: DeviceSession = {
+            kind: 'mock',           // discriminant reused; not sent anywhere
+            id: token,
+            role: 'owner',
+            owner,
+            expiresAt: Date.now() + 8 * 60 * 60 * 1000,
+            locked: false,
+          };
+          // Seed the mock directory so login.tsx's directory.owners.length check passes.
+          authenticationService.seedRealOwner(owner);
+          setDeviceSession(realSession);
+          return realSession;
+        }
+      }
+
+      setDeviceSession(null);
+      return null;
     }
     catch { setDeviceSession(null); return null; }
     finally { setRestoring(false); }
   }, []);
+
   async function switchAccount(role: AccountRole) {
     await authenticationService.switchAccount(role);
     setDeviceSession(null);
@@ -93,27 +159,32 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
     setCompletion(null);
     setDashboardAccess(false);
   }
+
   async function lock() {
     await authenticationService.lockSession();
     const current = await authenticationService.restoreSession();
     setDeviceSession(current);
-    // An unauthenticated registration can temporarily background for autofill.
-    // Preserve that draft; locking an existing authenticated device clears it.
     if (current) setDraft(emptyDraft);
   }
+
   useEffect(() => {
     void Promise.resolve().then(() => refreshSession());
     const subscription = AppState.addEventListener('change', state => {
-      if (state !== 'active') void lock();
-      else void refreshSession();
+      if (state !== 'active') {
+        // Skip the lock while a system overlay (photo picker, camera, etc.) is open.
+        // Those overlays put the app in the background momentarily without the user
+        // actually leaving — locking would kick them back to the role-selection screen.
+        if (!_lockSuppressed) void lock();
+      } else void refreshSession();
     });
-    const timer = setInterval(() => { void refreshSession(); }, 15000);
-    return () => { subscription.remove(); clearInterval(timer); };
+    return () => { subscription.remove(); };
   }, [refreshSession]);
   // SECURITY: Navigation gates only. Backend authorization is required for every
   // read/write. Neither registration completion nor a remembered ID grants access.
   const active = deviceSession && !deviceSession.locked;
-  const owner: OwnerIdentity | null = active && deviceSession.role === 'owner' ? { ...deviceSession.owner, name: profiles.get(deviceSession.owner.id)?.name ?? deviceSession.owner.name, mode: 'mock' } : null;
+  // Real JWT sessions get mode 'confirmed'; only legacy mock sessions keep 'mock'.
+  const ownerMode: OwnerIdentity['mode'] = MOCK_AUTH_ENABLED ? 'mock' : 'confirmed';
+  const owner: OwnerIdentity | null = active && deviceSession.role === 'owner' ? { ...deviceSession.owner, name: profiles.get(deviceSession.owner.id)?.name ?? deviceSession.owner.name, mode: ownerMode } : null;
   const mockSession: MockOwnerSession | null = owner ? { kind: 'mock', role: 'owner', owner } : null;
 
   return (

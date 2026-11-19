@@ -34,10 +34,10 @@ export function ProfileScreen() {
         <View className="flex-row flex-wrap items-center gap-3">
           <ProfileAvatar avatarId={profile.avatarId} size={52} />
           <View className="min-w-[120px] flex-1"><ProfileText bold>{profile.name}</ProfileText></View>
-          <AccountBadge status="Owner" />
+          <AccountBadge status="May-Ari" />
         </View>
         <View className="my-4 h-px bg-[#ADC9EE]" />
-        <ProfileText small>Owner ID</ProfileText><ProfileText bold>{profile.ownerId}</ProfileText>
+        <ProfileText small>May-Ari ID</ProfileText><ProfileText bold>{profile.ownerId}</ProfileText>
         <View className="mb-4 mt-1"><ProfileText small>ⓘ Assigned once · Cannot be changed</ProfileText></View>
         <Button variant="secondary" onPress={() => router.push(`${profileRoot}/edit`)}>Edit Profile</Button>
       </SettingsCard>
@@ -48,7 +48,7 @@ export function ProfileScreen() {
       </ProfileNotice><Button variant="secondary" onPress={() => router.push(`${profileRoot}/email`)}>Review Email Verification</Button></View>}
       <ProfileSection>Account</ProfileSection>
       <SettingsCard>
-        <SettingsRow inCard title="Manage Operators" description="Accounts, PINs and permissions" icon="profile" onPress={() => router.push(operatorsRoot)} />
+        <SettingsRow inCard title="Manage Kahera" description="Accounts, PINs and permissions" icon="profile" onPress={() => router.push(operatorsRoot)} />
         <View className="h-px bg-[#ADC9EE]" />
         <SettingsRow inCard title="Settings" description="Preferences, security and support" icon="settings" onPress={() => router.navigate('/owner-menu/settings')} />
       </SettingsCard>

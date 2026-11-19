@@ -1,15 +1,56 @@
-import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
-import { applyInventoryAction, applyOperatorInventoryAction, applyOperatorPosAction, loadMockInventory } from '@/services/inventory';
+import { applyInventoryAction, applyOperatorPosAction, getProducts, loadMockInventory } from '@/services/inventory';
 import { useAuthFlow } from '@/state/auth-flow';
+import type { InventoryProduct } from '@/types/inventory';
+import type { Customer } from '@/types/pos';
 import { type InventoryAction, type InventoryStore } from '@/utils/inventory';
 import { customerNameKey } from '@/utils/pos-checkout';
-import type { Customer } from '@/types/pos';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 const InventoryContext = createContext<{ store: InventoryStore; getStore: () => InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void } | null>(null);
 function SessionInventory({ children }: { children: ReactNode }) {
   const auth = useAuthFlow();
   const [store, setStore] = useState<InventoryStore>(() => loadMockInventory(auth.deviceSession?.role !== 'operator'));
   const current = useRef(store);
+
+  // Try to load real products from the API on session start.
+  // The store always starts with mock data (loadMockInventory), so if the API
+  // is unreachable or returns an error, the mock products remain visible.
+  // On success, real products replace the mock ones so checkout uses real IDs.
+  useEffect(() => {
+    // Only fetch when there's an active authenticated session (owner or kahera).
+    if (!auth.deviceSession || auth.deviceSession.locked) return;
+    let cancelled = false;
+    getProducts().then(apiProducts => {
+      if (cancelled) return;
+      const realProducts: InventoryProduct[] = apiProducts.map(p => ({
+        id: p.id,                                        // already a string "prod-abc123"
+        name: p.name,
+        category: p.category as InventoryProduct['category'],
+        unitPriceCentavos: p.unitPriceCentavos,          // correct field name
+        costCentavos: p.costCentavos,
+        stock: p.stock,                                  // correct field name
+        expirationDate: p.expirationDate ?? '',
+        photoUri: p.photoUri ?? undefined,
+        batches: p.batches?.map(b => ({
+          id: b.id,
+          quantity: b.quantity,
+          noExpiry: b.noExpiry,
+          expirationDate: b.expirationDate ?? undefined,
+        })),
+      }));
+      // Merge real products into the store, keeping POS/sales/customer state intact.
+      setStore(previous => {
+        const next = { ...previous, products: realProducts };
+        current.current = next;
+        return next;
+      });
+    }).catch(() => {
+      // Offline or server error — keep whatever is already in state.
+    });
+    return () => { cancelled = true; };
+  // Re-fetch whenever the user's session changes (e.g. owner logs in then kahera logs in).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.deviceSession?.id]);
   const [feedback, setFeedback] = useState('');
   function dispatch(action: InventoryAction) {
     let next = current.current;

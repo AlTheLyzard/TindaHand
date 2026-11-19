@@ -1,8 +1,8 @@
-import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
-import type { TextInputInstance } from 'react-native';
+import { KeyboardViewport as KeyboardAvoidingView, KeyboardAwareScrollView as ScrollView } from '@/components/ui/keyboard-aware-scroll-view';
 import { useTranslation } from '@/i18n/use-translation';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
+import type { TextInputInstance } from 'react-native';
 import { AccessibilityInfo, Keyboard, Platform, Text, View } from 'react-native';
 import { AuthBackground } from './auth-background';
 
@@ -31,7 +31,10 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
   const [requestError, setRequestError] = useState('');
   const [serverErrors, setServerErrors] = useState<RegistrationErrors>({});
   const locked = useRef(false);
-  const request = useRef(createRegistrationRequest(service));
+  const request = useRef<ReturnType<typeof createRegistrationRequest>>(null!);
+  useFocusEffect(useCallback(() => {
+  request.current = createRegistrationRequest(service);
+  }, [service]));
   const inputs = useRef<Partial<Record<RegistrationField, TextInputInstance | null>>>({});
   const clientErrors = validateRegistration(values);
   const errors: RegistrationErrors = {};

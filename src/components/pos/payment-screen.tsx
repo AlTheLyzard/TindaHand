@@ -73,7 +73,7 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
     Keyboard.dismiss();
     setConfirmation(confirmationKey);
   }
-  function commit() {
+  async function commit() {
     if (committing.current || confirmation === null) return;
     if (!validPayment || confirmation !== confirmationKey) {
       setConfirmation(null);
@@ -83,22 +83,22 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
     }
     committing.current = true;
     setBusy(true);
-    let saved = false;
+    setConfirmation(null);
     try {
-      saved = confirmation === confirmationKey && completeOrder();
-      if (!saved) {
+      const result = await completeOrder();
+      if (!result.success) {
         setFailure('The order could not be saved. Review the current stock and payment, then try again.');
+        committing.current = false;
         return;
       }
+      // Success — navigate back to POS (toast will show change breakdown)
+      router.navigate(posHref(basePath));
     } catch {
       setFailure('The order could not be saved. Your cart and payment are kept for retry.');
+      committing.current = false;
     } finally {
-      setConfirmation(null);
-      // Keep success locked through the modal exit and route transition.
-      if (!saved) committing.current = false;
       setBusy(false);
     }
-    if (saved) router.navigate(posHref(basePath));
   }
   const confirmationRows = paymentConfirmationRows(summary.totalCentavos, draft,
     customers.find(customer => customer.id === draft.customerId)?.name ?? draft.customerName.trim());
@@ -182,7 +182,7 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
     </KeyboardAvoidingView>
     </View>
     <PosDialog visible={confirmation !== null} title="Confirm Checkout?" confirmLabel="Confirm" cancelLabel="Cancel" actionLayout="row"
-      busy={busy} confirmDisabled={!validPayment || confirmation !== confirmationKey} onClose={closeConfirmation} onConfirm={commit}>
+      busy={busy} confirmDisabled={!validPayment || confirmation !== confirmationKey} onClose={closeConfirmation} onConfirm={() => void commit()}>
       <View className="gap-3">
         {confirmationRows.map((row, index) => <View key={row.label} className={`flex-row items-start justify-between gap-3 ${index === 0 ? 'border-b border-[#ADC9EE] pb-3' : ''}`}>
           <Text className="flex-1 font-poppins text-[12px] text-text-secondary">{row.label}</Text>
