@@ -302,11 +302,11 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       if (!enabled()) {
         if (validateEmail(email)) return { ok: false, code: 'invalid', message: 'Enter a valid email address.' };
         try {
-          const data = await apiFetch<{ resendAt: number }>('/auth/forgot-pin', {
+          const data = await apiFetch<{ found: boolean; resendAt: number }>('/auth/forgot-pin', {
             method: 'POST',
             body: JSON.stringify({ email: email.trim().toLowerCase() }),
           });
-          return { ok: true, value: { resendAt: data.resendAt } };
+          return { ok: true, value: { found: data.found, resendAt: data.resendAt } };
         } catch (err) {
           if (err instanceof ApiError && err.status < 500) {
             return { ok: false, code: 'invalid', message: err.message };
@@ -320,7 +320,7 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       if (validateEmail(email)) return { ok: false, code: 'invalid', message: 'Enter a valid email address.' };
       // BACKEND RULE: Neutral response/timing, email delivery and resend/attempt
       // limits belong on the server. Use its absolute resendAt, never a UI timer policy.
-      if (now() < resendAt) return { ok: true, value: { resendAt } };
+      if (now() < resendAt) return { ok: true, value: { found: true, resendAt } };
       resendAt = now() + 30000;
       const ownerId = emails.get(email.trim().toLowerCase());
       if (ownerId) {
@@ -329,7 +329,7 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
         nextRecovery++;
         recoveries.set(token, { ownerId, expiresAt: now() + 15 * 60 * 1000, used: false });
       }
-      return { ok: true, value: { resendAt } };
+      return { ok: true, value: { found: !!ownerId, resendAt } };
     },
     async verifyRecoveryToken({ token }) {
       // ── Real backend ─────────────────────────────────────────────────────────

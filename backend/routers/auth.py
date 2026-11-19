@@ -426,8 +426,9 @@ def _send_recovery_email(to_email: str, owner_name: str, token: str):
 @router.post("/forgot-pin")
 def forgot_pin(body: ForgotPinRequest, db: Session = Depends(get_db)):
     """
-    Request a PIN recovery email. Always returns 200 (neutral — no account enumeration).
-    A new token is generated and emailed only when the email matches an active account.
+    Request a PIN recovery email.
+    Returns 200 with found=True when the email matches an active account,
+    or found=False when it does not (so the UI can show an appropriate message).
     Resend cooldown: 30 seconds.
     """
     resend_at = int((datetime.now(timezone.utc) + timedelta(seconds=30)).timestamp() * 1000)
@@ -437,27 +438,28 @@ def forgot_pin(body: ForgotPinRequest, db: Session = Depends(get_db)):
         MayAri.is_active == True,
     ).first()
 
-    if owner:
-        # Invalidate previous unused tokens for this owner
-        db.query(PinRecoveryToken).filter(
-            PinRecoveryToken.owner_id == owner.id,
-            PinRecoveryToken.used == False,
-        ).update({"used": True})
+    if not owner:
+        return {"found": False, "resendAt": resend_at}
 
-        token = secrets.token_hex(32)
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
-        db.add(PinRecoveryToken(id=token, owner_id=owner.id, used=False, expires_at=expires_at))
-        db.commit()
+    # Invalidate previous unused tokens for this owner
+    db.query(PinRecoveryToken).filter(
+        PinRecoveryToken.owner_id == owner.id,
+        PinRecoveryToken.used == False,
+    ).update({"used": True})
 
-        try:
-            first_name = owner.full_name.split()[0]
-            _send_recovery_email(owner.email, first_name, token)
-        except Exception as e:
-            import logging
-            logging.error(f"Failed to send recovery email to {owner.email}: {e}")
-            # Still return 200 — don't leak whether the account exists
+    token = secrets.token_hex(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+    db.add(PinRecoveryToken(id=token, owner_id=owner.id, used=False, expires_at=expires_at))
+    db.commit()
 
-    return {"resendAt": resend_at}
+    try:
+        first_name = owner.full_name.split()[0]
+        _send_recovery_email(owner.email, first_name, token)
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to send recovery email to {owner.email}: {e}")
+
+    return {"found": True, "resendAt": resend_at}
 
 
 @router.get("/verify-recovery/{token}")

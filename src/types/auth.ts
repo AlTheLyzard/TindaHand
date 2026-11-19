@@ -51,7 +51,7 @@ export type DeviceSession = {
   /** Keep the existing permission and profile consumers on the same service identity. */
   operator: { id: string; name: string; permissions: readonly OperatorPermission[] };
 });
-export type RecoveryReceipt = { resendAt: number };
+export type RecoveryReceipt = { resendAt: number; found: boolean };
 export interface AuthenticationService {
   readonly profile: import('./profile').ProfileService;
   readonly ready: Promise<void>;

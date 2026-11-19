@@ -128,7 +128,7 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ flexGrow: 1 }}>
         <View className="w-full max-w-[460px] self-center px-6 pb-5 pt-5" style={{ flexGrow: 1, flexShrink: 0 }}>
           <AuthHeader onBack={onBack} backDisabled={busy} />
-          {(loggedOut || pinReset) && <Text accessibilityRole="alert" className="mt-3 font-poppins text-[12px] text-[#1D5D21]">{pinReset ? 'Your PIN has been updated. Log in to continue.' : 'Logged out successfully.'}</Text>}
+          {(loggedOut || pinReset) && <Text accessibilityRole="alert" className="mt-3 font-poppins text-[12px] text-[#1D5D21]">{pinReset ? 'PIN reset successfully.' : 'Logged out successfully.'}</Text>}
           <View className="mt-12 px-2" style={{ flexShrink: 0 }}>
             <Text className="font-poppins-bold text-[12px] text-[#2675DB]" style={{ lineHeight: 18 * fontScale }}>{owner ? 'OWNER · STORE OWNER' : 'KAHERA · STORE CASHIER'}</Text>
             <Text accessibilityRole="header" className="mt-2 font-poppins-bold text-[30px] text-brand" style={{ lineHeight: 42 * fontScale }}>{owner ? 'May-Ari Login' : 'Kahera Login'}</Text>
