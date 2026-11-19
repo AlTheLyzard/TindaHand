@@ -407,3 +407,19 @@ class CashMovement(Base):
     created_at      = Column(DateTime(timezone=True), server_default=func.now())
 
     owner = relationship("MayAri", back_populates="cash_movements")
+
+
+# ── PIN RECOVERY ─────────────────────────────────────────────────────────────
+
+class PinRecoveryToken(Base):
+    """
+    A short-lived token emailed to the owner for PIN reset.
+    Tokens expire after 15 minutes and are single-use.
+    """
+    __tablename__ = "pin_recovery_token"
+
+    id         = Column(String(64), primary_key=True)   # random hex token
+    owner_id   = Column(Integer, ForeignKey("may_ari.id"), nullable=False)
+    used       = Column(Boolean, default=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

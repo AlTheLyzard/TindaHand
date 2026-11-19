@@ -32,6 +32,13 @@ class LoginRequest(BaseModel):
     owner_id: str         # TH-MA-XXXX
     pin: str
 
+class ForgotPinRequest(BaseModel):
+    email: str
+
+class ResetPinRequest(BaseModel):
+    token: str
+    pin: str
+
 class KaheraLoginRequest(BaseModel):
     owner_id: str         # TH-MA-XXXX — which store to log into
     kahera_id: str        # TH-KH-XXXX

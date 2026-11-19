@@ -14,6 +14,7 @@ import { defaultOperatorPermissions } from '@/utils/operator-access';
 import { isOwnerId } from '@/utils/owner-id';
 import { loginKahera } from '@/services/mock-auth';
 import { saveToken } from '@/services/token-storage';
+import { apiFetch, ApiError } from '@/services/api';
 
 const unavailable = (): AuthFailure => ({ ok: false, code: 'unavailable', message: 'Authentication is not connected. Please try again when the service is available.' });
 const invalid = (): AuthResult<never> => ({ ok: false, code: 'invalid', message: 'Check your credentials and try again.' });
@@ -297,7 +298,23 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       session = null;
     },
     async requestPinRecovery({ email }) {
-      if (!enabled()) return unavailable();
+      // ── Real backend ─────────────────────────────────────────────────────────
+      if (!enabled()) {
+        if (validateEmail(email)) return { ok: false, code: 'invalid', message: 'Enter a valid email address.' };
+        try {
+          const data = await apiFetch<{ resendAt: number }>('/auth/forgot-pin', {
+            method: 'POST',
+            body: JSON.stringify({ email: email.trim().toLowerCase() }),
+          });
+          return { ok: true, value: { resendAt: data.resendAt } };
+        } catch (err) {
+          if (err instanceof ApiError && err.status < 500) {
+            return { ok: false, code: 'invalid', message: err.message };
+          }
+          return { ok: false, code: 'unavailable', message: 'The recovery service is unavailable. Please try again.' };
+        }
+      }
+      // ── Mock / demo path ─────────────────────────────────────────────────────
       await ready;
       if (options.failRecovery || email.trim().toLowerCase() === 'failure@example.test') return { ok: false, code: 'unavailable', message: 'The recovery service is unavailable. Please try again.' };
       if (validateEmail(email)) return { ok: false, code: 'invalid', message: 'Enter a valid email address.' };
@@ -315,13 +332,43 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       return { ok: true, value: { resendAt } };
     },
     async verifyRecoveryToken({ token }) {
-      if (!enabled()) return unavailable();
+      // ── Real backend ─────────────────────────────────────────────────────────
+      if (!enabled()) {
+        try {
+          const data = await apiFetch<{ expiresAt: number }>(`/auth/verify-recovery/${encodeURIComponent(token)}`);
+          return { ok: true, value: { expiresAt: data.expiresAt } };
+        } catch (err) {
+          if (err instanceof ApiError) {
+            const msg = err.message || 'This recovery link is invalid or has expired. Request a new link.';
+            return { ok: false, code: err.status === 400 ? 'expired' : 'unavailable', message: msg };
+          }
+          return { ok: false, code: 'unavailable', message: 'The recovery service is unavailable. Please try again.' };
+        }
+      }
+      // ── Mock / demo path ─────────────────────────────────────────────────────
       await ready;
       const error = tokenError(token);
       return error ?? { ok: true, value: { expiresAt: recoveries.get(token)!.expiresAt } };
     },
     async resetOwnerPin({ token, pin }) {
-      if (!enabled()) return unavailable();
+      // ── Real backend ─────────────────────────────────────────────────────────
+      if (!enabled()) {
+        if (!/^[0-9]{4}$/.test(pin)) return { ok: false, code: 'invalid', message: 'Enter exactly 4 numeric digits.' };
+        try {
+          await apiFetch('/auth/reset-pin', {
+            method: 'POST',
+            body: JSON.stringify({ token, pin }),
+          });
+          return { ok: true, value: undefined };
+        } catch (err) {
+          if (err instanceof ApiError) {
+            const msg = err.message || 'This recovery link is invalid or has expired. Request a new link.';
+            return { ok: false, code: err.status === 400 ? 'expired' : 'unavailable', message: msg };
+          }
+          return { ok: false, code: 'unavailable', message: 'The recovery service is unavailable. Please try again.' };
+        }
+      }
+      // ── Mock / demo path ─────────────────────────────────────────────────────
       await ready;
       const error = tokenError(token);
       if (error) return error;

@@ -2,9 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+import secrets, smtplib, os
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from database import get_db
-from models import MayAri, Kahera
+from models import MayAri, Kahera, PinRecoveryToken
 from auth import (
     hash_password, verify_password,
     hash_pin, verify_pin,
@@ -15,6 +18,7 @@ from schemas import (
     RegisterRequest, LoginRequest,
     KaheraLoginRequest, KaheraLoginByPinRequest, KaheraCreateRequest, KaheraStatusRequest,
     TokenResponse, MeResponse, OkResponse,
+    ForgotPinRequest, ResetPinRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -370,3 +374,126 @@ def get_me(
         )
 
     raise HTTPException(401, "Unknown role")
+
+
+# ── PIN RECOVERY ─────────────────────────────────────────────────────────────
+
+SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER     = os.getenv("SMTP_USER", "")       # Gmail address
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")   # Gmail App Password
+APP_BASE_URL  = os.getenv("APP_BASE_URL", "http://192.168.254.103:8000")
+
+def _send_recovery_email(to_email: str, owner_name: str, token: str):
+    """Send the PIN recovery link via Gmail SMTP."""
+    reset_link = f"{APP_BASE_URL}/reset-pin?token={token}"
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "TindaHand — PIN Recovery"
+    msg["From"]    = f"TindaHand <{SMTP_USER}>"
+    msg["To"]      = to_email
+
+    plain = (
+        f"Hi {owner_name},\n\n"
+        f"We received a request to reset the PIN for your TindaHand Owner account.\n\n"
+        f"Use this link to create a new PIN (expires in 15 minutes):\n{reset_link}\n\n"
+        f"If you did not request this, you can safely ignore this email.\n\n"
+        f"— TindaHand"
+    )
+    html = f"""
+    <html><body style="font-family:sans-serif;color:#102342;max-width:480px;margin:auto;padding:24px">
+      <h2 style="color:#2675DB">PIN Recovery</h2>
+      <p>Hi {owner_name},</p>
+      <p>We received a request to reset the PIN for your TindaHand Owner account.</p>
+      <p>
+        <a href="{reset_link}" style="display:inline-block;padding:12px 24px;background:#2675DB;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">
+          Reset My PIN
+        </a>
+      </p>
+      <p style="color:#666;font-size:12px">Link expires in 15 minutes. If you did not request this, ignore this email.</p>
+      <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+      <p style="color:#999;font-size:11px">TindaHand &mdash; POS for sari-sari stores</p>
+    </body></html>
+    """
+    msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.sendmail(SMTP_USER, to_email, msg.as_string())
+
+
+@router.post("/forgot-pin")
+def forgot_pin(body: ForgotPinRequest, db: Session = Depends(get_db)):
+    """
+    Request a PIN recovery email. Always returns 200 (neutral — no account enumeration).
+    A new token is generated and emailed only when the email matches an active account.
+    Resend cooldown: 30 seconds.
+    """
+    resend_at = int((datetime.now(timezone.utc) + timedelta(seconds=30)).timestamp() * 1000)
+
+    owner = db.query(MayAri).filter(
+        MayAri.email == body.email.strip().lower(),
+        MayAri.is_active == True,
+    ).first()
+
+    if owner:
+        # Invalidate previous unused tokens for this owner
+        db.query(PinRecoveryToken).filter(
+            PinRecoveryToken.owner_id == owner.id,
+            PinRecoveryToken.used == False,
+        ).update({"used": True})
+
+        token = secrets.token_hex(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+        db.add(PinRecoveryToken(id=token, owner_id=owner.id, used=False, expires_at=expires_at))
+        db.commit()
+
+        try:
+            first_name = owner.full_name.split()[0]
+            _send_recovery_email(owner.email, first_name, token)
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to send recovery email to {owner.email}: {e}")
+            # Still return 200 — don't leak whether the account exists
+
+    return {"resendAt": resend_at}
+
+
+@router.get("/verify-recovery/{token}")
+def verify_recovery(token: str, db: Session = Depends(get_db)):
+    """Check if a recovery token is valid and not expired."""
+    record = db.query(PinRecoveryToken).filter(PinRecoveryToken.id == token).first()
+    now = datetime.now(timezone.utc)
+
+    if not record or record.used:
+        raise HTTPException(400, "This recovery link is invalid or has already been used.")
+    if record.expires_at.replace(tzinfo=timezone.utc) < now:
+        raise HTTPException(400, "This recovery link has expired. Please request a new one.")
+
+    expires_ms = int(record.expires_at.replace(tzinfo=timezone.utc).timestamp() * 1000)
+    return {"expiresAt": expires_ms}
+
+
+@router.post("/reset-pin")
+def reset_pin(body: ResetPinRequest, db: Session = Depends(get_db)):
+    """Consume a recovery token and set a new PIN."""
+    record = db.query(PinRecoveryToken).filter(PinRecoveryToken.id == body.token).first()
+    now = datetime.now(timezone.utc)
+
+    if not record or record.used:
+        raise HTTPException(400, "This recovery link is invalid or has already been used.")
+    if record.expires_at.replace(tzinfo=timezone.utc) < now:
+        raise HTTPException(400, "This recovery link has expired. Please request a new one.")
+    if not body.pin or not body.pin.isdigit() or len(body.pin) != 4:
+        raise HTTPException(422, "PIN must be exactly 4 numeric digits.")
+
+    owner = db.query(MayAri).filter(MayAri.id == record.owner_id).first()
+    if not owner or not owner.is_active:
+        raise HTTPException(400, "Account not found or deactivated.")
+
+    owner.pin_hash = hash_pin(body.pin)
+    record.used = True
+    db.commit()
+
+    return {"ok": True}
