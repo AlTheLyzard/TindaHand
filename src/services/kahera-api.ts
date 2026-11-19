@@ -2,7 +2,7 @@
  * Kahera (cashier) account management API calls.
  * All endpoints require a valid May-Ari (owner) JWT.
  */
-import { ApiError, apiFetch } from '@/services/api';
+import { API_URL, ApiError, apiFetch } from '@/services/api';
 import type { SettingsResult } from '@/types/settings';
 
 export interface KaheraRecord {
@@ -22,7 +22,6 @@ export interface KaheraRecord {
 /** Public — no JWT needed. Returns whether any active owners/kaheras exist on the server. */
 export async function fetchHasAccounts(): Promise<{ has_owners: boolean; has_kaheras: boolean }> {
   try {
-    const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.254.103:8000';
     const res = await fetch(`${API_URL}/auth/has-accounts`);
     if (!res.ok) return { has_owners: false, has_kaheras: false };
     return res.json() as Promise<{ has_owners: boolean; has_kaheras: boolean }>;
@@ -33,7 +32,6 @@ export async function fetchHasAccounts(): Promise<{ has_owners: boolean; has_kah
 
 export async function hasKaheraOperators(ownerId: string): Promise<boolean> {
   try {
-    const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.254.103:8000';
     const res = await fetch(
       `${API_URL}/auth/kahera/has-operators?owner_id=${encodeURIComponent(ownerId)}`,
     );
