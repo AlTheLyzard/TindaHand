@@ -8,7 +8,7 @@
 
 import { getToken } from '@/services/token-storage';
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://jawed-sizable-dandy.ngrok-free.app';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://jawed-sizable-dandy.ngrok-free.dev';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
