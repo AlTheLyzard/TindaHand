@@ -13,7 +13,7 @@ export function authenticateMockOwner(role: AccountRole, id: string, pin: string
 }
 
 // ── REAL LOGIN ───────────────────────────────────────────────────
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.254.103:8000';
+import { API_URL } from '@/services/api';
 
 export type LoginResult =
   | { status: 'ok'; token: string; name: string }
@@ -35,7 +35,7 @@ export async function loginOwner(ownerId: string, pin: string): Promise<LoginRes
   try {
       const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({ owner_id: ownerId.trim().toUpperCase(), pin }),
     });
 
@@ -60,7 +60,7 @@ export async function loginKahera(ownerId: string, pin: string): Promise<KaheraL
   try {
     const res = await fetch(`${API_URL}/auth/kahera/login-by-pin`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({ owner_id: ownerId.trim().toUpperCase(), pin }),
     });
 
