@@ -4,7 +4,8 @@ import { useInventory } from "@/state/inventory";
 import { useQuickAdd } from "@/state/quick-add";
 import type { TransactionRecord } from "@/types/transactions";
 import type { TransactionSources } from "@/utils/transactions";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
 
 export function useTransactions() {
   const { owner, deviceSession } = useAuthFlow();
@@ -14,11 +15,24 @@ export function useTransactions() {
   const ownerId = owner?.id ?? operator?.ownerId;
   const scope = operator ? "operator" : "owner";
   const confirmedMode = owner?.mode === "confirmed";
+
+  // ── Mock/preview path: source-keyed result ──────────────────────────────
   const [result, setResult] = useState<{
     rows: TransactionRecord[];
     source: TransactionSources | null;
     error: string;
   }>({ rows: [], source: null, error: "" });
+
+  // ── Real API path: separate loading/rows state to avoid source-equality issues ──
+  // The `source` object is rebuilt every render (new reference), so comparing
+  // result.source === source for the confirmed API path would cause perpetual
+  // loading/blank state even after a successful fetch.
+  const [apiState, setApiState] = useState<{
+    rows: TransactionRecord[];
+    loading: boolean;
+    error: string;
+  }>({ rows: [], loading: true, error: "" });
+
   const [revision, setRevision] = useState(0);
   const ledger = useMemo(
     () => (ownerId ? transactionLedgerForOwner(ownerId, scope) : null),
@@ -37,32 +51,57 @@ export function useTransactions() {
     }),
     [scope, revision, pos, ledger],
   );
+
   useEffect(() => {
     let active = true;
-    // Real API path: confirmed owners get live transaction data from the backend.
-    // Mock/preview sessions fall back to the local seed projection.
-    const request: Promise<TransactionRecord[]> = confirmedMode
-      ? getTransactions()
-      : ownerId
+    if (confirmedMode) {
+      // Real API path: fetch from backend; track loading separately.
+      setApiState(prev => ({ ...prev, loading: true, error: "" }));
+      void getTransactions()
+        .then((rows) => {
+          if (active) setApiState({ rows, loading: false, error: "" });
+        })
+        .catch(() => {
+          if (active)
+            setApiState({ rows: [], loading: false, error: "Could not load transactions. Please try again." });
+        });
+    } else {
+      // Mock/preview path: project from local seed.
+      const request: Promise<TransactionRecord[]> = ownerId
         ? readTransactions(ownerId, source)
         : Promise.resolve([]);
-    void request
-      .then((rows) => {
-        if (active) setResult({ rows, source, error: "" });
-      })
-      .catch(() => {
-        if (active)
-          setResult({
-            rows: [],
-            source,
-            error: "Could not load transactions. Please try again.",
-          });
-      });
+      void request
+        .then((rows) => {
+          if (active) setResult({ rows, source, error: "" });
+        })
+        .catch(() => {
+          if (active)
+            setResult({ rows: [], source, error: "Could not load transactions. Please try again." });
+        });
+    }
     return () => {
       active = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId, confirmedMode, scope, revision]);
+
+  // Re-fetch when the screen comes back into focus (e.g. after recording a sale).
+  useFocusEffect(
+    useCallback(() => {
+      if (confirmedMode) {
+        setRevision((value) => value + 1);
+      }
+    }, [confirmedMode]),
+  );
+
+  if (confirmedMode) {
+    return {
+      rows: apiState.rows,
+      error: apiState.error,
+      loading: apiState.loading,
+      retry: () => setRevision((value) => value + 1),
+    };
+  }
   return {
     rows: result.source === source ? result.rows : [],
     error: result.source === source ? result.error : "",
