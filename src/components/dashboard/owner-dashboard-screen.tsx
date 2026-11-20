@@ -4,7 +4,7 @@ import { FocusRise } from '@/components/ui/focus-rise';
 import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { useTranslation } from '@/i18n/use-translation';
 import { router } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,7 +14,8 @@ import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation
 import { DashboardQuickAdd, type QuickAddAction } from '@/components/dashboard/dashboard-quick-add';
 import { Button } from '@/components/ui/button';
 import tokens from '@/constants/design-tokens.json';
-import { getDashboardData } from '@/services/dashboard';
+import { getDashboardData, getDashboardSummary } from '@/services/dashboard';
+import type { DashboardSummary } from '@/services/dashboard';
 import { growthPreview } from '@/data/growth-preview';
 import { useNavigationHeight } from '@/state/navigation-motion';
 import { getLocaleFormats, type NavigationLabelKey } from '@/i18n';
@@ -37,6 +38,21 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   const { store: { products, pos } } = useInventory();
   const preview = useContentPreview();
   const data = preview.empty ? emptyDashboardDemo : getDashboardData(pos?.sales ?? []);
+
+  // ── Real backend dashboard data ──────────────────────────────────────────
+  const [apiSummary, setApiSummary] = useState<DashboardSummary | null>(null);
+  const [apiLoading, setApiLoading] = useState(owner.mode === 'confirmed');
+
+  useEffect(() => {
+    if (owner.mode !== 'confirmed') return;
+    let cancelled = false;
+    setApiLoading(true);
+    getDashboardSummary()
+      .then(result => { if (!cancelled) { setApiSummary(result); setApiLoading(false); } })
+      .catch(() => { if (!cancelled) setApiLoading(false); });
+    return () => { cancelled = true; };
+  }, [owner.mode]);
+
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -55,14 +71,37 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   const dismissCashToast = useCallback(() => setCashToastExpiresAt(null), [setCashToastExpiresAt]);
   const { addedCentavos } = useCashRegister();
   const scroll = useRef<ScrollViewInstance>(null);
-  const summary = summarizeDashboard(period, data, preview.empty ? 0 : addedCentavos);
+
+  // Use summarizeDashboard for local/mock data, but override specific fields
+  // with real backend numbers when available.
+  const localSummary = summarizeDashboard(period, data, preview.empty ? 0 : addedCentavos);
+
+  const summary = apiSummary && owner.mode === 'confirmed' ? {
+    ...localSummary,
+    // Cash balance comes directly from the backend (includes opening cash + cash movements + sales tenders)
+    cashCentavos: apiSummary.cashBalanceCentavos,
+    // moneyIn / moneyOut are still local — backend doesn't break these out
+    // Sales totals: daily = today, monthly = this month; weekly has no backend equivalent (falls back to local)
+    totalSalesCentavos: period === 'daily'
+      ? apiSummary.totalSalesTodayCentavos
+      : period === 'monthly'
+        ? apiSummary.totalSalesThisMonthCentavos
+        : localSummary.totalSalesCentavos,
+    // Best sellers from the backend top-K algorithm (quantitySold maps to quantity)
+    bestSellers: apiSummary.topProducts.map(p => ({ id: p.productId, name: p.name, quantity: p.quantitySold })),
+  } : localSummary;
+
+  const isLoading = preview.loading || apiLoading;
   const stock = inventorySummary(preview.empty ? [] : products, todayInManila());
   // TODO(backend): Replace the decorative growth series and demo comparison with confirmed analytics.
   // - Method/Action: GET / Fetch sales growth series and comparison summary
   // - Expected Input/Payload: Selected period, comparison window, timezone, and authenticated store session
   // - Expected Response: GrowthMetrics and matching summary with the same reporting window
   // - UI State to Wire: Show a true empty state or server error instead of demo trend data
-  const growthMetrics = summary.saleCount > 0 && period === growthPreview.reportingPeriod ? { ...growthPreview, percentageChange: summary.growth } : null;
+  // Growth metrics: use real sales presence (totalSalesCentavos > 0) so that
+  // stores with actual backend sales but no local mock data still show trends.
+  const hasSales = summary.totalSalesCentavos > 0 || summary.saleCount > 0;
+  const growthMetrics = hasSales && period === growthPreview.reportingPeriod ? { ...growthPreview, percentageChange: summary.growth } : null;
   const [todayDate] = useState(() => new Date());
   const dateOptions = { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' } as const;
   const today = todayDate.toLocaleDateString(getLocaleFormats().date, dateOptions);
@@ -83,19 +122,19 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
         <MotionContent changeKey={preview.mode} className="gap-card-gap">
           {preview.control}
           <FocusRise index={0} testID="dashboard-card-cash">
-            <CashCard summary={summary} loading={preview.loading} onCashAction={() => { preview.reset(); dismissCashToast(); setCashOpen(true); }} />
+            <CashCard summary={summary} loading={isLoading} onCashAction={() => { preview.reset(); dismissCashToast(); setCashOpen(true); }} />
           </FocusRise>
           <FocusRise index={1} testID="dashboard-card-sales">
-            <SalesCard summary={summary} period={period} onPeriod={setPeriod} growthMetrics={growthMetrics} loading={preview.loading} empty={summary.saleCount === 0} />
+            <SalesCard summary={summary} period={period} onPeriod={setPeriod} growthMetrics={growthMetrics} loading={isLoading} empty={summary.saleCount === 0 && summary.totalSalesCentavos === 0} />
           </FocusRise>
           <FocusRise index={2} testID="dashboard-card-stock">
-            <StockCard summary={{ ...summary, outOfStock: stock.out, lowStock: stock.low + stock.critical }} loading={preview.loading} empty={preview.empty || !products.length} onInventory={() => { preview.reset(); router.navigate('/owner-inventory'); }} onSelect={status => router.navigate({ pathname: '/owner-inventory', params: { status } })} />
+            <StockCard summary={{ ...summary, outOfStock: stock.out, lowStock: stock.low + stock.critical }} loading={isLoading} empty={preview.empty || !products.length} onInventory={() => { preview.reset(); router.navigate('/owner-inventory'); }} onSelect={status => router.navigate({ pathname: '/owner-inventory', params: { status } })} />
           </FocusRise>
           <FocusRise index={3} testID="dashboard-card-best-sellers">
-            <BestSellersCard summary={summarizeDashboard('daily', data)} products={products} loading={preview.loading} onBrowse={() => { preview.reset(); router.navigate('/owner-pos'); }} />
+            <BestSellersCard summary={summary} products={products} loading={isLoading} onBrowse={() => { preview.reset(); router.navigate('/owner-pos'); }} />
           </FocusRise>
           <FocusRise index={4} testID="dashboard-card-activity">
-            <RecentActivityCard activity={[...quickActivity, ...data.activity]} loading={preview.loading} onViewAll={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'transaction-history' } })} />
+            <RecentActivityCard activity={[...quickActivity, ...data.activity]} loading={isLoading} onViewAll={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'transaction-history' } })} />
           </FocusRise>
         </MotionContent>
       </View>
