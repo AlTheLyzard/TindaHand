@@ -4,6 +4,7 @@
  * without changes in account-balances-screen.tsx.
  */
 import { useCallback, useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   getCreditors,
   getPayables,
@@ -91,6 +92,13 @@ export function useApiPayables(ownerId: string | undefined) {
   }, [ownerId, revision]);
 
   const refresh = useCallback(() => setRevision((v) => v + 1), []);
+
+  // Re-fetch when the screen comes back into focus (e.g. after recording a debt or payment).
+  useFocusEffect(
+    useCallback(() => {
+      if (ownerId) setRevision((v) => v + 1);
+    }, [ownerId]),
+  );
 
   return { ledger, loading, error, refresh };
 }
