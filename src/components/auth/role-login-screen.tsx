@@ -38,10 +38,12 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
   const [helpOpen, setHelpOpen] = useState(false);
   const [idSelection, setIdSelection] = useState<InputSelection>();
   const selection = useRef<InputSelection>({ start: 0, end: 0 });
-  // On Android, onSelectionChange can deliver the old position after onChangeText
-  // has already committed a new caret. Block stale updates until the native view
-  // catches up — same guard as MoneyInput.
-  const pendingIdRestore = useRef<InputSelection | undefined>(undefined);
+  // On Android, onSelectionChange can fire with the OLD position after onChangeText
+  // has already committed a new caret. We hold the target selection in pendingIdRestore
+  // and also remember the formatted text it was computed for. If the text has changed
+  // since we set the pending restore (e.g. a dash was inserted by formatOwnerId),
+  // the position offsets are stale — discard them and trust the reported position.
+  const pendingIdRestore = useRef<{ selection: InputSelection; forText: string } | undefined>(undefined);
   const idInput = useRef<TextInputInstance>(null), credentialInput = useRef<TextInputInstance>(null);
   const locked = useRef(false), active = useRef(true);
   const password = false;
@@ -142,17 +144,24 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
                     const reported = event.nativeEvent.selection;
                     const pending = pendingIdRestore.current;
                     if (pending) {
-                      if (reported.start === pending.start && reported.end === pending.end) {
+                      // If the text has changed since we computed the restore target,
+                      // the position offsets are stale — drop the pending and trust Android.
+                      if (pending.forText !== id) {
+                        pendingIdRestore.current = undefined;
+                        selection.current = reported;
+                        setIdSelection(undefined);
+                      } else if (reported.start === pending.selection.start && reported.end === pending.selection.end) {
+                        // Android caught up — the caret is exactly where we wanted it.
                         pendingIdRestore.current = undefined;
                         setIdSelection(undefined);
                       }
-                      // Don't overwrite selection.current until the restore lands.
+                      // Otherwise still waiting for the restore to land; ignore the report.
                     } else {
                       selection.current = reported;
                       setIdSelection(current => current?.start === reported.start && current.end === reported.end ? undefined : current);
                     }
                   }}
-                  onChangeText={value => { const edit = editOwnerId(id, value, selection.current); setId(edit.text); selection.current = edit.selection; pendingIdRestore.current = edit.selection; setIdSelection(edit.selection); setTouched(current => ({ ...current, id: true })); updateOperatorValidation(edit.text, credential); setNotice(''); }}
+                  onChangeText={value => { const edit = editOwnerId(id, value, selection.current); setId(edit.text); selection.current = edit.selection; pendingIdRestore.current = { selection: edit.selection, forText: edit.text }; setIdSelection(edit.selection); setTouched(current => ({ ...current, id: true })); updateOperatorValidation(edit.text, credential); setNotice(''); }}
                   onBlur={() => setTouched(current => ({ ...current, id: true }))}
                   autoCapitalize="characters" smartInsertDelete={false} autoComplete="username" returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => credentialInput.current?.focus()} />}
                 {pinIdentity}
