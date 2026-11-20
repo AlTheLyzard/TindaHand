@@ -14,8 +14,8 @@ import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation
 import { DashboardQuickAdd, type QuickAddAction } from '@/components/dashboard/dashboard-quick-add';
 import { Button } from '@/components/ui/button';
 import tokens from '@/constants/design-tokens.json';
-import { getDashboardData, getDashboardSummary } from '@/services/dashboard';
-import type { DashboardSummary } from '@/services/dashboard';
+import { getDashboardData, getDashboardSummary, getCashMovements } from '@/services/dashboard';
+import type { DashboardSummary, CashMovement } from '@/services/dashboard';
 import { growthPreview } from '@/data/growth-preview';
 import { useNavigationHeight } from '@/state/navigation-motion';
 import { getLocaleFormats, type NavigationLabelKey } from '@/i18n';
@@ -41,15 +41,20 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
 
   // ── Real backend dashboard data ──────────────────────────────────────────
   const [apiSummary, setApiSummary] = useState<DashboardSummary | null>(null);
+  const [apiMovements, setApiMovements] = useState<CashMovement[] | null>(null);
   const [apiLoading, setApiLoading] = useState(owner.mode === 'confirmed');
 
   useEffect(() => {
     if (owner.mode !== 'confirmed') return;
     let cancelled = false;
     setApiLoading(true);
-    getDashboardSummary()
-      .then(result => { if (!cancelled) { setApiSummary(result); setApiLoading(false); } })
-      .catch(() => { if (!cancelled) setApiLoading(false); });
+    Promise.allSettled([getDashboardSummary(), getCashMovements()])
+      .then(([summaryResult, movementsResult]) => {
+        if (cancelled) return;
+        if (summaryResult.status === 'fulfilled') setApiSummary(summaryResult.value);
+        if (movementsResult.status === 'fulfilled') setApiMovements(movementsResult.value);
+        setApiLoading(false);
+      });
     return () => { cancelled = true; };
   }, [owner.mode]);
 
@@ -76,11 +81,22 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   // with real backend numbers when available.
   const localSummary = summarizeDashboard(period, data, preview.empty ? 0 : addedCentavos);
 
+  // Derive moneyIn / moneyOut from real cash movements when available.
+  // Positive amounts = cash added (money in); backend only records additions.
+  const apiMoneyIn = apiMovements
+    ? apiMovements.reduce((sum, m) => sum + Math.max(0, m.amountCentavos), 0)
+    : null;
+  const apiMoneyOut = apiMovements
+    ? apiMovements.reduce((sum, m) => sum + Math.max(0, -m.amountCentavos), 0)
+    : null;
+
   const summary = apiSummary && owner.mode === 'confirmed' ? {
     ...localSummary,
     // Cash balance comes directly from the backend (includes opening cash + cash movements + sales tenders)
     cashCentavos: apiSummary.cashBalanceCentavos,
-    // moneyIn / moneyOut are still local — backend doesn't break these out
+    // Money in/out from real cash movement records
+    moneyIn: apiMoneyIn ?? localSummary.moneyIn,
+    moneyOut: apiMoneyOut ?? localSummary.moneyOut,
     // Sales totals: daily = today, monthly = this month; weekly has no backend equivalent (falls back to local)
     totalSalesCentavos: period === 'daily'
       ? apiSummary.totalSalesTodayCentavos
