@@ -14,5 +14,5 @@ export default function OperatorProductRoute() {
   if (!canEdit && !canRestock) return <Redirect href={posHref('/operator-pos')} />;
   const allowed = mode === 'edit' ? canEdit : mode === 'restock' ? canRestock : mode === undefined || mode === 'details' ? canEdit || canRestock : false;
   if (!allowed) return <Redirect href="/operator-inventory" />;
-  return <ProductScreen key={`${id}:${mode}`} routeBase="/operator-inventory" canEditProduct={canEdit} canRestockProduct={canRestock} canDeleteProduct={false} />;
+  return <ProductScreen key={`${id}:${mode}`} />;
 }

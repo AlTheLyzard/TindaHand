@@ -1,4 +1,5 @@
 import { applyInventoryAction, applyOperatorPosAction, getProducts, loadMockInventory } from '@/services/inventory';
+
 import { useAuthFlow } from '@/state/auth-flow';
 import type { InventoryProduct } from '@/types/inventory';
 import type { Customer } from '@/types/pos';
@@ -9,7 +10,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 const InventoryContext = createContext<{ store: InventoryStore; getStore: () => InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void } | null>(null);
 function SessionInventory({ children }: { children: ReactNode }) {
   const auth = useAuthFlow();
-  const [store, setStore] = useState<InventoryStore>(() => loadMockInventory(auth.deviceSession?.role !== 'operator'));
+  const [store, setStore] = useState<InventoryStore>(() => loadMockInventory());
   const current = useRef(store);
 
   // Try to load real products from the API on session start.
@@ -31,12 +32,9 @@ function SessionInventory({ children }: { children: ReactNode }) {
         stock: p.stock,                                  // correct field name
         expirationDate: p.expirationDate ?? '',
         photoUri: p.photoUri ?? undefined,
-        batches: p.batches?.map(b => ({
-          id: b.id,
-          quantity: b.quantity,
-          noExpiry: b.noExpiry,
-          expirationDate: b.expirationDate ?? undefined,
-        })),
+        batches: p.batches?.map(b => b.noExpiry
+          ? { id: b.id, quantity: b.quantity, noExpiry: true as const, expirationDate: null }
+          : { id: b.id, quantity: b.quantity, noExpiry: false as const, expirationDate: b.expirationDate ?? '' }),
       }));
       // Merge real products into the store, keeping POS/sales/customer state intact.
       setStore(previous => {
@@ -57,7 +55,7 @@ function SessionInventory({ children }: { children: ReactNode }) {
     if (auth.owner) next = applyInventoryAction(current.current, auth.owner, action);
     else if (auth.deviceSession?.role === 'operator') {
       if (action.type === 'completeSale') next = applyOperatorPosAction(current.current, auth.deviceSession, action);
-      else if (action.type === 'saveProduct' || action.type === 'restock') next = applyOperatorInventoryAction(current.current, auth.deviceSession, action);
+      else if (action.type === 'saveProduct' || action.type === 'restock') next = applyInventoryAction(current.current, null, action);
     }
     if (next === current.current) return false;
     current.current = next;

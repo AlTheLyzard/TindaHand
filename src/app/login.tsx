@@ -9,7 +9,6 @@ import { useSyncExternalStore } from 'react';
 
 export default function LoginRoute() {
   const params = useLocalSearchParams<{ role?: string | string[]; loggedOut?: string; pinReset?: string }>();
-  const { mockAuthEnabled } = useAuthFlow();
   const back = useCallback(() => router.dismissTo('/choose-account'), []);
   const role = parseAccountRole(params.role);
   const directory = useSyncExternalStore(authenticationService.subscribeAccountDirectory,
@@ -18,6 +17,7 @@ export default function LoginRoute() {
   // When real auth is on, the mock directory is always empty — skip the guard entirely.
   // The Choose Account screen controls whether these cards appear; trust it.
   if (MOCK_AUTH_ENABLED) {
+
     if (role === 'owner' ? directory.owners.length === 0 : !directory.hasOperators) return <Redirect href="/choose-account" />;
   }
 

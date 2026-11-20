@@ -111,7 +111,7 @@ export function OperatorMenuDrawer({ visible, onClose, onPresentationChange, onN
             <Pressable accessibilityRole={canProfile ? 'button' : undefined}
               accessibilityLabel={`Profile: ${name}, ${session?.operatorId ?? ''}, Operator`}
               accessibilityHint={canProfile ? 'Opens Profile' : undefined} disabled={!canProfile}
-              onPress={() => navigate(() => router.navigate('/operator-profile'))}
+              onPress={() => navigate(() => router.navigate('/operator-profile' as never))}
               className="mb-6 flex-row items-start gap-3 rounded-card bg-[#F0F8FF] p-4">
               <ProfileAvatar size={40} avatarId={operator?.avatarId} />
               <View className="min-w-0 flex-1 gap-2">

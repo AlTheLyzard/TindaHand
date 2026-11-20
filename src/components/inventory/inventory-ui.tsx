@@ -36,6 +36,7 @@ export const inventoryIllustrations = {
   editProduct: require('@/assets/images/inventory/EditProduct.png'),
   expiry: require('@/assets/images/inventory/AddExpiryDate.png'),
   restock: require('@/assets/images/inventory/RestockProduct.png'),
+  asset: require('@/assets/images/inventory/AddAsset.png'),
 };
 
 export function InvText({ children, bold = false, size = 12, color = '#4A607A' }: { children: ReactNode; bold?: boolean; size?: number; color?: string }) {
