@@ -378,15 +378,21 @@ def get_me(
 
 # ── PIN RECOVERY ─────────────────────────────────────────────────────────────
 
-SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER     = os.getenv("SMTP_USER", "")       # Gmail address
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")   # Gmail App Password
-APP_BASE_URL  = os.getenv("APP_BASE_URL", "http://192.168.254.103:8000")
+SMTP_HOST        = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT        = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER        = os.getenv("SMTP_USER", "")       # Gmail address
+SMTP_PASSWORD    = os.getenv("SMTP_PASSWORD", "")   # Gmail App Password
+# Deep-link base for the recovery email.
+# Dev builds: "tindahand:/" → link becomes tindahand://reset-pin?token=...
+#             The app scheme "tindahand" is registered in app.json.
+# Production: Set to your HTTPS domain (e.g. "https://app.tindahand.com")
+#             and configure iOS Associated Domains + Android App Links.
+APP_DEEP_LINK_BASE = os.getenv("APP_DEEP_LINK_BASE",
+                                os.getenv("APP_BASE_URL", "tindahand:/"))
 
 def _send_recovery_email(to_email: str, owner_name: str, token: str):
     """Send the PIN recovery link via Gmail SMTP."""
-    reset_link = f"{APP_BASE_URL}/reset-pin?token={token}"
+    reset_link = f"{APP_DEEP_LINK_BASE}/reset-pin?token={token}"
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "TindaHand — PIN Recovery"
     msg["From"]    = f"TindaHand <{SMTP_USER}>"
@@ -395,7 +401,12 @@ def _send_recovery_email(to_email: str, owner_name: str, token: str):
     plain = (
         f"Hi {owner_name},\n\n"
         f"We received a request to reset the PIN for your TindaHand Owner account.\n\n"
-        f"Use this link to create a new PIN (expires in 15 minutes):\n{reset_link}\n\n"
+        f"Tap the link below on your phone to open the TindaHand app and create a new PIN.\n"
+        f"Link expires in 15 minutes.\n\n"
+        f"{reset_link}\n\n"
+        f"If the link does not open the app, open TindaHand on your phone, go to Forgot PIN,\n"
+        f"and enter this recovery code when prompted:\n\n"
+        f"  {token}\n\n"
         f"If you did not request this, you can safely ignore this email.\n\n"
         f"— TindaHand"
     )
@@ -404,6 +415,7 @@ def _send_recovery_email(to_email: str, owner_name: str, token: str):
       <h2 style="color:#2675DB">PIN Recovery</h2>
       <p>Hi {owner_name},</p>
       <p>We received a request to reset the PIN for your TindaHand Owner account.</p>
+      <p><strong>Tap the button below on your phone</strong> to open the TindaHand app and create a new PIN.</p>
       <p>
         <a href="{reset_link}" style="display:inline-block;padding:12px 24px;background:#2675DB;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">
           Reset My PIN
