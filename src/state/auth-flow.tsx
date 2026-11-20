@@ -72,6 +72,9 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null);
   const [completion, setCompletion] = useState<RegistrationCompletion | null>(null);
   const [dashboardAccess, setDashboardAccess] = useState(false);
+  // Prevent concurrent refreshSession calls — the AppState listener can fire
+  // while an explicit login flow is already running refreshSession(true).
+  const refreshingRef = useRef(false);
 
   function clear() {
     void authenticationService.logout();
@@ -86,6 +89,11 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
   }
 
   const refreshSession = useCallback(async (showRestoring = false): Promise<DeviceSession | null> => {
+    // If an explicit login-triggered refresh (showRestoring=true) is in progress,
+    // skip the background AppState-triggered refresh to avoid a race condition where
+    // the background call could null out a freshly-set session.
+    if (!showRestoring && refreshingRef.current) return null;
+    if (showRestoring) refreshingRef.current = true;
     if (showRestoring) setRestoring(true);
     try {
       await authenticationService.ready;
@@ -172,7 +180,7 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
       return null;
     }
     catch { setDeviceSession(null); return null; }
-    finally { setRestoring(false); }
+    finally { setRestoring(false); refreshingRef.current = false; }
   }, []);
 
   async function switchAccount(role: AccountRole) {

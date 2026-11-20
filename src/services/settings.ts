@@ -118,7 +118,7 @@ export function createMockSettingsService(options: Options = {}) {
       // Only seed if not already present — avoids overwriting a richer mock record.
       if (!records.some(item => item.id === cashier.id)) {
         records = [...records, Object.freeze(cashier)];
-        publish();
+        emit();
       }
     },
     syncState,
