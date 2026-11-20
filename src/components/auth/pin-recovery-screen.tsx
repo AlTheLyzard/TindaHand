@@ -27,7 +27,7 @@ function RecoveryFrame({ children, onBack = backToLogin }: { children: ReactNode
 }
 function RecoveryHeading({ title, children }: { title: string; children?: ReactNode }) {
   return <View className="mb-8 mt-12 px-2">
-    <Text className="font-poppins-bold text-[12px] text-[#2675DB]">OWNER · STORE OWNER</Text>
+    <Text className="font-poppins-bold text-[12px] text-[#2675DB]">MAY-ARI · STORE OWNER</Text>
     <Text accessibilityRole="header" className="mt-2 font-poppins-bold text-[28px] leading-[40px] text-brand">{title}</Text>
     {children && <Text className="mt-2 font-poppins text-[10px] leading-[15px] text-text-secondary">{children}</Text>}
   </View>;
@@ -51,13 +51,19 @@ export function ForgotPinScreen() {
   async function send() {
     if (locked.current || (sent && Date.now() < resendAt)) return;
     setTouched(true);
+    if (!email.trim()) { setNotice('Please enter your registered email address.'); input.current?.focus(); return; }
     if (validateEmail(email)) { input.current?.focus(); return; }
     locked.current = true; setBusy(true); setNotice('');
     try {
       const result = await authenticationService.requestPinRecovery({ email });
       if (!active.current) return;
-      if (result.ok) { Keyboard.dismiss(); setSent(true); setResendAt(result.value.resendAt); setNow(Date.now()); setToast(Date.now() + 15000); }
-      else setNotice(result.message);
+      if (result.ok) {
+        if (!result.value.found) {
+          setNotice('Use the email address linked to your May-Ari account.');
+        } else {
+          Keyboard.dismiss(); setSent(true); setResendAt(result.value.resendAt); setNow(Date.now()); setToast(Date.now() + 15000);
+        }
+      } else setNotice(result.message);
     } catch { if (active.current) setNotice('Unable to request recovery. Please try again.'); }
     finally { locked.current = false; if (active.current) setBusy(false); }
   }
@@ -70,7 +76,7 @@ export function ForgotPinScreen() {
           error={touched ? validateEmail(email) : undefined} editable={!busy} keyboardType="email-address" autoComplete="email" textContentType="emailAddress" autoCapitalize="none" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
         {!!notice && <Notice>{notice}</Notice>}
       </View>
-      <View className="mt-12 gap-3"><Button loading={busy} onPress={() => void send()}>Send Recovery Link</Button><Button variant="secondary" disabled={busy} onPress={backToLogin}>Back to Login</Button></View>
+      <View className="mt-12 gap-3"><Button loading={busy} onPress={notice ? backToLogin : () => void send()}>{notice ? 'Log In' : 'Send Recovery Link'}</Button><Button variant="secondary" disabled={busy} onPress={backToLogin}>Back to Login</Button></View>
     </> : <>
       <RegistrationToast expiresAt={toast} onDismiss={dismiss} title="Recovery link requested" message="Check your email for the next steps." />
       <View testID="recovery-email-content" className="min-h-[300px] flex-1 justify-center py-6">
@@ -78,7 +84,7 @@ export function ForgotPinScreen() {
           <Image source={require('@/assets/images/auth/recovery-envelope.svg')} contentFit="contain" accessible={false}
             style={{ width: 128, height: 128, maxWidth: '100%' }} />
           <Text accessibilityRole="header" className="mt-6 text-center font-poppins-bold text-[28px] leading-[40px] text-brand">Check your Email</Text>
-          <Text className="mt-4 w-full max-w-[320px] text-center font-poppins text-[12px] leading-[20px] text-text-secondary">If an account matches this email, we’ll send a PIN recovery link.</Text>
+          <Text className="mt-4 w-full max-w-[320px] text-center font-poppins text-[12px] leading-[20px] text-text-secondary">We’ve sent a PIN recovery link to your registered email address.</Text>
         </View>
       </View>
       {!!notice && <Notice>{notice}</Notice>}
@@ -126,7 +132,7 @@ export function ResetPinScreen() {
     finally { if (!completed) { locked.current = false; if (active.current) setBusy(false); } }
   }
   return <RecoveryFrame>
-    <RecoveryHeading title="Create New PIN">Enter a new four-digit PIN for your Owner account.</RecoveryHeading>
+    <RecoveryHeading title="Create New PIN">Enter a new four-digit PIN for your May-Ari account.</RecoveryHeading>
     {status === 'verifying' && <Text accessibilityRole="alert" className="font-poppins text-[14px] text-brand">Verifying recovery link…</Text>}
     {status === 'ready' && <>
       <View className="mx-3 gap-6">

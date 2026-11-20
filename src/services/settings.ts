@@ -103,7 +103,7 @@ export function createMockSettingsService(options: Options = {}) {
   function duplicate(ownerId: string, pin: string, exceptId?: string) {
     return records.some(item => item.ownerId === ownerId && item.status === 'active' && item.id !== exceptId && cashierPins.get(item.id) === pin);
   }
-  const duplicateError = (): SettingsResult<never> => ({ ok: false, message: 'This PIN is assigned to another active Operator. Choose a different PIN.', fields: { pin: 'Choose a distinct Operator PIN.' } });
+  const duplicateError = (): SettingsResult<never> => ({ ok: false, message: 'This PIN is assigned to another active Kahera. Choose a different PIN.', fields: { pin: 'Choose a distinct Kahera PIN.' } });
   const service: SettingsService = {
     ready,
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
@@ -114,6 +114,13 @@ export function createMockSettingsService(options: Options = {}) {
     // - Expected Response: Cashier[] and permission groups without credential material
     // - UI State to Wire: Hydrate settings snapshots and expose initial loading/error/retry states
     cashiers: ownerId => records.filter(item => item.ownerId === ownerId),
+    seedRealCashier(cashier: Cashier) {
+      // Only seed if not already present — avoids overwriting a richer mock record.
+      if (!records.some(item => item.id === cashier.id)) {
+        records = [...records, Object.freeze(cashier)];
+        publish();
+      }
+    },
     syncState,
     createCashier(owner, values: CashierValues, stillAuthorized) {
       return operation(owner, 'create', async () => {
@@ -128,7 +135,7 @@ export function createMockSettingsService(options: Options = {}) {
         // - Expected Response: Canonical Cashier with server-assigned ID, status, and avatarId
         // - UI State to Wire: Show completion only after confirmation and retain form values on failure
         try { await secretStorage.write(operatorPinKey(id), values.pin); }
-        catch { return failed('The Operator account could not be saved. Please try again.'); }
+        catch { return failed('The Kahera account could not be saved. Please try again.'); }
         const result = avatars.allocate(owner.id, id, avatarId => {
           cashier = Object.freeze({ id, name: values.name.trim(), ownerId: owner.id, status: 'active', avatarId });
         });
@@ -143,7 +150,7 @@ export function createMockSettingsService(options: Options = {}) {
         } catch {
           try { await secretStorage.remove(operatorPinKey(id)); } catch { /* Best-effort rollback. */ }
           avatars.rollbackAllocation(owner.id, id);
-          return failed('The Operator account could not be saved. Please try again.');
+          return failed('The Kahera account could not be saved. Please try again.');
         }
         cashierPins.set(id, values.pin); nextId++;
         records = next; emit();
@@ -160,7 +167,7 @@ export function createMockSettingsService(options: Options = {}) {
         const error = verify(owner, values);
         if (error) return error;
         try { await secretStorage.write(ownerPinKey(owner.id), values.pin); }
-        catch { return failed('The Owner PIN could not be saved. Please try again.'); }
+        catch { return failed('The May-Ari PIN could not be saved. Please try again.'); }
         ownerPins.set(owner.id, values.pin);
         return { ok: true, value: undefined };
       });
@@ -175,10 +182,10 @@ export function createMockSettingsService(options: Options = {}) {
         const error = verify(owner, values);
         if (error && !error.ok) return error;
         const cashier = records.find(item => item.id === cashierId && item.ownerId === owner.id);
-        if (!cashier) return failed('This Operator does not belong to the current store.');
+        if (!cashier) return failed('This Kahera does not belong to the current store.');
         if (duplicate(owner.id, values.pin, cashier.id)) return duplicateError();
         try { await secretStorage.write(operatorPinKey(cashier.id), values.pin); }
-        catch { return failed('The Operator PIN could not be saved. Please try again.'); }
+        catch { return failed('The Kahera PIN could not be saved. Please try again.'); }
         cashierPins.set(cashier.id, values.pin);
         revisions.set(cashier.id, (revisions.get(cashier.id) ?? 0) + 1);
         return { ok: true, value: cashier };
@@ -192,12 +199,12 @@ export function createMockSettingsService(options: Options = {}) {
       // - UI State to Wire: Refresh operator lists and show mutation errors or confirmation
       return operation(owner, 'operator-status', async () => {
         const operator = records.find(item => item.id === operatorId && item.ownerId === owner.id);
-        if (!operator) return failed('Operator unavailable.');
+        if (!operator) return failed('Kahera unavailable.');
         if (active && duplicate(owner.id, cashierPins.get(operator.id)!, operator.id)) return duplicateError();
         const updated: Cashier = { ...operator, status: active ? 'active' : 'inactive' };
         const next = records.map(item => item.id === operator.id ? updated : item);
         try { persistRecords(next); }
-        catch { return failed('The Operator account could not be saved. Please try again.'); }
+        catch { return failed('The Kahera account could not be saved. Please try again.'); }
         revisions.set(operator.id, (revisions.get(operator.id) ?? 0) + 1);
         records = next; emit();
         return { ok: true, value: updated };
@@ -332,3 +339,63 @@ export const settingsService = createMockSettingsService({
   scenario: scenario && Object.prototype.hasOwnProperty.call(syncFixtures, scenario) ? scenario as SyncStatus : undefined,
   failNext: ['create', 'change-pin', 'reset-pin', 'sync', 'clear-cache', 'permission', 'operator-status', 'operator-profile'].includes(failure ?? '') ? failure as SettingsOperation : undefined,
 });
+
+// ── Real API functions ────────────────────────────────────────────────────────────────────
+import { apiFetch } from '@/services/api';
+
+export interface ApiCashier {
+  id: string;        // e.g. "TH-KH-0001"
+  ownerId: string;   // e.g. "TH-MA-0001"
+  name: string;
+  status: 'active' | 'inactive';
+  avatarId: string;
+}
+
+export interface OwnerProfile {
+  id: string;        // e.g. "TH-MA-0001"
+  name: string;
+  storeName: string;
+  avatarId: string;
+}
+
+/** Get the owner's profile from the backend. */
+export async function getOwnerProfile(): Promise<OwnerProfile> {
+  return apiFetch<OwnerProfile>('/settings/profile');
+}
+
+/** Update name, storeName, or avatarId. */
+export async function updateOwnerProfile(data: Partial<{
+  name: string;
+  storeName: string;
+  avatarId: string;
+}>): Promise<OwnerProfile> {
+  return apiFetch<OwnerProfile>('/settings/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Change the owner's PIN (requires current PIN for verification). */
+export async function changeOwnerPin(currentPin: string, newPin: string): Promise<void> {
+  return apiFetch<void>('/settings/change-pin', {
+    method: 'POST',
+    body: JSON.stringify({ currentPin, newPin }),
+  });
+}
+
+/** List all cashiers for this store. */
+export async function getCashiers(): Promise<ApiCashier[]> {
+  return apiFetch<ApiCashier[]>('/settings/cashiers');
+}
+
+/** Update a cashier's name, avatar, or active status. */
+export async function updateCashier(kahera_id: string, data: Partial<{
+  name: string;
+  avatarId: string;
+  isActive: boolean;
+}>): Promise<ApiCashier> {
+  return apiFetch<ApiCashier>(`/settings/cashiers/${kahera_id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}

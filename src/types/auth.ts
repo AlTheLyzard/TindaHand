@@ -48,7 +48,7 @@ export type RegistrationCompletion = RegisteredOwner & {
 /** Proposed adapter contracts; no HTTP schema has been agreed. Secrets are request-only. */
 export type AuthFailure = { ok: false; code: 'unavailable' | 'invalid' | 'expired' | 'used' | 'missing' | 'limited'; message: string };
 export type AuthResult<T> = { ok: true; value: T } | AuthFailure;
-export type OperatorPermission = 'pos' | 'inventory-edit' | 'restock' | 'receivables' | 'transactions' | 'profile' | 'settings';
+export type OperatorPermission = 'pos' | 'inventory-edit' | 'restock' | 'receivables' | 'transactions' | 'profile' | 'settings' | 'assets-read';
 export type DeviceSession = {
   kind: 'mock'; id: string; owner: RegisteredOwner; expiresAt: number; locked: boolean;
 } & ({ role: 'owner' } | {
@@ -56,12 +56,13 @@ export type DeviceSession = {
   /** Keep the existing permission and profile consumers on the same service identity. */
   operator: { id: string; name: string; permissions: readonly OperatorPermission[] };
 });
-export type RecoveryReceipt = { resendAt: number };
+export type RecoveryReceipt = { resendAt: number; found: boolean };
 export interface AuthenticationService {
   readonly profile: import('./profile').ProfileService;
   readonly ready: Promise<void>;
   subscribeAccountDirectory(listener: () => void): () => void;
   getAccountDirectorySnapshot(): AccountDirectorySnapshot;
+  seedRealOwner(owner: RegisteredOwner): void;
   registerOwner: RegistrationService;
   authenticateOwner(input: { ownerId: string; password: string }): Promise<AuthResult<DeviceSession>>;
   unlockOwner(input: { ownerId: string; pin: string }): Promise<AuthResult<DeviceSession>>;

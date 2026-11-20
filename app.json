@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.yannah9106.TindaHand"
     },
     "web": {
       "output": "static",
@@ -59,6 +60,21 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "expo-navigation-bar": {
+        "enforceContrast": true,
+        "style": "dark",
+        "hidden": false
+      },
+      "eas": {
+        "projectId": "1d1053f0-2211-4620-ab80-888708693dd9"
+      }
     }
   }
 }

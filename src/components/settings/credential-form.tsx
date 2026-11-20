@@ -76,10 +76,10 @@ export function CredentialForm<T>({ mode, onSave, onSuccess, onCancel, fieldsCar
     <View className={fieldsCard ? 'gap-7 rounded-[20px] bg-[#D9E7F5] px-5 py-6' : 'gap-7'} key={epoch}>
       {fields.map((field, index) => {
         const name = field === 'name';
-        const label = name ? 'Operator name' : field === 'ownerPin' ? mode === 'owner' ? 'Current Owner PIN' : 'Your Owner PIN' : field === 'pin' ? create ? 'Operator PIN' : mode === 'owner' ? 'New Owner PIN' : 'New Operator PIN' : create ? 'Confirm PIN' : mode === 'owner' ? 'Confirm new Owner PIN' : 'Confirm new Operator PIN';
+        const label = name ? 'Kahera name' : field === 'ownerPin' ? mode === 'owner' ? 'Current May-Ari PIN' : 'Your May-Ari PIN' : field === 'pin' ? create ? 'Kahera PIN' : mode === 'owner' ? 'New May-Ari PIN' : 'New Kahera PIN' : create ? 'Confirm PIN' : mode === 'owner' ? 'Confirm new May-Ari PIN' : 'Confirm new Kahera PIN';
         return <FormField key={field} ref={input => { inputs.current[field] = input; }} label={label}
           value={values[field]} onChangeText={value => update(field, value)} error={errors[field]} requiredIndicator="asterisk" onBlur={() => setTouched(current => ({ ...current, [field]: true }))}
-          placeholder={name ? 'Enter Operator name' : undefined} pin={!name} pinIndicators={!name} pinVisibilityToggle={!name}
+          placeholder={name ? 'Enter Kahera name' : undefined} pin={!name} pinIndicators={!name} pinVisibilityToggle={!name}
           errorVariant="registration" editable={!busy} maxLength={name ? 120 : 4} keyboardType={name ? 'default' : 'number-pad'}
           autoCapitalize={name ? 'words' : 'none'} autoComplete="off" textContentType="none"
           returnKeyType={index === fields.length - 1 ? 'done' : 'next'} submitBehavior={index === fields.length - 1 ? 'blurAndSubmit' : 'submit'}
@@ -88,9 +88,9 @@ export function CredentialForm<T>({ mode, onSave, onSuccess, onCancel, fieldsCar
     </View>
     {notice ? <SettingsNotice error>{notice}</SettingsNotice> : null}
     <View className="min-h-10 flex-1" />
-    {create && <Text className="mb-4 text-center font-poppins-bold text-[12px] leading-[18px] text-brand">Review your Operator account details</Text>}
+    {create && <Text className="mb-4 text-center font-poppins-bold text-[12px] leading-[18px] text-brand">Review your Kahera account details</Text>}
     <View className="gap-4 pb-2 pt-6">
-      <Button loading={busy} onPress={() => void submit()}>{create ? 'Continue' : mode === 'cashier' ? 'Reset Operator PIN' : 'Save New PIN'}</Button>
+      <Button loading={busy} onPress={() => void submit()}>{create ? 'Continue' : mode === 'cashier' ? 'Reset Kahera PIN' : 'Save New PIN'}</Button>
       <Button variant="secondary" disabled={busy} onPress={onCancel ?? reset}>{onCancel ? 'Cancel' : 'Clear'}</Button>
     </View>
   </View>;

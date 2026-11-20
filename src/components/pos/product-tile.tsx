@@ -1,4 +1,4 @@
-import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Image, Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { MotionSurface } from '@/components/ui/motion-content';
 import tokens from '@/constants/design-tokens.json';
@@ -37,7 +37,9 @@ export function ProductTile({ product, quantity, onAdd }: {
         backgroundColor: noStock ? tokens.color.surfaceSubtle : filled ? tokens.color.accentContainer : '#FFFFFF',
         borderColor: selected || active ? tokens.color.accentBase : tokens.color.borderOutline,
       }}>
-        <View accessible={false} className="mb-4 w-full rounded" style={{ aspectRatio: 1.4, backgroundColor: noStock || filled ? tokens.color.primaryDisabled : tokens.color.surfaceSubtle }} />
+        <View accessible={false} className="mb-4 w-full overflow-hidden rounded" style={{ aspectRatio: 1.4, backgroundColor: noStock || filled ? tokens.color.primaryDisabled : tokens.color.surfaceSubtle }}>
+          {!!product.photoUri && <Image source={{ uri: product.photoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" accessible={false} />}
+        </View>
         <View className="absolute right-3 top-3 rounded border px-1 py-0.5" style={{ maxWidth: '85%',
           backgroundColor: noStock ? '#FFEBEE' : lowStock ? '#FFF8E1' : '#E8F5E9',
           borderColor: noStock ? '#CC333B' : lowStock ? tokens.color.warningBase : '#36833C' }}>

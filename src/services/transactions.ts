@@ -1,15 +1,46 @@
-import { transactionSeed } from '@/data/transactions';
-import { projectTransactions, type TransactionSources } from '@/utils/transactions';
+import { transactionSeed } from "@/data/transactions";
+import { apiFetch } from "@/services/api";
+import {
+  projectTransactions,
+  type TransactionSources,
+} from "@/utils/transactions";
 
-/** Replaceable read, currently projecting mock sources shared with other modules. */
-// TODO(backend): Replace the local projection with authenticated canonical transaction history.
-// - Method/Action: GET / Fetch paginated transaction history
-// - Expected Input/Payload: Session-derived store scope, page, limit, search, category, dates, and payment method
-// - Expected Response: { items: TransactionRecord[]; total: number }
-// - UI State to Wire: Drive filters and pagination from server rows/total and expose retryable load errors
-export async function readTransactions(ownerId: string, sources: TransactionSources, scope: 'owner' | 'operator' = 'owner') {
-  const rows = projectTransactions(ownerId, sources, transactionSeed);
-  // Operators can review sales and customer receivables for their assigned store.
-  // Owner expenses, store payables, and supplier payments stay out of this read view.
-  return scope === 'operator' ? rows.filter(row => ['sale', 'customerPayment', 'customerDebt'].includes(row.type)) : rows;
+// ── Legacy projection (used by existing transaction-history screen — do not remove) ──────
+export async function readTransactions(
+  ownerId: string,
+  sources: TransactionSources,
+) {
+  return projectTransactions(ownerId, sources, transactionSeed);
+}
+
+// ── Real API function ─────────────────────────────────────────────────────────────────────
+
+export type TransactionType = "in" | "out";
+
+export interface Transaction {
+  id: string;
+  type: TransactionType;
+  amountCentavos: number;
+  description: string;
+  occurredAt: string;
+  referenceKind: "sale" | "debt_payment" | "expense" | "cash_movement";
+  referenceId: number;
+}
+
+export interface TransactionFilters {
+  fromDate?: string; // ISO date string e.g. '2026-11-01'
+  toDate?: string;
+  type?: TransactionType;
+}
+
+/** Fetches the transaction log from the backend. */
+export async function getTransactions(
+  filters: TransactionFilters = {},
+): Promise<Transaction[]> {
+  const params = new URLSearchParams();
+  if (filters.fromDate) params.set("from_date", filters.fromDate);
+  if (filters.toDate) params.set("to_date", filters.toDate);
+  if (filters.type) params.set("type", filters.type);
+  const query = params.toString();
+  return apiFetch<Transaction[]>(`/transactions${query ? `?${query}` : ""}`);
 }

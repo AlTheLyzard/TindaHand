@@ -145,7 +145,7 @@ export function PaymentScreen({
     Keyboard.dismiss();
     setConfirmation(confirmationKey);
   }
-  function commit() {
+  async function commit() {
     if (committing.current || confirmation === null) return;
     if (!validPayment || confirmation !== confirmationKey) {
       setConfirmation(null);
@@ -157,26 +157,36 @@ export function PaymentScreen({
     }
     committing.current = true;
     setBusy(true);
-    let saved = false;
+    setConfirmation(null);
     try {
+<<<<<<< HEAD
       saved = confirmation === confirmationKey && completeOrder();
       if (!saved) {
         setFailure(
           "The order could not be saved. Review the current stock and payment, then try again.",
         );
+=======
+      const result = await completeOrder();
+      if (!result.success) {
+        setFailure('The order could not be saved. Review the current stock and payment, then try again.');
+        committing.current = false;
+>>>>>>> origin/feature/backend-handoff-2026-11-15
         return;
       }
+      // Success — navigate back to POS (toast will show change breakdown)
+      router.navigate(posHref(basePath));
     } catch {
+<<<<<<< HEAD
       setFailure(
         "The order could not be saved. Your cart and payment are kept for retry.",
       );
+=======
+      setFailure('The order could not be saved. Your cart and payment are kept for retry.');
+      committing.current = false;
+>>>>>>> origin/feature/backend-handoff-2026-11-15
     } finally {
-      setConfirmation(null);
-      // Keep success locked through the modal exit and route transition.
-      if (!saved) committing.current = false;
       setBusy(false);
     }
-    if (saved) router.navigate(posHref(basePath));
   }
   const confirmationRows = paymentConfirmationRows(
     summary.totalCentavos,
@@ -257,6 +267,7 @@ export function PaymentScreen({
                       Total: {formatPesos(summary.totalCentavos)}
                     </Text>
                   </View>
+<<<<<<< HEAD
                   <ScrollView
                     testID="payment-mode-selector"
                     horizontal
@@ -597,6 +608,55 @@ export function PaymentScreen({
             </MotionContent>
           </ScrollView>
         </KeyboardAvoidingView>
+=======
+                  {attempted && errors.tender && <Text accessibilityRole="alert" className="mt-2 font-poppins text-[12px] text-[#972020]">Choose Cash or GCash for the amount paid now.</Text>}
+                </View>
+              </>}
+              {amounts.cashRaw !== null && <PaymentAmountField inputRef={cashInput} label={split ? 'Cash Amount Received' : partial ? 'Amount Paid' : 'Amount Received'} value={amounts.cashRaw}
+                onChange={value => update(split ? { splitCashAmount: value } : partial ? { partialAmount: value } : { cashAmount: value })}
+                onBlur={() => touch('cash')} error={(attempted || touched.cash) && (errors.cash || errors.amount) ? errorLabels[(errors.cash ?? errors.amount)!] : undefined} onNext={split ? () => gcashInput.current?.focus() : undefined} />}
+              {amounts.gcashRaw !== null && <PaymentAmountField inputRef={gcashInput} label={split ? 'GCash Amount Received' : partial ? 'Amount Paid' : 'Amount Received'} value={amounts.gcashRaw}
+                onChange={value => update(split ? { splitGcashAmount: value } : partial ? { partialAmount: value } : { gcashAmount: value })}
+                onBlur={() => touch('gcash')} error={(attempted || touched.gcash) && (errors.gcash || (!split && errors.amount)) ? errorLabels[(errors.gcash ?? errors.amount)!] : undefined} onNext={() => referenceInput.current?.focus()} />}
+              {gcashVisible && <Text className="font-poppins text-[11px] text-text-secondary">Record GCash manually after checking the transfer. A reference number does not verify a payment.</Text>}
+              {referenceVisible && <FormField ref={referenceInput} label="GCash Reference Number" requiredIndicator="asterisk" required={amounts.needsReference} value={split ? draft.splitReference : partial ? draft.partialReference : draft.gcashReference}
+                onChangeText={value => { const reference = sanitizePaymentReference(value); update(split ? { splitReference: reference } : partial ? { partialReference: reference } : { gcashReference: reference }); }}
+                keyboardType="number-pad" inputMode="numeric" onBlur={() => touch('reference')}
+                autoCapitalize="none" placeholder="Enter reference number" returnKeyType="done" onSubmitEditing={Keyboard.dismiss}
+                error={(attempted || touched.reference) && errors.reference ? 'Enter the GCash reference number.' : undefined} />}
+            </View>
+            <View testID="payment-balance-card" accessibilityLiveRegion="polite" className="mt-8 gap-2 rounded-card bg-[#D1E1F5] p-5">
+              <View testID="payment-balance-accent" accessible={false} style={{ position: 'absolute', left: 8, top: 20, bottom: 20, width: 3, borderRadius: 2, opacity: balanceAmount > 0 ? 0.45 : 0, backgroundColor: balanceColor }} />
+              {partial && <Text className="font-poppins-bold text-[12px] text-brand">Amount Paid: {formatPesos(amounts.paidCentavos)}</Text>}
+              {split && <Text className="font-poppins-bold text-[12px] text-brand">Amount Received: {formatPesos(amounts.paidCentavos)}</Text>}
+              {!partial && <Text className="font-poppins-bold text-[12px] text-brand">{amounts.remainingCentavos > 0 ? 'Remaining Balance' : 'Change'}</Text>}
+              <Text className="font-poppins text-[12px] text-text-secondary">{partial || amounts.remainingCentavos > 0
+                ? `${formatPesos(summary.totalCentavos)} − ${formatPesos(amounts.paidCentavos)} = ${formatPesos(amounts.remainingCentavos)}`
+                : errors.gcash === 'overpayment' ? 'Review the GCash amount before completing the order.' : `${formatPesos(amounts.paidCentavos)} − ${formatPesos(summary.totalCentavos)} = ${formatPesos(amounts.changeCentavos)}`}</Text>
+              {partial && <Text className="mt-4 font-poppins-bold text-[12px] text-brand">Remaining Balance</Text>}
+              <Text testID="payment-balance-amount" className="font-poppins-bold text-[28px]" style={{ color: balanceColor }}>{formatPesos(balanceAmount)}</Text>
+            </View>
+            {attempted && amountError && <Text accessibilityRole="alert" className="mt-3 font-poppins text-[12px] text-[#972020]">{amountError}</Text>}
+            {attempted && errors.amount === 'fullyPaid' && draft.partialMethod && <Button variant="text" fullWidth={false} compact style={{ alignSelf: 'flex-start' }} onPress={() => update(draft.partialMethod === 'cash' ? { method: 'cash', cashAmount: draft.partialAmount } : { method: 'gcash', gcashAmount: draft.partialAmount, gcashReference: draft.partialReference })}>{["Use ", modeLabels[draft.partialMethod], "for full payment"].join('')}</Button>}
+            {!!failure && <Text accessibilityRole="alert" className="mt-3 font-poppins text-[12px] text-[#972020]">{failure}</Text>}
+            <View className="mt-12 gap-3">
+              <Button variant="positive" loading={busy} disabled={hasStockConflict} onPress={submit}>Complete Order</Button>
+              <Button variant="destructiveOutline" onPress={() => { Keyboard.dismiss(); setCancelRequested(true); }}>Cancel Order</Button>
+            </View>
+          </>}
+          {preview.control}
+        </MotionContent>
+      </ScrollView>
+    </KeyboardAvoidingView>
+    </View>
+    <PosDialog visible={confirmation !== null} title="Confirm Checkout?" confirmLabel="Confirm" cancelLabel="Cancel" actionLayout="row"
+      busy={busy} confirmDisabled={!validPayment || confirmation !== confirmationKey} onClose={closeConfirmation} onConfirm={() => void commit()}>
+      <View className="gap-3">
+        {confirmationRows.map((row, index) => <View key={row.label} className={`flex-row items-start justify-between gap-3 ${index === 0 ? 'border-b border-[#ADC9EE] pb-3' : ''}`}>
+          <Text className="flex-1 font-poppins text-[12px] text-text-secondary">{row.label}</Text>
+          <Text selectable className="flex-1 text-right font-poppins-bold text-[12px] text-brand">{typeof row.value === 'number' ? formatPesos(row.value) : row.value}</Text>
+        </View>)}
+>>>>>>> origin/feature/backend-handoff-2026-11-15
       </View>
       <PosDialog
         visible={confirmation !== null}

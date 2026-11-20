@@ -31,10 +31,10 @@ export function ProfileSection({ children }: { children: string }) {
 export function ProfileNotice({ title, children }: { title: string; children: ReactNode }) {
   return <View className="gap-1 rounded-control bg-[#D1E2F8] p-4"><Text className="font-poppins-bold text-[12px] leading-[18px] text-brand">{title}</Text><ProfileText small>{children}</ProfileText></View>;
 }
-export function AccountBadge({ status }: { status: 'Owner' | 'active' | 'inactive' }) {
+export function AccountBadge({ status }: { status: 'Owner' | 'May-Ari' | 'active' | 'inactive' }) {
   const color = status === 'active' ? '#28733A' : status === 'inactive' ? '#B4232C' : '#245399';
   return <View className="self-start rounded-pill px-3 py-1" style={{ backgroundColor: status === 'active' ? '#E8F5E9' : status === 'inactive' ? '#FFEBEE' : '#D1E2F8' }}>
-    <Text className="font-poppins-bold text-[10px] leading-[15px]" style={{ color }}>{status === 'Owner' ? status : status === 'active' ? 'Active' : 'Inactive'}</Text>
+    <Text className="font-poppins-bold text-[10px] leading-[15px]" style={{ color }}>{status === 'Owner' ? 'May-Ari' : status === 'May-Ari' ? 'May-Ari' : status === 'active' ? 'Active' : 'Inactive'}</Text>
   </View>;
 }
 export function ProfileError({ message, retry }: { message: string; retry?: () => void }) {

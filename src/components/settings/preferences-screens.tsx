@@ -53,19 +53,19 @@ export function HelpScreen() {
 export function SecurityScreen() {
   const { lock } = useAuthFlow();
   return <SettingsFrame title="Security & Access">
-    <SettingsDescription>Manage the PINs used to access your Owner account and your store&apos;s Operator accounts.</SettingsDescription>
+    <SettingsDescription>Manage the PINs used to access your May-Ari account and your store&apos;s Kahera accounts.</SettingsDescription>
     <SettingsCard>
       <View className="mb-6 mt-3 flex-row items-center gap-4">
         <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><PosIcon name="checkCircle" color="#112F6F" /></View>
-        <View className="flex-1 gap-2"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">My PIN</Text><Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">Your personal Owner access PIN.</Text></View>
+        <View className="flex-1 gap-2"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">My PIN</Text><Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">Your personal May-Ari access PIN.</Text></View>
       </View>
       <Button onPress={() => router.navigate(`${settingsRoot}/change-pin`)}>Change My PIN</Button>
       <View className="my-5 border-t border-[#ADC9EE]" />
       <View className="mb-6 flex-row items-center gap-4">
         <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><SettingsIcon name="lock" /></View>
-        <View className="flex-1 gap-2"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">Operator PIN</Text><Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">Manage your Operators&apos; access PINs.</Text></View>
+        <View className="flex-1 gap-2"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">Kahera PIN</Text><Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">Manage your Kaheras&apos; access PINs.</Text></View>
       </View>
-      <Button onPress={() => router.navigate(`${settingsRoot}/cashier-pins`)}>Manage Operator PINs</Button>
+      <Button onPress={() => router.navigate(`${settingsRoot}/cashier-pins`)}>Manage Kahera PINs</Button>
       <View className="h-4" />
       <Button variant="secondary" onPress={() => { void lock().then(() => { if (router.canDismiss()) router.dismissAll(); router.replace({ pathname: '/login', params: { role: 'owner' } }); }); }}>Lock App</Button>
       <Text className="mt-3 font-poppins text-[12px] leading-[18px] text-text-secondary">Locking keeps this device session for PIN unlock. Full logout ends the session and requires your password.</Text>
