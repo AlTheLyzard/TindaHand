@@ -9,9 +9,12 @@ from typing import List
 from database import get_db
 from auth import get_current_user, require_role, hash_pin, verify_pin, verify_password, hash_password
 from models import MayAri, Kahera
+import json
+
 from schemas import (
     ProfileUpdate, PinChangeRequest,
     CashierOut, CashierUpdate, OkResponse,
+    CashierPermissionsOut, CashierPermissionsUpdate,
 )
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -146,3 +149,46 @@ def update_cashier(
         status="active" if c.is_active else "inactive",
         avatarId=c.avatar_id,
     )
+
+
+def _resolve_cashier(db, cashier_id: str, owner_id: int):
+    """Parse TH-KH-XXXX and return the Kahera row, or raise 422/404."""
+    try:
+        db_cashier_id = int(cashier_id.replace("TH-KH-", ""))
+    except ValueError:
+        raise HTTPException(422, "Invalid cashier ID format")
+    c = db.query(Kahera).filter(
+        Kahera.id == db_cashier_id,
+        Kahera.owner_id == owner_id,
+    ).first()
+    if not c:
+        raise HTTPException(404, "Cashier not found")
+    return c
+
+
+@router.get("/cashiers/{cashier_id}/permissions", response_model=CashierPermissionsOut)
+def get_cashier_permissions(
+    cashier_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role("owner")),
+):
+    owner_id = current_user["db_id"]
+    c = _resolve_cashier(db, cashier_id, owner_id)
+    permissions: list[str] = json.loads(c.permissions_json) if c.permissions_json else []
+    return CashierPermissionsOut(cashier_id=cashier_id, permissions=permissions)
+
+
+@router.patch("/cashiers/{cashier_id}/permissions", response_model=CashierPermissionsOut)
+def update_cashier_permissions(
+    cashier_id: str,
+    body: CashierPermissionsUpdate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role("owner")),
+):
+    owner_id = current_user["db_id"]
+    c = _resolve_cashier(db, cashier_id, owner_id)
+    # Deduplicate and store as JSON array.
+    unique_perms = list(dict.fromkeys(body.permissions))
+    c.permissions_json = json.dumps(unique_perms)
+    db.commit()
+    return CashierPermissionsOut(cashier_id=cashier_id, permissions=unique_perms)

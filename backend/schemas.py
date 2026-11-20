@@ -487,6 +487,15 @@ class CashierUpdate(BaseModel):
     avatar_id: Optional[str] = None
     is_active: Optional[bool] = None
 
+class CashierPermissionsOut(BaseModel):
+    """Shape returned by GET /settings/cashiers/{id}/permissions."""
+    cashier_id: str                  # TH-KH-XXXX
+    permissions: List[str]           # e.g. ["pos", "inventory-edit", "restock"]
+
+class CashierPermissionsUpdate(BaseModel):
+    """Body for PATCH /settings/cashiers/{id}/permissions."""
+    permissions: List[str]
+
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # GENERIC RESPONSES

@@ -408,3 +408,26 @@ export async function updateCashier(kahera_id: string, data: Partial<{
     body: JSON.stringify(payload),
   });
 }
+
+/** Fetch the persisted permissions list for a single cashier. */
+export async function getCashierPermissions(kahera_id: string): Promise<readonly string[]> {
+  const data = await apiFetch<{ cashier_id: string; permissions: string[] }>(
+    `/settings/cashiers/${kahera_id}/permissions`,
+  );
+  return data.permissions;
+}
+
+/** Overwrite the full permissions list for a single cashier. */
+export async function updateCashierPermissions(
+  kahera_id: string,
+  permissions: readonly string[],
+): Promise<readonly string[]> {
+  const data = await apiFetch<{ cashier_id: string; permissions: string[] }>(
+    `/settings/cashiers/${kahera_id}/permissions`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ permissions: [...permissions] }),
+    },
+  );
+  return data.permissions;
+}
