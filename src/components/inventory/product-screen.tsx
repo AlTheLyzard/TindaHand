@@ -78,7 +78,11 @@ export function ProductScreen() {
   }
   function finish(message: string) {
     disablePrevention(); setLeaving(true);
-    const action = () => { setFeedback(message); router.dismissTo('/owner-inventory'); };
+    // Kahera (operator) lives under /operator-inventory; owners under /owner-inventory.
+    // Sending Kahera to /owner-inventory would hit the owner-only guard and redirect
+    // her straight to the role-selection screen.
+    const inventoryRoot = owner ? '/owner-inventory' : '/operator-inventory';
+    const action = () => { setFeedback(message); router.dismissTo(inventoryRoot); };
     if (confirmation) { pending.current = action; setConfirmation(null); } else action();
   }
   const update = (key: keyof ProductDraft, value: string | undefined) => {
