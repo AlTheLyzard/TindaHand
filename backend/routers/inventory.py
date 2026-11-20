@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from auth import get_current_user, require_role
-from models import Product, StockBatch, Asset, Restock
+from models import Product, StockBatch, Asset, Restock, Kahera
 from schemas import (
     ProductOut, ProductCreate, ProductUpdate,
     StockBatchOut, RestockIn, RestockOut,
@@ -62,6 +62,24 @@ def _owner_id_str(owner_id: int) -> str:
     return f"TH-MA-{owner_id:04d}"
 
 
+def _resolve_owner_id(db: Session, current_user: dict) -> int:
+    """
+    Return the May-Ari owner's DB id regardless of whether the JWT belongs to
+    an owner or a Kahera.  Kahera JWTs carry owner_db_id directly (set at
+    login time), so no extra DB query is needed.
+    """
+    if current_user["role"] == "cashier":
+        owner_db_id = current_user.get("owner_db_id")
+        if owner_db_id is not None:
+            return int(owner_db_id)
+        # Fallback: look up from the Kahera row (older tokens without owner_db_id)
+        kahera = db.query(Kahera).filter(Kahera.id == current_user["db_id"]).first()
+        if not kahera:
+            raise HTTPException(404, "Kahera account not found")
+        return kahera.owner_id
+    return current_user["db_id"]
+
+
 # ── PRODUCTS ─────────────────────────────────────────────────────────────────
 
 @router.get("/products", response_model=List[ProductOut])
@@ -69,7 +87,9 @@ def list_products(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
-    owner_id = current_user["db_id"]
+    # For a Kahera token, resolve to the owner's id so she sees the same
+    # product catalogue as her May-Ari.
+    owner_id = _resolve_owner_id(db, current_user)
     products = (
         db.query(Product)
         .filter(Product.owner_id == owner_id, Product.is_deleted == False)
@@ -136,7 +156,7 @@ def get_product(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
-    owner_id = current_user["db_id"]
+    owner_id = _resolve_owner_id(db, current_user)
     p = db.query(Product).filter(
         Product.id == product_id,
         Product.owner_id == owner_id,
@@ -206,9 +226,9 @@ def restock_product(
     product_id: str,
     body: RestockIn,
     db: Session = Depends(get_db),
-    current_user = Depends(require_role("owner")),
+    current_user = Depends(get_current_user),   # Kahera can also restock
 ):
-    owner_id = current_user["db_id"]
+    owner_id = _resolve_owner_id(db, current_user)
     p = db.query(Product).filter(
         Product.id == product_id,
         Product.owner_id == owner_id,

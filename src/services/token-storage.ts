@@ -9,6 +9,9 @@ const KAHERA_ID_KEY = 'tindahand_kahera_id';
 // The Choose Account screen reads these to show cards without any network call.
 const HAS_OWNER_KEY = 'tindahand_has_owner';
 const HAS_KAHERAS_KEY = 'tindahand_has_kaheras';
+// Persisted lock flag — set when the session is locked (screen off / 3-min background timer).
+// Cleared on fresh login. Survives a cold restart so the app shows PIN screen, not full login.
+const SESSION_LOCKED_KEY = 'tindahand_session_locked';
 
 export async function saveToken(token: string, ownerName: string, ownerId: string, role: 'owner' | 'cashier' = 'owner', kaheraId?: string): Promise<void> {
   await SecureStore.setItemAsync(TOKEN_KEY, token);
@@ -17,6 +20,8 @@ export async function saveToken(token: string, ownerName: string, ownerId: strin
   await SecureStore.setItemAsync(ROLE_KEY, role);
   if (kaheraId) await SecureStore.setItemAsync(KAHERA_ID_KEY, kaheraId);
   else await SecureStore.deleteItemAsync(KAHERA_ID_KEY).catch(() => {});
+  // A new login clears the persisted lock flag — the user just authenticated.
+  await SecureStore.deleteItemAsync(SESSION_LOCKED_KEY).catch(() => {});
 }
 
 export async function getRole(): Promise<'owner' | 'cashier'> {
@@ -43,6 +48,9 @@ export async function getOwnerId(): Promise<string | null> {
 export async function clearToken(): Promise<void> {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
   await SecureStore.deleteItemAsync(OWNER_NAME_KEY);
+  // Clear the lock flag too — an explicit logout means the user is fully out,
+  // so there's nothing to unlock on the next cold restart.
+  await SecureStore.deleteItemAsync(SESSION_LOCKED_KEY).catch(() => {});
   // Keep OWNER_ID_KEY, HAS_OWNER_KEY, HAS_KAHERAS_KEY — these are offline-first
   // flags the Choose Account screen reads to show cards without any network call.
   // They are never cleared on logout.
@@ -64,4 +72,19 @@ export async function getHasOwner(): Promise<boolean> {
 
 export async function getHasKaheras(): Promise<boolean> {
   return (await SecureStore.getItemAsync(HAS_KAHERAS_KEY)) === '1';
+}
+
+/** Save the locked state so a cold restart shows PIN screen, not the full login screen. */
+export async function saveSessionLocked(): Promise<void> {
+  await SecureStore.setItemAsync(SESSION_LOCKED_KEY, '1');
+}
+
+/** Returns true if the session was locked when the app last closed. */
+export async function getSessionLocked(): Promise<boolean> {
+  return (await SecureStore.getItemAsync(SESSION_LOCKED_KEY)) === '1';
+}
+
+/** Clear the locked flag — call when the user successfully unlocks with PIN. */
+export async function clearSessionLocked(): Promise<void> {
+  await SecureStore.deleteItemAsync(SESSION_LOCKED_KEY).catch(() => {});
 }

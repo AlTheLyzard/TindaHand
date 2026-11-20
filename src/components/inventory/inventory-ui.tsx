@@ -157,12 +157,21 @@ export function InventoryFeedback() {
   const { feedback, setFeedback } = useInventory();
   return <InvModal visible={!!feedback} title={t("inventory.changes.saved")} onClose={() => setFeedback('')}><Text accessibilityRole="alert" className="font-poppins text-[14px] text-[#1D5D21]">{feedback}</Text><Button onPress={() => setFeedback('')}>{t("inventory.close")}</Button></InvModal>;
 }
+/** Pads single-digit month/day so "2028-9-1" → "2028-09-01". No-op if already padded or not a date-like string. */
+function normalizeDateInput(raw: string): string {
+  const m = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!m) return raw;
+  return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+}
+
 export function InvDateField({ label, value, onChange, error, compact = false, inputRef, required = true, disabled = false, displayLabel }: { label: string; value: string; onChange: (date: string) => void; error?: string; compact?: boolean; inputRef?: Ref<TextInputInstance>; required?: boolean; disabled?: boolean; displayLabel?: string }) {
   const [open, setOpen] = useState(false);
   const presentation = useContext(InventoryPresentation);
   function pickDate() { if (disabled) return; Keyboard.dismiss(); setOpen(true); }
-  return <View className="gap-2" style={{ opacity: disabled ? 0.5 : 1 }} pointerEvents={disabled ? 'none' : 'auto'}>{compact ? presentation ? <InvField batch inputRef={inputRef} editable={!disabled} label={(displayLabel ?? label) + (required ? ' *' : '')} accessibilityLabel={label + (required ? ', required' : '')} value={value} onChangeText={onChange} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" error={error} maxLength={10} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} trailing={<IconButton disabled={disabled} accessibilityLabel={'Choose ' + label.toLowerCase()} onPress={pickDate} icon={() => <BackgroundImage source={require('@/assets/images/inventory/calendar.svg')} tintColor="#4A607A" contentFit="contain" style={{ width: 18, height: 18 }} />} />} /> : <QuickAddField requiredIndicator="asterisk" ref={inputRef} editable={!disabled} date required={required} onPickDate={pickDate} label={label} value={value} onChangeText={onChange} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" error={error} maxLength={10} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} /> : <>
-    <InvField label={label} value={value} onChangeText={onChange} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" error={error} maxLength={10} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
+  // Normalize (pad month/day) when the user finishes editing, not while typing.
+  function handleBlur() { const n = normalizeDateInput(value); if (n !== value) onChange(n); }
+  return <View className="gap-2" style={{ opacity: disabled ? 0.5 : 1 }} pointerEvents={disabled ? 'none' : 'auto'}>{compact ? presentation ? <InvField batch inputRef={inputRef} editable={!disabled} label={(displayLabel ?? label) + (required ? ' *' : '')} accessibilityLabel={label + (required ? ', required' : '')} value={value} onChangeText={onChange} onBlur={handleBlur} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" error={error} maxLength={10} returnKeyType="done" onSubmitEditing={() => { handleBlur(); Keyboard.dismiss(); }} trailing={<IconButton disabled={disabled} accessibilityLabel={'Choose ' + label.toLowerCase()} onPress={pickDate} icon={() => <BackgroundImage source={require('@/assets/images/inventory/calendar.svg')} tintColor="#4A607A" contentFit="contain" style={{ width: 18, height: 18 }} />} />} /> : <QuickAddField requiredIndicator="asterisk" ref={inputRef} editable={!disabled} date required={required} onPickDate={pickDate} label={label} value={value} onChangeText={onChange} onBlur={handleBlur} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" error={error} maxLength={10} returnKeyType="done" onSubmitEditing={() => { handleBlur(); Keyboard.dismiss(); }} /> : <>
+    <InvField label={label} value={value} onChangeText={onChange} onBlur={handleBlur} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" error={error} maxLength={10} returnKeyType="done" onSubmitEditing={() => { handleBlur(); Keyboard.dismiss(); }} />
     <Button variant="secondary" accessibilityLabel={t("inventory.choose", { value1: label.toLowerCase() })} onPress={pickDate} icon={props => <PosIcon name="calendar" {...props} />}>{t("inventory.choose.date")}</Button></>}
     <InvModal visible={open} title={fieldLabel(label)} onClose={() => setOpen(false)} bottomPadding={0}>
       {open && <DatePicker value={value} minYear={compact ? 1 : 1900} onChange={date => { onChange(date); setOpen(false); }} onClose={() => setOpen(false)} />}

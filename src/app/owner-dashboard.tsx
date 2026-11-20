@@ -14,6 +14,8 @@ export default function OwnerDashboardRoute() {
   const {
     owner: mockOwner,
     mockSession,
+    deviceSession,
+    restoring,
     clear,
     loginToastExpiresAt,
     dismissLoginToast,
@@ -43,10 +45,13 @@ export default function OwnerDashboardRoute() {
     })();
   }, []);
 
-  const owner = mockOwner ?? (serverOwner === "loading" ? null : serverOwner);
-  const isLoading = !mockOwner && serverOwner === "loading";
+  const owner = mockOwner ?? (serverOwner === 'loading' ? null : serverOwner);
+  const isLoading = restoring || (!mockOwner && serverOwner === 'loading');
 
   if (isLoading) return null; // wait for JWT check before redirecting
+  // If the session is locked (background timer or cold restart with persisted lock),
+  // redirect to the PIN screen instead of showing the dashboard.
+  if (deviceSession?.locked) return <Redirect href={{ pathname: '/login', params: { role: 'owner' } }} />;
   if (!owner) return <Redirect href="/choose-account" />;
 
   async function handleLogout() {

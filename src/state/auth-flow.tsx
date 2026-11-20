@@ -16,7 +16,7 @@ export function releaseAuthLock()  { _lockSuppressed = false; }
 import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
 import { settingsService } from '@/services/settings';
-import { getKaheraId, getOwnerId, getOwnerName, getRole, getToken } from '@/services/token-storage';
+import { clearSessionLocked, getKaheraId, getOwnerId, getOwnerName, getRole, getSessionLocked, getToken, saveSessionLocked } from '@/services/token-storage';
 import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
 import { defaultOperatorPermissions } from '@/utils/operator-access';
 
@@ -103,20 +103,28 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
       // No mock session — try the real JWT stored in SecureStore.
       const token = await getToken();
       if (token) {
-        const [me, storedRole, kaheraId, savedOwnerId, savedOwnerName] = await Promise.all([
+        const [me, storedRole, kaheraId, savedOwnerId, savedOwnerName, wasLocked] = await Promise.all([
           fetchMe(token).catch(() => null),   // graceful offline fallback
           getRole(),
           getKaheraId(),
           getOwnerId(),
           getOwnerName(),
+          getSessionLocked(),   // was the session locked when the app last closed?
         ]);
-        // Use live API data when available; fall back to what was saved at last login.
-        const resolvedId   = me?.formatted_id ?? savedOwnerId;
-        const resolvedName = me?.name         ?? savedOwnerName ?? '';
+        // For a cashier, /auth/me returns Kahera's own ID (TH-KH-XXXX), NOT the
+        // owner's ID.  Using it as ownerId would point the session at the wrong store.
+        // Always use savedOwnerId for cashier sessions — it was saved correctly at login.
+        // For owners, prefer the live formatted_id from /me (more reliable than the
+        // typed ID saved at login).
+        const isCashier    = storedRole === 'cashier';
+        const resolvedId   = isCashier ? savedOwnerId : (me?.formatted_id ?? savedOwnerId);
+        const resolvedName = me?.name ?? savedOwnerName ?? '';
         if (resolvedId) {
           const owner = { id: resolvedId, name: resolvedName };
-          if (storedRole === 'cashier' && kaheraId) {
+          if (isCashier && kaheraId) {
             // Cashier session — build an operator DeviceSession.
+            // If the session was locked when the app last closed, restore it as locked
+            // so the app shows the PIN screen instead of going straight to the POS.
             const realSession: DeviceSession = {
               kind: 'mock',
               id: token,
@@ -127,7 +135,7 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
               displayName: resolvedName,
               operator: { id: kaheraId, name: resolvedName, permissions: [...defaultOperatorPermissions] },
               expiresAt: Date.now() + 8 * 60 * 60 * 1000,
-              locked: false,
+              locked: wasLocked,
             };
             authenticationService.seedRealOwner(owner);
             // Seed the Kahera into the local settings store so the profile screen
@@ -143,13 +151,15 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
             return realSession;
           }
           // Owner session.
+          // If the session was locked when the app last closed, restore it as locked
+          // so the app shows the PIN screen instead of going straight to the dashboard.
           const realSession: DeviceSession = {
             kind: 'mock',           // discriminant reused; not sent anywhere
             id: token,
             role: 'owner',
             owner,
             expiresAt: Date.now() + 8 * 60 * 60 * 1000,
-            locked: false,
+            locked: wasLocked,
           };
           // Seed the mock directory so login.tsx's directory.owners.length check passes.
           authenticationService.seedRealOwner(owner);
@@ -180,6 +190,8 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
 
   async function lock() {
     await authenticationService.lockSession();
+    // Persist the locked flag so a cold restart shows PIN screen, not full login.
+    await saveSessionLocked();
     const current = await authenticationService.restoreSession();
     setDeviceSession(current);
     if (current) setDraft(emptyDraft);
@@ -188,14 +200,14 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void Promise.resolve().then(() => refreshSession());
     // Grace period before locking: short app switches (notification shade, quick-settings,
-    // system overlays) go inactive for under 2 seconds. Only lock after 2 s in background
-    // so brief switches don't kick the user back to the PIN screen.
+    // system overlays) go inactive briefly. Only lock after 3 minutes in background
+    // so brief switches don't kick the user back to the PIN screen (matches banking apps).
     let lockTimer: ReturnType<typeof setTimeout> | null = null;
     const subscription = AppState.addEventListener('change', state => {
       if (state !== 'active') {
         // Skip the lock while a system overlay (photo picker, camera, etc.) is open.
         if (_lockSuppressed) return;
-        lockTimer = setTimeout(() => { lockTimer = null; void lock(); }, 2000);
+        lockTimer = setTimeout(() => { lockTimer = null; void lock(); }, 180000);
       } else {
         if (lockTimer !== null) { clearTimeout(lockTimer); lockTimer = null; }
         void refreshSession();
