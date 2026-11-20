@@ -9,6 +9,8 @@ import { useKaheraList } from "@/hooks/use-kahera-list";
 import { useProfileSnapshot } from "@/hooks/use-owner-profile";
 import { authenticationService } from "@/services/authentication";
 import { createKahera } from "@/services/kahera-api";
+import { MOCK_AUTH_ENABLED } from "@/config/mock-auth";
+import { updateCashier } from "@/services/settings";
 import { useAuthFlow } from "@/state/auth-flow";
 import { useSettings } from "@/state/settings";
 import type { OperatorPermission } from "@/types/auth";
@@ -211,18 +213,22 @@ function OperatorDetails({
     setStatusBusy(true);
     setStatusError("");
     try {
-      const result = await authenticationService.setOperatorActive({
-        operatorId: operator.id,
-        active: inactive,
-      });
-      if (!active.current) return;
-      if (!result.ok) setStatusError(result.message);
-      else
-        setFeedback(
-          inactive
-            ? "Kahera reactivated with saved permissions."
-            : "Kahera deactivated. Stored permissions and transaction history are preserved.",
-        );
+      if (MOCK_AUTH_ENABLED) {
+        const result = await authenticationService.setOperatorActive({
+          operatorId: operator.id,
+          active: inactive,
+        });
+        if (!active.current) return;
+        if (!result.ok) { setStatusError(result.message); return; }
+      } else {
+        await updateCashier(operator.id, { isActive: inactive });
+        if (!active.current) return;
+      }
+      setFeedback(
+        inactive
+          ? "Kahera reactivated with saved permissions."
+          : "Kahera deactivated. Stored permissions and transaction history are preserved.",
+      );
     } catch {
       if (active.current)
         setStatusError("Unable to change account status. Please retry.");
