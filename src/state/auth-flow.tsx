@@ -15,7 +15,7 @@ export function suppressAuthLock() { _lockSuppressed = true; }
 export function releaseAuthLock()  { _lockSuppressed = false; }
 import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
-import { getKaheraId, getRole, getToken } from '@/services/token-storage';
+import { getKaheraId, getOwnerId, getOwnerName, getRole, getToken } from '@/services/token-storage';
 import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
 import { defaultOperatorPermissions } from '@/utils/operator-access';
 
@@ -99,13 +99,18 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
       // No mock session — try the real JWT stored in SecureStore.
       const token = await getToken();
       if (token) {
-        const [me, storedRole, kaheraId] = await Promise.all([
-          fetchMe(token),
+        const [me, storedRole, kaheraId, savedOwnerId, savedOwnerName] = await Promise.all([
+          fetchMe(token).catch(() => null),   // graceful offline fallback
           getRole(),
           getKaheraId(),
+          getOwnerId(),
+          getOwnerName(),
         ]);
-        if (me) {
-          const owner = { id: me.formatted_id, name: me.name };
+        // Use live API data when available; fall back to what was saved at last login.
+        const resolvedId   = me?.formatted_id ?? savedOwnerId;
+        const resolvedName = me?.name         ?? savedOwnerName ?? '';
+        if (resolvedId) {
+          const owner = { id: resolvedId, name: resolvedName };
           if (storedRole === 'cashier' && kaheraId) {
             // Cashier session — build an operator DeviceSession.
             const realSession: DeviceSession = {
@@ -113,10 +118,10 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
               id: token,
               role: 'operator',
               owner,
-              ownerId: me.formatted_id,
+              ownerId: resolvedId,
               operatorId: kaheraId,
-              displayName: me.name,
-              operator: { id: kaheraId, name: me.name, permissions: [...defaultOperatorPermissions] },
+              displayName: resolvedName,
+              operator: { id: kaheraId, name: resolvedName, permissions: [...defaultOperatorPermissions] },
               expiresAt: Date.now() + 8 * 60 * 60 * 1000,
               locked: false,
             };
