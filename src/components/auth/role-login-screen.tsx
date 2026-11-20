@@ -99,6 +99,8 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
   </View> : undefined;
   const pinIdentity = !password && owner && rememberedId ? identity : undefined;
   const pinLoginButtonHeight = Math.max(tokens.button.height, tokens.button.lineHeight * fontScale + tokens.button.paddingVertical * 2);
+  const loginHint = password ? undefined : owner ? 'Welcome back. Enter your four-digit PIN to unlock your store.'
+    : rememberedId ? 'Log in with your assigned four-digit Operator PIN.' : undefined;
   return <AuthBackground headerWave>
     <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ flexGrow: 1 }}>
@@ -108,7 +110,7 @@ export function RoleLoginScreen({ role, onBack, onSuccess, loggedOut = false, pi
           <View className="mt-12 px-2" style={{ flexShrink: 0 }}>
             {owner && <Text className="font-poppins-bold text-[12px] text-[#2675DB]" style={{ lineHeight: 18 * fontScale }}>{owner ? 'OWNER · STORE OWNER' : 'OPERATOR · STORE OPERATOR'}</Text>}
             <Text accessibilityRole="header" className="mt-2 font-poppins-bold text-[30px] text-brand" style={{ lineHeight: 42 * fontScale }}>{owner ? 'Owner Login' : 'Operator Login'}</Text>
-            <Text className="mt-2 font-poppins text-[10px] text-text-secondary" style={{ lineHeight: 15 * fontScale }}>{password ? rememberedId ? 'Log in with your password to authenticate this device.' : 'Log in with your permanent Owner ID and password to authenticate this device.' : owner ? 'Welcome back. Enter your four-digit PIN to unlock your store.' : rememberedId ? 'Log in with your assigned four-digit Operator PIN.' : 'Log in with your store’s Owner ID and your assigned four-digit Operator PIN.'}</Text>
+            {loginHint && <Text className="mt-2 font-poppins text-[10px] text-text-secondary" style={{ lineHeight: 15 * fontScale }}>{loginHint}</Text>}
             {flow.restoring ? <Text accessibilityRole="alert" className="mt-5 font-poppins text-[12px] text-brand">Restoring login details…</Text> : <>
               <View className="px-3" style={{ marginTop: tokens.spacing.four, gap: tokens.spacing.three, flexShrink: 0 }}>
                 {(!rememberedId || !owner) && <FormField ref={idInput} label="Owner ID" requiredIndicator="asterisk" value={id}

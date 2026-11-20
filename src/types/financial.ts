@@ -8,6 +8,11 @@ export type FinancialAccount = { id: string; name: string; category: AccountCate
 export type JournalLine = { accountId: string; debit: number; credit: number };
 /** Only posted, saved entries reach this read model. Monetary values are integer centavos. */
 export type JournalEntry = { id: string; date: string; description: string; lines: readonly JournalLine[] };
+// TODO(backend): Verify financial report types against the approved accounting API schema.
+// - Method/Action: GET / Read a financial report by kind and period
+// - Expected Input/Payload: ReportKind and ReportSelection with date-only from/to values
+// - Expected Response: FinancialReport with store timezone, generatedAt, sourceUpdatedAt, and statement totals
+// - UI State to Wire: Map server report data and empty/error responses into report loading and filter state
 export type FinancialDataset = { storeName: string; timezone: string; updatedAt: string; accounts: readonly FinancialAccount[]; entries: readonly JournalEntry[] };
 export type JournalDay = { date: string; entries: JournalEntry[]; debit: number; credit: number };
 export type LedgerRow = { entryId: string; date: string; description: string; debit: number; credit: number; balance: number };

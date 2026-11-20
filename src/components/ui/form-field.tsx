@@ -4,6 +4,7 @@ import { IconButton } from '@/components/ui/button';
 import { FieldLabel } from './field-label';
 import { VisibilityIcon } from '@/components/ui/visibility-icon';
 import tokens from '@/constants/design-tokens.json';
+import { getFormFieldMaskState } from '@/utils/form-field-mask-state';
 import { useTranslation } from '@/i18n/use-translation';
 import { useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Platform, StyleSheet, Text, View, useWindowDimensions, type TextInputProps, type TextInputInstance } from 'react-native';
@@ -13,6 +14,7 @@ type FormFieldProps = TextInputProps & {
   error?: string;
   help?: string;
   password?: boolean;
+  passwordIndicators?: boolean;
   pin?: boolean;
   pinIndicators?: boolean;
   pinVisibilityToggle?: boolean;
@@ -28,7 +30,7 @@ type FormFieldProps = TextInputProps & {
   keyboardScrollAfter?: number;
 };
 
-export function FormField({ label, error, help, password, pin, pinIndicators = false, pinVisibilityToggle = false, prefix, money = prefix === '\u20b1', errorVariant = 'default', ref, required = true, requiredIndicator: _requiredIndicator, leadingContent, keyboardScrollAfter = 0, ...props }: FormFieldProps) {
+export function FormField({ label, error, help, password, passwordIndicators = false, pin, pinIndicators = false, pinVisibilityToggle = false, prefix, money = prefix === '\u20b1', errorVariant = 'default', ref, required = true, requiredIndicator: _requiredIndicator, leadingContent, keyboardScrollAfter = 0, ...props }: FormFieldProps) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const [visible, setVisible] = useState(false);
@@ -38,7 +40,8 @@ export function FormField({ label, error, help, password, pin, pinIndicators = f
   const [restoredSelection, setRestoredSelection] = useState<{ start: number; end: number }>();
   useImperativeHandle(ref, () => input.current!, []);
   const Input = money ? MoneyInput : TextInput;
-  const showPinIndicators = pin && pinIndicators && !visible;
+  const maskState = getFormFieldMaskState({ password, passwordIndicators, pin, pinIndicators, pinVisibilityToggle, value: props.value, caretHidden: props.caretHidden, selectionColor: props.selectionColor, accentColor: tokens.color.accentBase, visible });
+  const { showPinIndicators, showPasswordIndicators, showMaskIndicators, hidePlaceholder } = maskState;
 
   return (
     <KeyboardField scrollAfter={keyboardScrollAfter}>
@@ -63,24 +66,25 @@ export function FormField({ label, error, help, password, pin, pinIndicators = f
             accessibilityHint={error ? undefined : help || (pin ? t('fields.pinHint') : undefined)}
             autoCorrect={false}
             spellCheck={false}
-            secureTextEntry={(pin && !(pinVisibilityToggle && visible)) || (password && !visible)}
+            secureTextEntry={maskState.secureTextEntry}
             placeholderTextColor={props.placeholderTextColor ?? `${tokens.color.textPrimary}99`}
-            placeholder={showPinIndicators ? undefined : props.placeholder}
-            caretHidden={showPinIndicators || props.caretHidden}
-            selectionColor={showPinIndicators ? 'transparent' : props.selectionColor}
+            placeholder={hidePlaceholder ? undefined : props.placeholder}
+            caretHidden={maskState.caretHidden}
+            selectionColor={maskState.selectionColor}
             onFocus={(event) => { setFocused(true); props.onFocus?.(event); }}
             onBlur={(event) => {
               setFocused(false);
               props.onBlur?.(event);
             }}
             className={`min-w-0 flex-1 ${prefix ? 'pl-1 pr-5' : 'px-5'} font-poppins-bold text-[12px] web:focus:outline-none`}
-            style={[styles.input, props.style, showPinIndicators && styles.maskedInput]}
+            style={[styles.input, props.style, maskState.textColor && { color: maskState.textColor }]}
           />
-          {showPinIndicators && (
-            // Keep the native secure input for editing and accessibility. Only this
-            // decorative row draws the masks, with identical geometry in every state.
-            <View pointerEvents="none" accessible={false} aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.pinIndicators}>
-              {Array.from({ length: props.maxLength ?? 4 }, (_, index) => (
+          {showMaskIndicators && (
+            // Keep the native secure input for editing and accessibility. The overlay
+            // reuses the PIN dot size; password spacing follows the 12-point text advance.
+            <View pointerEvents="none" accessible={false} aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
+              style={[styles.pinIndicators, showPasswordIndicators && { gap: Math.max(0, 12 * fontScale - 8) }]}>
+              {Array.from({ length: showPinIndicators ? props.maxLength ?? 4 : Array.from(props.value ?? '').length }, (_, index) => (
                 <View key={index} style={[styles.pinIndicator, index < (props.value?.length ?? 0) && styles.pinIndicatorFilled]} />
               ))}
             </View>
@@ -141,7 +145,6 @@ const styles = StyleSheet.create({
     textAlignVertical: 'center',
   },
   inputContainer: { flex: 1, minWidth: 0, height: '100%', justifyContent: 'center', position: 'relative' },
-  maskedInput: { color: 'transparent' },
   pinIndicators: {
     position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
     flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.two,

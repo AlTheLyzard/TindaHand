@@ -57,12 +57,11 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   const scroll = useRef<ScrollViewInstance>(null);
   const summary = summarizeDashboard(period, data, preview.empty ? 0 : addedCentavos);
   const stock = inventorySummary(preview.empty ? [] : products, todayInManila());
-  // TODO(BACKEND): Replace growthPreview and the demo summary percentage together
-  // with validated GrowthMetrics: source, reportingPeriod, metric, unit,
-  // ordered points [{ timestamp (ISO), metricValue (integer centavos) }], and
-  // percentageChange (number | null) for that same period and comparison window.
-  // Never mix real percentages with placeholder history. No endpoint is defined yet.
-  // See docs/api-contract.md#dashboard for the proposed display contract.
+  // TODO(backend): Replace the decorative growth series and demo comparison with confirmed analytics.
+  // - Method/Action: GET / Fetch sales growth series and comparison summary
+  // - Expected Input/Payload: Selected period, comparison window, timezone, and authenticated store session
+  // - Expected Response: GrowthMetrics and matching summary with the same reporting window
+  // - UI State to Wire: Show a true empty state or server error instead of demo trend data
   const growthMetrics = summary.saleCount > 0 && period === growthPreview.reportingPeriod ? { ...growthPreview, percentageChange: summary.growth } : null;
   const [todayDate] = useState(() => new Date());
   const dateOptions = { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' } as const;
@@ -104,9 +103,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     <DashboardNavigation onHome={() => scroll.current?.scrollTo({ y: 0, animated: true })} onPos={() => router.navigate('/owner-pos')} onUnavailable={unavailable} />
     <DashboardQuickAdd onSelect={action => { preview.reset(); setQuickKind(action === 'dashboard.quick.customerDebt' ? 'customerDebt' : action === 'dashboard.quick.storeDebt' ? 'storeDebt' : 'expense'); }} />
     {quickKind && <QuickAddModal initialKind={quickKind} onClose={() => setQuickKind(null)} />}
-    {cashToastExpiresAt !== null && <View pointerEvents="box-none" className="absolute left-0 right-0 items-center px-4" style={{ top: insets.top + 56 }}>
-      <View pointerEvents="box-none" className="w-full max-w-[460px]"><RegistrationToast expiresAt={cashToastExpiresAt} onDismiss={dismissCashToast} title="Amount Saved!" message="Cash added successfully." /></View>
-    </View>}
+    {cashToastExpiresAt !== null && <RegistrationToast expiresAt={cashToastExpiresAt} onDismiss={dismissCashToast} title="Amount Saved!" message="Cash added successfully." />}
     {cashOpen && <AddCashModal onClose={() => setCashOpen(false)} onSaved={() => { setCashOpen(false); setCashToastExpiresAt(Date.now() + 15000); }} />}
     <Modal visible={!!notice} onRequestClose={() => setNotice(null)}>
       <View className="flex-1 items-center justify-center px-6">

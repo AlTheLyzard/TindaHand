@@ -1,6 +1,11 @@
 import type { PaymentMethod } from './pos';
 
 /** Read-only projection of existing mock ledgers, not a new persistence schema. */
+// TODO(backend): Verify transaction history row fields against the canonical events API schema.
+// - Method/Action: GET / Read paginated transaction history
+// - Expected Input/Payload: Page, limit, search, type, date range, and payment method filters
+// - Expected Response: { items: TransactionRecord[]; total: number } with stable source IDs and timestamps
+// - UI State to Wire: Use returned total for pagination and map canonical rows into history details
 export type TransactionType = 'sale' | 'customerPayment' | 'expense' | 'customerDebt' | 'storeDebt' | 'supplierPayment';
 export type TransactionMethod = Exclude<PaymentMethod, 'partial'>;
 export type TransactionRecord = {

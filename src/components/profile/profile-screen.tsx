@@ -27,8 +27,8 @@ export function ProfileScreen() {
     // Consume the receipt so repeated saves of the same kind show fresh feedback.
     router.setParams({ updated: undefined });
   }, [updated]));
-  return <ProfileFrame title="Profile" subtitle="Your account and store information" busy={busy}
-    feedback={feedback && <ProfileSuccess key={feedback.id} message={feedback.message} onDismiss={dismissFeedback} />}>
+  return <ProfileFrame title="Profile" subtitle="Your account and store information" busy={busy}>
+    {feedback && <ProfileSuccess key={feedback.id} message={feedback.message} onDismiss={dismissFeedback} />}
     {loading || error || !profile ? <ProfileUnavailable loading={loading} error={error} retry={reload} /> : <>
       <SettingsCard>
         <View className="flex-row flex-wrap items-center gap-3">
@@ -47,10 +47,8 @@ export function ProfileScreen() {
         {profile.pendingEmail.address} is awaiting verification. Your registered email remains {profile.email}.
       </ProfileNotice><Button variant="secondary" onPress={() => router.push(`${profileRoot}/email`)}>Review Email Verification</Button></View>}
       <ProfileSection>Account</ProfileSection>
-      <SettingsCard>
-        <SettingsRow inCard title="Manage Operators" description="Accounts, PINs and permissions" icon="profile" onPress={() => router.push(operatorsRoot)} />
-        <View className="h-px bg-[#ADC9EE]" />
-        <SettingsRow inCard title="Settings" description="Preferences, security and support" icon="settings" onPress={() => router.navigate('/owner-menu/settings')} />
+      <SettingsCard compact>
+        <SettingsRow inCard compact title="Manage Operators" description="Accounts, PINs and permissions" icon="profile" onPress={() => router.push(operatorsRoot)} />
       </SettingsCard>
       <View className="min-h-5 flex-1" />
       {!!failure && <ProfileError message={failure} />}

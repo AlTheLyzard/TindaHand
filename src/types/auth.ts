@@ -18,6 +18,11 @@ export type RememberedIdentities = Partial<Record<AccountRole, string>>;
 export type IdentityStorage = { read(): string | null; write(value: string): void };
 
 /** Internal adapter result, not a backend wire schema. */
+// TODO(backend): Verify account and session models against the authentication API schemas.
+// - Method/Action: Auth / Register, authenticate, restore, and verify account sessions
+// - Expected Input/Payload: RegistrationFormValues or credential/session requests; secrets are request-only
+// - Expected Response: RegisteredOwner, DeviceSession, or AuthResult with server-issued role and capabilities
+// - UI State to Wire: Map canonical session/profile results and validation failures into the existing auth flow
 export type RegisteredOwner = { name: string; id: string };
 export type AccountDirectorySnapshot = Readonly<{
   owners: readonly RegisteredOwner[];

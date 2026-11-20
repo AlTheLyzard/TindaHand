@@ -35,6 +35,11 @@ const paginationDemoTransactions: readonly TransactionRecord[] = [
   { id: 'fixture:supplier-payment-002', sourceId: 'fixture-supplier-payment-002', ownerId: demoOwner.id, transactionNumber: 'DEMO-024', type: 'supplierPayment', occurredAt: '2026-09-28T16:40:00+08:00', description: 'Supplier Payment', partyName: 'Valley Grocer Supply', paymentMethod: null, amountCentavos: 25000, direction: 'out', debtId: 'fixture:store-debt-002' },
 ];
 
+// TODO(backend): Replace demo transaction rows with canonical store transaction events.
+// - Method/Action: GET / Fetch transaction history
+// - Expected Input/Payload: Authenticated session, page, limit, search, category, date range, and payment method
+// - Expected Response: { items: TransactionRecord[]; total: number }
+// - UI State to Wire: Replace local projection and drive pagination, filters, loading, and errors from the response
 export const transactionSeed: readonly TransactionRecord[] = [...recentActivityTransactions, ...paginationDemoTransactions];
 
 export const transactionCategories = [

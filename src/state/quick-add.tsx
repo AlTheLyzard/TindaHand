@@ -16,9 +16,11 @@ type QuickAddState = { records: readonly QuickAddRecord[]; totals: ReturnType<ty
   receivablePayments: readonly ReceivablePayment[]; confirmReceivablePayment: (token: string, debtId: string, amount: string) => Promise<ReceivablePayment>; receivableFeedback: string; dismissReceivableFeedback: () => void };
 const Context = createContext<QuickAddState | null>(null);
 export function QuickAddProvider({ children }: { children: ReactNode }) {
-  // TODO(BACKEND): Records/Map survive logout in this root provider, filtered by
-  // owner; the shared customer/POS debt ledger resets with inventory. Replace with authenticated reads and a
-  // deliberate cache/logout policy. See docs/backend-handoff.md#persistence.
+  // TODO(backend): Replace root-level demo records with an authenticated owner-scoped ledger/cache.
+  // - Method/Action: GET / Fetch quick-add ledgers; POST / Create or confirm debt/expense records
+  // - Expected Input/Payload: Session-derived owner scope, record drafts, linked IDs, and idempotency keys
+  // - Expected Response: QuickAddRecord[], PayablesLedger, and payment records
+  // - UI State to Wire: Define cache/logout policy, loading/errors, and refresh derived totals after confirmation
   const { owner } = useAuthFlow();
   const { store, getStore, dispatch } = useInventory();
   const receivables = createReceivablesService(getStore, dispatch);
@@ -40,6 +42,11 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
       payables: scopedPayables,
     };
   }, [allRecords, service, store.pos?.debts, store.receivablePayments]);
+  // TODO(backend): Keep drafts and feedback tied to confirmed quick-add/payment responses.
+  // - Method/Action: POST / Create expense or debt; POST / Record payable or receivable payment
+  // - Expected Input/Payload: Draft, debt ID, amount, and idempotency token under the current session
+  // - Expected Response: Canonical record/payment and refreshed ledger balances
+  // - UI State to Wire: Preserve modal drafts on error and update success feedback/totals only after confirmation
   async function save(token: string, draft: QuickAddDraft) {
     if (draft.kind === 'customerDebt') {
       const record = receivables.saveDebt(owner, token, draft);

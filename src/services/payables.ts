@@ -9,8 +9,11 @@ import { parsePaymentAmount } from '@/utils/pos-payment';
 const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
 
 /** Replaceable in-memory repository. No cash, inventory or expense posting. */
-// TODO(BACKEND): Authorize owner/store, transact creditor/debt/payment writes,
-// enforce current balance and durable idempotency, return canonical records.
+// TODO(backend): Replace the in-memory payable ledger with store-scoped reads and writes.
+// - Method/Action: GET / Fetch payables; POST / Create creditor/debt or record payment
+// - Expected Input/Payload: Authenticated Owner session, creditor/debt/payment fields, and idempotency key
+// - Expected Response: Canonical PayablesLedger records and updated debt balances
+// - UI State to Wire: Derive statuses from returned data and refresh lists after confirmed writes
 export function createPayablesRepository(seed: PayablesLedger = payablesSeed) {
   let ledger: PayablesLedger = {
     creditors: seed.creditors.map(row => ({ ...row })), debts: seed.debts.map(row => ({ ...row })), payments: seed.payments.map(row => ({ ...row })),
@@ -41,7 +44,7 @@ export function createPayablesRepository(seed: PayablesLedger = payablesSeed) {
       if (draft.creditorId && !creditor) throw new Error('Select an available creditor.');
       if (!creditor) creditor = { id: `creditor-${token}`, ownerId: owner.id, name: draft.name.trim() };
       const debt = { id: token, ownerId: owner.id, creditorId: creditor.id, name: creditor.name,
-        originalAmountCentavos: quickAddTotal(draft), dueDate: draft.dueDate || null, details: draft.details.trim(), occurredAt: new Date().toISOString() };
+        originalAmountCentavos: quickAddTotal(draft), borrowingType: 'cash' as const, dueDate: draft.dueDate || null, details: draft.details.trim(), occurredAt: new Date().toISOString() };
       ledger = { ...ledger, creditors: creditors.some(row => row.id === creditor.id) ? ledger.creditors : [...ledger.creditors, creditor], debts: [debt, ...ledger.debts] };
       saved.set(key, debt.id);
       return payableAsQuickAdd(debt, ledger.payments);

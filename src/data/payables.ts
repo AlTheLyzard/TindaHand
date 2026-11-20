@@ -4,11 +4,17 @@ import type { PayablesLedger } from '@/types/payables';
 
 const ownerId = demoOwner.id;
 /** Fictional examples from the supplied AP frames, with consistent arithmetic. */
+// TODO(backend): Replace demo payable debts and payments with the store ledger.
+// - Method/Action: GET / Fetch payable debts and payment history
+// - Expected Input/Payload: None (authenticated Owner session and applied filters)
+// - Expected Response: { debts: PayableDebt[]; payments: PayablePayment[] } with centavo amounts and date/timestamp fields
+// - UI State to Wire: Replace payable fixtures and derive balances/statuses from returned records
 export const payablesSeed: PayablesLedger = {
   creditors: [...mockCreditors, ...['Coca Cola Bottlers', 'Mang Arthuro', 'Yorme', 'Boy bunda', 'Kuya', 'Carmina', 'Anne', 'Arman Salon', 'Arthur Nery', 'Azalea', 'Binay', 'Bini Rha', 'Cheska', 'Camote Cue'].map((name, index) => ({ id: `demo-creditor-${index + 1}`, ownerId, name }))],
   debts: [
-    { id: 'demo-payable-cola', ownerId, creditorId: 'demo-creditor-1', name: 'Coca Cola Bottlers', originalAmountCentavos: 450000, dueDate: '2026-11-10', details: 'Beverage delivery', occurredAt: '2026-10-26T02:00:00Z' },
-    { id: 'demo-payable-arthuro', ownerId, creditorId: 'demo-creditor-2', name: 'Mang Arthuro', originalAmountCentavos: 120000, dueDate: '2026-11-12', details: 'Store supplies', occurredAt: '2026-10-02T02:00:00Z' },
+    { id: 'demo-payable-cola', ownerId, creditorId: 'demo-creditor-1', name: 'Coca Cola Bottlers', originalAmountCentavos: 450000, borrowingType: 'goods-stock', dueDate: '2026-11-10', details: 'Beverage delivery', occurredAt: '2026-10-26T02:00:00Z' },
+    { id: 'demo-payable-arthuro', ownerId, creditorId: 'demo-creditor-2', name: 'Mang Arthuro', originalAmountCentavos: 120000, borrowingType: 'goods-stock', dueDate: '2026-11-30', details: 'Store supplies', occurredAt: '2026-10-02T02:00:00Z' },
+    ...['2026-11-25', '2026-11-26', '2026-11-27'].map((dueDate, index) => ({ id: `demo-payable-cola-pending-${index + 1}`, ownerId, creditorId: 'demo-creditor-1', name: 'Coca Cola Bottlers', originalAmountCentavos: 5000, borrowingType: 'goods-stock' as const, dueDate, details: 'Beverage delivery', occurredAt: `2026-11-${String(13 + index).padStart(2, '0')}T02:00:00Z` })),
     ...['Yorme', 'Boy bunda', 'Kuya', 'Carmina', 'Anne'].map((name, index) => ({ id: `demo-payable-paid-${index}`, ownerId, creditorId: `demo-creditor-${index + 3}`, name, originalAmountCentavos: [30000, 1400, 120000, 120000, 120000][index], dueDate: null, details: '', occurredAt: '2026-10-02T02:00:00Z' })),
   ],
   payments: [

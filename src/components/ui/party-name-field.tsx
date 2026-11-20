@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState, type Ref } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Keyboard, ScrollView, Text, View, type TextInputInstance } from 'react-native';
 import { KeyboardField, KeyboardInput } from './keyboard-aware-scroll-view';
 import { FieldLabel } from './field-label';
-import { Button } from './button';
+import { Button, IconButton } from './button';
 import { MotionPressable } from './motion-pressable';
 import tokens from '@/constants/design-tokens.json';
 
 /** Lookup UI is shared; callers keep Customer and Creditor records/IDs distinct. */
-export function PartyNameField<T extends { id: string; name: string }>({ kind, label, value, selectedId, records, onChange, onMatch, onSelect, error, inputRef, onNext, floatingSuggestions = false }: {
+export function PartyNameField<T extends { id: string; name: string }>({ kind, label, value, selectedId, records, onChange, onMatch, onSelect, error, inputRef, onNext, onFieldBlur, floatingSuggestions = false, placeholder, selectAdornment, selectAccessibilityLabel }: {
   kind: 'customer' | 'creditor'; label: string; value: string; selectedId?: string; records: readonly T[];
   onChange: (name: string) => void; onMatch: (record: T) => void; onSelect: () => void; error?: string; inputRef?: Ref<TextInputInstance>; onNext?: () => void;
-  floatingSuggestions?: boolean;
+  onFieldBlur?: () => void; floatingSuggestions?: boolean; placeholder?: string; selectAdornment?: ReactNode; selectAccessibilityLabel?: string;
 }) {
   const [focused, setFocused] = useState(false);
   const [active, setActive] = useState(-1);
@@ -29,8 +29,8 @@ export function PartyNameField<T extends { id: string; name: string }>({ kind, l
       <View style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: error ? tokens.color.errorBase : focused ? tokens.color.accentBase : tokens.color.borderOutline, borderRadius: tokens.radius.control, backgroundColor: tokens.color.navigationSurface, paddingLeft: 16 }}>
         <KeyboardInput ref={inputRef} value={value} onChangeText={text => { keepOpen(); setActive(-1); onChange(text); }}
           accessibilityLabel={`${kind === 'customer' ? 'Customer' : 'Creditor'} name, required`} accessibilityHint={error ?? `Type a name to find existing ${kind}s. Use Select to open the full list.`}
-          placeholder={`Enter ${kind} name`} placeholderTextColor={tokens.color.textSecondary} autoCorrect={false} autoCapitalize="words" returnKeyType="next"
-          onFocus={keepOpen} onBlur={() => { blur.current = setTimeout(() => setFocused(false), 160); }}
+          placeholder={placeholder ?? `Enter ${kind} name`} placeholderTextColor={tokens.color.textSecondary} autoCorrect={false} autoCapitalize="words" returnKeyType="next"
+          onFocus={keepOpen} onBlur={() => { blur.current = setTimeout(() => setFocused(false), 160); onFieldBlur?.(); }}
           onKeyPress={event => {
             if (!show) return;
             if (event.nativeEvent.key === 'ArrowDown') { event.preventDefault(); setActive(index => (index + 1) % matches.length); }
@@ -39,7 +39,9 @@ export function PartyNameField<T extends { id: string; name: string }>({ kind, l
           }}
           onSubmitEditing={() => { if (show && active >= 0) choose(matches[active]); else { setFocused(false); onNext?.(); } }}
           style={{ flex: 1, minWidth: 0, minHeight: 52, paddingVertical: 12, fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: tokens.color.textPrimary }} />
-        <Button variant="text" fullWidth={false} compact accessibilityLabel={`Select an existing ${kind}`} onPress={() => { setFocused(false); onSelect(); }}>Select</Button>
+        {selectAdornment ? <IconButton accessibilityLabel={selectAccessibilityLabel ?? `Select an existing ${kind}`} onPress={() => { setFocused(false); onSelect(); }}
+          style={{ minHeight: 50, minWidth: 52, borderLeftWidth: 1, borderColor: tokens.color.borderOutline, borderRadius: 0 }} icon={() => selectAdornment} /> :
+          <Button variant="text" fullWidth={false} compact accessibilityLabel={`Select an existing ${kind}`} onPress={() => { setFocused(false); onSelect(); }}>Select</Button>}
       </View>
       {show && <View testID={`${kind}-matches`} accessibilityLabel={`Matching ${kind}s`} style={[{
         borderWidth: 1, borderColor: tokens.color.borderOutline, borderRadius: tokens.radius.control, backgroundColor: tokens.color.navigationSurface,

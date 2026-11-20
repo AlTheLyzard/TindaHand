@@ -7,23 +7,25 @@ export type ButtonVariant = 'primary' | 'secondary' | 'outlined' | 'text' | 'des
 type Icon = (props: { color: string; size: number }) => ReactNode;
 type SurfaceProps = Omit<ComponentProps<typeof MotionPressable>, 'children'> & {
   variant?: ButtonVariant;
+  pressedVariant?: ButtonVariant;
   loading?: boolean;
   interactionBackgroundColor?: string;
   children: ReactNode | ((appearance: { color: string; size: number }) => ReactNode);
 };
 
 /** Shared palette and feedback for CTAs and controls that retain their own geometry. */
-export function ButtonSurface({ variant = 'primary', loading = false, disabled, children, style, interactionBackgroundColor,
+export function ButtonSurface({ variant = 'primary', pressedVariant, loading = false, disabled, children, style, interactionBackgroundColor,
   onPress, onPressIn, onPressOut, onHoverIn, onHoverOut, onFocus, onBlur, ...props }: SurfaceProps) {
   const [pressed, setPressed] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const pending = useRef(false);
   const blocked = !!disabled || loading;
-  const textOnly = variant === 'text' || variant === 'destructiveText';
-  const outlined = variant === 'secondary' || variant === 'outlined' || variant === 'destructiveOutline';
-  const palette = tokens.button[variant === 'destructiveText' ? 'destructiveOutline' : variant === 'outlined' || textOnly ? 'secondary' : variant];
-  const ink = variant.startsWith('destructive') ? tokens.button.destructive : tokens.button.primary;
+  const appearanceVariant = pressed && !blocked && pressedVariant ? pressedVariant : variant;
+  const textOnly = appearanceVariant === 'text' || appearanceVariant === 'destructiveText';
+  const outlined = appearanceVariant === 'secondary' || appearanceVariant === 'outlined' || appearanceVariant === 'destructiveOutline';
+  const palette = tokens.button[appearanceVariant === 'destructiveText' ? 'destructiveOutline' : appearanceVariant === 'outlined' || textOnly ? 'secondary' : appearanceVariant];
+  const ink = appearanceVariant.startsWith('destructive') ? tokens.button.destructive : tokens.button.primary;
   const state = disabled ? 'disabled' : loading ? 'default' : pressed ? 'pressed' : hovered ? 'hover' : 'default';
   const color = disabled ? palette.disabledText : outlined || textOnly ? ink[pressed ? 'pressed' : hovered ? 'hover' : 'default'] : '#FFFFFF';
   const appearance: ViewStyle = {
@@ -32,13 +34,13 @@ export function ButtonSurface({ variant = 'primary', loading = false, disabled, 
         : pressed || hovered ? palette[state] : 'transparent'
       : palette[state],
     borderWidth: textOnly ? 0 : 1,
-    borderColor: disabled ? variant === 'destructiveOutline' ? '#FFEBEE' : outlined ? '#B0C8E3' : palette.disabled : outlined ? ink[pressed ? 'pressed' : hovered ? 'hover' : 'default'] : palette[state],
+    borderColor: disabled ? appearanceVariant === 'destructiveOutline' ? '#FFEBEE' : outlined ? '#B0C8E3' : palette.disabled : outlined ? ink[pressed ? 'pressed' : hovered ? 'hover' : 'default'] : palette[state],
     boxShadow: textOnly ? 'none' : outlined || disabled
-      ? variant.startsWith('destructive') ? 'inset 0 2px 4px rgba(211,47,47,0.15)'
-        : variant === 'positive' ? 'inset 0 2px 4px rgba(37,91,41,0.25)' : tokens.button.outlineHighlight
+      ? appearanceVariant.startsWith('destructive') ? 'inset 0 2px 4px rgba(211,47,47,0.15)'
+        : appearanceVariant === 'positive' ? 'inset 0 2px 4px rgba(37,91,41,0.25)' : tokens.button.outlineHighlight
       : tokens.button.highlight,
     outlineWidth: focused && !blocked ? 2 : 0, outlineOffset: 3, outlineStyle: 'solid',
-    outlineColor: variant.startsWith('destructive') ? tokens.button.destructive.default : tokens.button.primary.default,
+    outlineColor: appearanceVariant.startsWith('destructive') ? tokens.button.destructive.default : tokens.button.primary.default,
   };
   return <MotionPressable {...props} fadeOnPress={false} accessibilityRole={props.accessibilityRole ?? 'button'}
     disabled={blocked} aria-busy={loading} accessibilityState={{ ...props.accessibilityState, disabled: blocked, busy: loading }}

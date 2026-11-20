@@ -1,6 +1,6 @@
 import { useCallback, useReducer, useRef, useState } from 'react';
 import { router, useFocusEffect, usePreventRemove } from 'expo-router';
-import { Keyboard, Text, View, type TextInputInstance } from 'react-native';
+import { Keyboard, View, type TextInputInstance } from 'react-native';
 import { useOwnerProfile } from '@/hooks/use-owner-profile';
 import { useAuthFlow } from '@/state/auth-flow';
 import { authenticationService } from '@/services/authentication';
@@ -20,7 +20,7 @@ import { ProfilePhotoSelectionScreen } from './profile-photo-selection-screen';
 
 export function EditProfileScreen() {
   const { profile, loading, error, reload } = useOwnerProfile();
-  if (loading || error || !profile) return <ProfileFrame title="Edit Profile"><ProfileUnavailable loading={loading} error={error} retry={reload} /></ProfileFrame>;
+  if (loading || error || !profile) return <ProfileFrame title="Edit Profile" subtitle="Update your personal details."><ProfileUnavailable loading={loading} error={error} retry={reload} /></ProfileFrame>;
   return <ProfileEditor profile={profile} />;
 }
 function ProfileEditor({ profile }: { profile: OwnerProfile }) {
@@ -102,7 +102,6 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
       <View className="gap-3 pt-6"><Button loading={busy} disabled={!/^[0-9]{4}$/.test(pin)} onPress={() => void save()}>Verify</Button><Button variant="secondary" disabled={busy} onPress={cancelStep}>Cancel</Button></View>
     </> : <>
       <SettingsCard><View className="flex-row items-center gap-4"><ProfileAvatar avatarId={state.draft.avatarId} size={70} /><View className="min-w-0 flex-1 gap-2"><ProfileText bold>Profile Photo</ProfileText><Button compact fullWidth={false} variant="secondary" style={{ alignSelf: 'flex-start' }} onPress={() => dispatch({ type: 'pick' })}>Change Photo</Button></View></View></SettingsCard>
-      <Text className="mt-4 font-poppins text-[10px] text-text-secondary"><Text className="text-[#B42318]">*</Text> Required fields</Text>
       <ProfileSection>Personal Information</ProfileSection>
       <FormField ref={nameInput} label="Name" requiredIndicator="asterisk" value={state.draft.name} onChangeText={value => update('name', value)} onBlur={() => setTouched(current => ({ ...current, name: true }))} error={touched.name ? errors.name : undefined} maxLength={PROFILE_LIMITS.name} autoCapitalize="words" returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => storeInput.current?.focus()} />
       <ProfileSection>Store Information</ProfileSection>

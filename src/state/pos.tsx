@@ -32,9 +32,11 @@ function usePosState() {
       return checkoutDebtId;
     },
     completeOrder() {
-      // TODO(BACKEND): Success currently means one local inventory service commit.
-      // Make this flow async and keep the draft until the server confirms the
-      // atomic sale; reconcile retries/conflicts. See docs/backend-handoff.md#inventory-and-pos.
+      // TODO(backend): Complete the sale with an atomic, idempotent server mutation.
+      // - Method/Action: POST / Complete sale and record tenders/debt
+      // - Expected Input/Payload: CheckoutCommand with item snapshots, customer, payment draft, and order ID
+      // - Expected Response: Confirmed sale/payment records and authoritative stock/debt balances
+      // - UI State to Wire: Keep cart/payment draft until confirmation; refresh stock and map conflict/retry errors
       if (!deviceSession || !hasCapability(deviceSession, 'pos')
         || (paymentDraft.method === 'partial' && !hasCapability(deviceSession, 'receivables'))
         || completed.current.has(orderId)) return false;

@@ -4,6 +4,11 @@ export const paymentQuickAmountsCentavos = [5000, 10000, 20000, 50000, 100000] a
 
 export const posCategories: readonly ProductCategory[] = ['drinks', 'canned', 'snacks', 'coldCuts', 'groceries', 'household', 'personalCare'];
 /** Fictional MA-POS-001 catalog. Distinct sizes/products from dashboard fixtures. */
+// TODO(backend): Replace the POS catalog fixture with the canonical store product list.
+// - Method/Action: GET / Fetch POS catalog
+// - Expected Input/Payload: None (authenticated store session and optional category/search filters)
+// - Expected Response: PosProduct[] with stable IDs, stock availability, and integer-centavo unit prices
+// - UI State to Wire: Populate product browsing and use current stock/prices during checkout validation
 export const posProducts: readonly PosProduct[] = [
   { id: 'demo-argentina-corned-beef', name: 'Argentina Corned Beef', category: 'canned', unitPriceCentavos: 3200, stock: 12 },
   { id: 'demo-ariel-red', name: 'Ariel Powder (Red)', category: 'household', unitPriceCentavos: 1200, stock: 3 },

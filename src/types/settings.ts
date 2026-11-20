@@ -2,6 +2,11 @@ import type { OperatorPermission, OwnerIdentity } from './auth';
 import type { AvatarId } from './profile';
 
 /** Proposed frontend contracts. These are not approved backend wire schemas. */
+// TODO(backend): Verify operator identity fields and capability responses against the settings API schema.
+// - Method/Action: GET / Read operators; POST, PATCH, or DELETE / Manage operator access
+// - Expected Input/Payload: Operator fields, assigned capability changes, or status updates; never PIN values in reads
+// - Expected Response: Cashier and SettingsSnapshot-compatible canonical records and permissions
+// - UI State to Wire: Refresh operator/settings snapshots and map field-level errors to existing forms
 export type Cashier = Readonly<{ id: string; ownerId: string; name: string; status: 'active' | 'inactive'; avatarId: AvatarId }>;
 export type PinValues = { ownerPin: string; pin: string; confirmPin: string };
 export type CashierValues = { name: string; pin: string; confirmPin: string };

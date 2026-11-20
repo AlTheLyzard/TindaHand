@@ -66,7 +66,11 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
   const [pageState, setPageState] = useState<{ key: string; index: number }>({ key: '', index: 0 });
   const pageCount = Math.max(1, Math.ceil(filtered.length / transactionPageSize));
   const pageIndex = pageState.key === pageKey ? Math.min(pageState.index, pageCount - 1) : 0;
-  // TODO: Backend pagination: request pageIndex + 1 with limit transactionPageSize and use the server total for pageCount instead of slicing the full result locally.
+  // TODO(backend): Drive history pagination from the transaction API instead of slicing all local rows.
+  // - Method/Action: GET / Fetch transaction page
+  // - Expected Input/Payload: pageIndex + 1, transactionPageSize, and active history filters
+  // - Expected Response: { items: TransactionRecord[]; total: number }
+  // - UI State to Wire: Calculate page count from server total and handle page loading/errors
   const pageRows = filtered.slice(pageIndex * transactionPageSize, (pageIndex + 1) * transactionPageSize);
   const safeWidth = Math.max(1, width - insets.left - insets.right);
   const titleWidth = Math.max(1, Math.min(safeWidth, 460) - 48 - tokens.size.touchTarget - 4);

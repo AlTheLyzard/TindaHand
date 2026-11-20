@@ -8,7 +8,7 @@ import { useTranslation } from '@/i18n/use-translation';
 import { t } from '@/i18n';
 import { router } from 'expo-router';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react';
-import { Image, Keyboard, Platform, Text, View, useWindowDimensions, type ImageSourcePropType, type TextInputProps, type ScrollViewInstance, type TextInputInstance, type ViewInstance } from 'react-native';
+import { Image, Keyboard, Platform, Text, View, useWindowDimensions, type ImageSourcePropType, type ScrollViewInstance, type ScrollViewProps, type TextInputProps, type TextInputInstance, type ViewInstance } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainHeader } from '@/components/dashboard/main-header';
 import { OperatorHeader } from '@/components/operator/operator-header';
@@ -41,10 +41,10 @@ export const inventoryIllustrations = {
 export function InvText({ children, bold = false, size = 12, color = '#4A607A' }: { children: ReactNode; bold?: boolean; size?: number; color?: string }) {
   return <Text style={{ fontFamily: bold ? 'Poppins_700Bold' : 'Poppins_400Regular', fontSize: size, color }}>{children}</Text>;
 }
-export function InventoryFrame({ title, children, back = false, inlineTitle = false, onBack, onNavigate, scrollRef, overlay, footer, hideNavigationWithKeyboard = false, hideNavigation = false, background = false, illustration, subtitle }: {
+export function InventoryFrame({ title, children, back = false, inlineTitle = false, onBack, onNavigate, scrollRef, overlay, footer, hideNavigationWithKeyboard = false, hideNavigation = false, background = false, illustration, subtitle, refreshControl }: {
   title: string; children: ReactNode; back?: boolean; inlineTitle?: boolean; onBack?: () => void;
   onNavigate?: (action: () => void) => void; scrollRef?: RefObject<ScrollViewInstance | null>; overlay?: ReactNode; footer?: ReactNode; hideNavigationWithKeyboard?: boolean; hideNavigation?: boolean; background?: boolean;
-  illustration?: ImageSourcePropType; subtitle?: string;
+  illustration?: ImageSourcePropType; subtitle?: string; refreshControl?: ScrollViewProps['refreshControl'];
 }) {
   useTranslation();
   const { deviceSession } = useAuthFlow();
@@ -76,7 +76,7 @@ export function InventoryFrame({ title, children, back = false, inlineTitle = fa
       <BackgroundImage source={require('@/assets/images/auth/header-background.png')} contentFit="fill" style={{ width: '100%', height: '100%' }} />
     </View>
     <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView ref={scrollRef ?? scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingBottom: footer ? 24 : insets.bottom + (showNavigation ? navigationHeight : 0) + 24 }}>
+      <ScrollView ref={scrollRef ?? scroll} refreshControl={refreshControl} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingBottom: footer ? 24 : insets.bottom + (showNavigation ? navigationHeight : 0) + 24 }}>
         <View className="w-full max-w-[460px] gap-4 self-center px-5 pt-3">
           {inlineTitle ? <View className="flex-row items-center gap-2" style={{ minHeight: illustration ? 112 : undefined }}><View className="min-w-0 flex-1 gap-3"><View className="flex-row items-center gap-1">{backButton}<Text accessibilityRole="header" className="min-w-0 flex-1 font-poppins-bold text-[20px] text-brand">{title}</Text></View>{!!subtitle && <InvText>{subtitle}</InvText>}</View>{illustration && <Image source={illustration} accessible={false} resizeMode="contain" style={{ width: 88, height: 96, flexShrink: 0 }} />}</View> : <>
             <Text accessibilityRole="header" className="font-poppins-bold text-[28px] text-brand">{title}</Text>{backButton}

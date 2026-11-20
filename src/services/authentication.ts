@@ -146,8 +146,11 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       return () => { directoryListeners.delete(listener); };
     },
     getAccountDirectorySnapshot: () => accountDirectory,
-    // BACKEND INTEGRATION: Replace this adapter as one unit. Never fall back to
-    // mock success on an API failure. See docs/authentication-handoff.md.
+    // TODO(backend): Replace local account creation with the authenticated registration endpoint.
+    // - Method/Action: POST / Register Owner
+    // - Expected Input/Payload: RegistrationFormValues; password and PIN are request-only
+    // - Expected Response: Server-assigned RegisteredOwner after durable creation, or safe field-level errors
+    // - UI State to Wire: Use the returned ID; set completion after confirmation and preserve fields on failure
     async registerOwner(values) {
       if (!enabled()) return { status: 'error', message: 'Account creation is not connected yet. No account has been created.' };
       await ready;
@@ -155,7 +158,6 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       if (Object.keys(fields).length) return { status: 'error', message: 'Check the highlighted fields.', fields };
       const email = values.email.trim().toLowerCase();
       if (emails.has(email)) return { status: 'error', message: 'Unable to create this account. Check your details or log in.' };
-      // BACKEND RULE: Assign the permanent Owner ID once, after durable creation.
       const account = { id: `TH-MA-${String(nextOwner++).padStart(4, '0')}`, name: values.name.trim() };
       const stored = { ...account, email };
       try {
@@ -179,7 +181,11 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
     async authenticateOwner({ ownerId, password }) {
       if (!enabled()) return unavailable();
       await ready;
-      // BACKEND RULE: Rate-limit password/PIN attempts; issue and revoke sessions server-side.
+      // TODO(backend): Authenticate an Owner and issue a revocable server session.
+      // - Method/Action: Auth / Verify Owner password
+      // - Expected Input/Payload: { ownerId, password } with password request-only
+      // - Expected Response: Authenticated DeviceSession or safe invalid/limited result
+      // - UI State to Wire: Establish session on success and show generic credential/rate-limit errors
       const account = identities.get(ownerId);
       if (!account || !password || passwords.get(ownerId) !== password) return invalid();
       session = issue(account);
@@ -189,8 +195,11 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
     async unlockOwner({ ownerId, pin }) {
       if (!enabled()) return unavailable();
       await ready;
-      // BACKEND INTEGRATION: Submit PIN + authenticated device context to the API;
-      // verify and rate-limit server-side. Restoring an ID never issues a session.
+      // TODO(backend): Verify Owner PIN against the authenticated device session and rate-limit attempts.
+      // - Method/Action: Auth / Verify Owner PIN
+      // - Expected Input/Payload: { ownerId, pin } plus secure device/session context; PIN request-only
+      // - Expected Response: Unlocked authenticated DeviceSession or safe invalid/limited result
+      // - UI State to Wire: Unlock only the matching active Owner session and map retry errors
       // SECURITY: Remembered identity alone is insufficient. A valid authenticated
       // device session must exist before the PIN can unlock the Owner workspace.
       const current = live();
@@ -210,10 +219,11 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       const linkedOwnerId = operator?.ownerId;
       const account = linkedOwnerId ? identities.get(linkedOwnerId) : undefined;
       if (!operator || !linkedOwnerId || linkedOwnerId !== requestedOwnerId || !account || account.id !== linkedOwnerId) return invalid();
-      // BACKEND INTEGRATION: POST { ownerId, pin } to the Operator login endpoint.
-      // Return { role: 'operator', ownerId, operatorId, displayName } with the
-      // authenticated session and allowed capabilities. Enforce exactly one
-      // active Operator match for (ownerId, pin) on the server as well.
+      // TODO(backend): Authenticate Operator PIN and resolve one active Operator in the requested store.
+      // - Method/Action: POST / Operator login
+      // - Expected Input/Payload: { ownerId, pin } with PIN request-only
+      // - Expected Response: DeviceSession with operatorId, ownerId, displayName, and server capabilities
+      // - UI State to Wire: Set the Operator session and capability gates only from the confirmed response
       session = { ...issue(account), role: 'operator', ownerId: linkedOwnerId, operatorId: operator.id, displayName: operator.name,
         operator: { id: operator.id, name: operator.name, permissions: [...settingsService.operatorPermissions(operator.id)] } };
       operatorRevision = settingsService.operatorRevision(operator.id);
@@ -223,26 +233,41 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
     // BACKEND RULE: Authorize from the live session; never trust a supplied role
     // or Owner ID. Existing Owner-PIN verification remains mandatory for resets.
     async createOperator(input) {
-      // BACKEND TODO: Proposed name + assigned PIN request; return canonical internal
-      // Operator ID/name/status only. Derive store membership from the live Owner
-      // session, hash the PIN server-side and audit the creating actor without secrets.
+      // TODO(backend): Create an Operator under the current unlocked Owner session.
+      // - Method/Action: POST / Create operator
+      // - Expected Input/Payload: { name, pin } with PIN request-only; store/actor derived from session
+      // - Expected Response: Canonical Cashier identity and status, without credential material
+      // - UI State to Wire: Refresh operator lists only after confirmation and retain fields on failure
       const owner = authorizedOwner();
       const sessionId = live()?.id;
       return owner ? settingsService.createCashier(owner, input, () => live()?.id === sessionId && !!authorizedOwner()) : { ok: false, message: 'An unlocked Owner session is required.' };
     },
     async resetOperatorPin({ operatorId, ...input }) {
-      // BACKEND TODO: Reauthenticate current Owner, authorize target membership,
-      // accept new PIN (never retrieve the old one), audit and invalidate sessions.
+      // TODO(backend): Reset a store Operator PIN after current Owner reauthentication.
+      // - Method/Action: PATCH / Reset operator PIN
+      // - Expected Input/Payload: { operatorId, ownerPin, pin } as request-only secrets
+      // - Expected Response: Updated Cashier identity and session-revocation result
+      // - UI State to Wire: Confirm the reset and refresh/invalidate affected Operator sessions
       const owner = authorizedOwner();
       const sessionId = live()?.id;
       return owner ? settingsService.resetCashierPin(owner, operatorId, input, () => live()?.id === sessionId && !!authorizedOwner()) : { ok: false, message: 'An unlocked Owner session is required.' };
     },
     async setOperatorActive({ operatorId, active }) {
+      // TODO(backend): Change Operator access under the authenticated Owner's store.
+      // - Method/Action: PATCH / Update operator status
+      // - Expected Input/Payload: { operatorId, active }; actor/store derived from session
+      // - Expected Response: Updated Cashier and any session-revocation status
+      // - UI State to Wire: Refresh user lists and access gates after confirmation
       const owner = authorizedOwner();
       const sessionId = live()?.id;
       return owner ? settingsService.setOperatorActive(owner, operatorId, active, () => live()?.id === sessionId && !!authorizedOwner()) : { ok: false, message: 'An unlocked Owner session is required.' };
     },
     async updateOperatorProfile(input) {
+      // TODO(backend): Save the current Operator's self-service profile under its authenticated session.
+      // - Method/Action: PATCH / Update current operator profile
+      // - Expected Input/Payload: { name, avatarId }; operator identity derived from session
+      // - Expected Response: Canonical updated Cashier profile
+      // - UI State to Wire: Refresh profile/session snapshots after confirmation and retain drafts on failure
       const current = live();
       if (!current || current.role !== 'operator' || current.locked) return { ok: false, message: 'An active Operator session is required.' };
       const operatorId = current.operatorId;
@@ -260,13 +285,21 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       return result;
     },
     async setOperatorPermission({ operatorId, group, allowed }) {
+      // TODO(backend): Update the fixed capability allowlist for an Operator in the Owner's store.
+      // - Method/Action: PATCH / Update operator capability
+      // - Expected Input/Payload: { operatorId, group, allowed }; actor/store derived from session
+      // - Expected Response: Canonical capability list and updated authorization revision
+      // - UI State to Wire: Refresh capability gates and operator settings after confirmation
       const owner = authorizedOwner();
       const sessionId = live()?.id;
       return owner ? settingsService.setOperatorPermission(owner, operatorId, group, allowed, () => live()?.id === sessionId && !!authorizedOwner()) : { ok: false, message: 'An unlocked Owner session is required.' };
     },
     async restoreSession() {
-      // BACKEND INTEGRATION: Restore from existing server session through a secure
-      // storage adapter, validate expiry/revocation remotely. None exists yet.
+      // TODO(backend): Restore and validate the secure server session on app startup/resume.
+      // - Method/Action: Auth / Restore session
+      // - Expected Input/Payload: Secure refresh/session credential from the device
+      // - Expected Response: Current DeviceSession or null when expired/revoked
+      // - UI State to Wire: Drive restoring state, role gates, and signed-out recovery from this response
       await ready;
       const current = live();
       if (!current) session = null;
@@ -274,20 +307,26 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
     },
     async lockSession() { const current = live(); session = current ? { ...current, locked: true } : null; },
     async restoreRememberedIdentities() {
-      // BACKEND INTEGRATION: Restore only login hints here. Separately validate
-      // secure device credentials through restoreSession/API before enabling PIN
-      // unlock. The mock deliberately loses sessions on a process restart.
+      // Remembered IDs are local login hints only; restoreSession validates authentication separately.
+      // This mock deliberately loses sessions on a process restart.
       await ready;
       return enabled() ? remembered.restore() : {};
     },
     async switchAccount(role) {
-      // BACKEND INTEGRATION: Revoke the current device session through the API,
-      // clear this role's hint, then return through the existing account chooser.
+      // TODO(backend): Revoke the current server session before switching account role.
+      // - Method/Action: POST / Revoke current session
+      // - Expected Input/Payload: Authenticated device session and selected role context
+      // - Expected Response: Revocation status
+      // - UI State to Wire: Clear local role/session state only after revocation handling
       session = null;
       remembered.forget(role);
     },
     async logout() {
-      // BACKEND RULE: Revoke the session/refresh credential on full logout.
+      // TODO(backend): Revoke the active session and refresh credential on full logout.
+      // - Method/Action: POST / Logout and revoke session
+      // - Expected Input/Payload: Authenticated session credential
+      // - Expected Response: Revocation status
+      // - UI State to Wire: Clear session-scoped state after logout and handle network failure safely
       session = null;
     },
     async requestPinRecovery({ email }) {
@@ -295,8 +334,11 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       await ready;
       if (options.failRecovery || email.trim().toLowerCase() === 'failure@example.test') return { ok: false, code: 'unavailable', message: 'The recovery service is unavailable. Please try again.' };
       if (validateEmail(email)) return { ok: false, code: 'invalid', message: 'Enter a valid email address.' };
-      // BACKEND RULE: Neutral response/timing, email delivery and resend/attempt
-      // limits belong on the server. Use its absolute resendAt, never a UI timer policy.
+      // TODO(backend): Request PIN recovery with neutral responses and server-owned delivery limits.
+      // - Method/Action: POST / Request PIN recovery
+      // - Expected Input/Payload: { email }
+      // - Expected Response: RecoveryReceipt with absolute resendAt, whether or not the account exists
+      // - UI State to Wire: Use server resend timing and display safe retry/error states
       if (now() < resendAt) return { ok: true, value: { resendAt } };
       resendAt = now() + 30000;
       const ownerId = emails.get(email.trim().toLowerCase());
@@ -311,6 +353,11 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
     async verifyRecoveryToken({ token }) {
       if (!enabled()) return unavailable();
       await ready;
+      // TODO(backend): Validate a single-use, expiring Owner PIN recovery token.
+      // - Method/Action: Auth / Verify recovery token
+      // - Expected Input/Payload: { token }
+      // - Expected Response: Token expiry or invalid/used/expired result
+      // - UI State to Wire: Allow reset only for a valid token and show recovery errors/retry guidance
       const error = tokenError(token);
       return error ?? { ok: true, value: { expiresAt: recoveries.get(token)!.expiresAt } };
     },
@@ -321,8 +368,11 @@ export function createAuthenticationService(options: { enabled: boolean; now?: (
       if (error) return error;
       if (!/^[0-9]{4}$/.test(pin)) return { ok: false, code: 'invalid', message: 'Enter exactly 4 numeric digits.' };
       const recovery = recoveries.get(token)!;
-      // BACKEND RULE: Consume and update atomically; revoke affected sessions.
-      // Owner ID/password must stay unchanged. Reset does not authenticate anyone.
+      // TODO(backend): Atomically consume the recovery token and replace the Owner PIN.
+      // - Method/Action: POST / Reset Owner PIN
+      // - Expected Input/Payload: { token, pin } with PIN request-only
+      // - Expected Response: Success status; preserve Owner ID/password and revoke affected sessions
+      // - UI State to Wire: Show success and require a fresh login rather than opening an authenticated session
       if (!await settingsService.persistOwnerPin(recovery.ownerId, pin)) return { ok: false, code: 'unavailable', message: 'The PIN could not be saved securely. Please try again.' };
       recovery.used = true;
       settingsService.initializePreviewOwner(recovery.ownerId, pin);

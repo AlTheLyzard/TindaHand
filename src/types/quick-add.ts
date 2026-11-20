@@ -14,6 +14,11 @@ export type QuickAddDraft = {
   dueDate: string;
   items: ProductSelection;
 };
+// TODO(backend): Verify quick-add debt and expense record fields against the approved API schemas.
+// - Method/Action: POST / Create customer debt, store debt, or expense
+// - Expected Input/Payload: QuickAddDraft with stable linked IDs, item snapshots, amounts, and date-only dates
+// - Expected Response: QuickAddRecord with canonical IDs, integer-centavo totals, status, and event timestamp
+// - UI State to Wire: Keep drafts on failure and refresh ledgers/summaries after confirmed writes
 export type QuickAddRecord = {
   id: string;
   ownerId: string;

@@ -10,7 +10,7 @@ export function CreditorSelectionScreen() {
   const { payables } = useQuickAdd();
   const { setDraft } = usePayableDraft();
   const back = () => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else router.replace(`${balancesRoot}/new`); };
-  return <InventoryFrame title="Creditors" back inlineTitle onBack={back}>
+  return <InventoryFrame title="Creditor Names" back inlineTitle subtitle="Select a creditor from your existing list." onBack={back}>
     <CreditorList creditors={payables.creditors} onSelect={creditor => {
       setDraft(previous => selectDraftCreditor(previous, payables.creditors, creditor.id));
       back();

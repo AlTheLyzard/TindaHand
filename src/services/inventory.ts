@@ -7,8 +7,11 @@ import { saleLines } from '@/utils/pos-records';
 import { receivablesSeed } from '@/data/receivables';
 import { hasCapability } from '@/utils/operator-access';
 
-// TODO(BACKEND): Replace seed loading with store-scoped reads; search/filter/ranking
-// currently use complete local collections, without pagination. See docs/backend-handoff.md#inventory-and-pos.
+// TODO(backend): Replace seed loading with authenticated, store-scoped inventory reads.
+// - Method/Action: GET / Fetch products, batches, assets, and sales summaries
+// - Expected Input/Payload: Authenticated session, role scope, and search/filter/page parameters
+// - Expected Response: InventoryStore-compatible records with canonical stock, batch, and asset values
+// - UI State to Wire: Replace local collections and connect loading, error, retry, and empty states
 export function loadMockInventory(includeAssets = true): InventoryStore {
   return { products: inventoryProducts.map(product => ({ ...product })),
     assets: includeAssets ? businessAssets.map(asset => ({ ...asset })) : [], restocks: [],
@@ -20,10 +23,11 @@ export function getInventorySales(sales: readonly MockSale[]) {
   return [...inventorySales, ...saleLines(sales)];
 }
 
-// TODO(BACKEND): These synchronous mock writes simulate success. Authorize every
-// command on the server, validate current data, and await confirmed writes before
-// updating UI. Sale + tender + customer/debt + stock, and restock + stock, require
-// atomic transactions and durable idempotency. See docs/api-contract.md#inventory-and-pos.
+// TODO(backend): Replace local reducer writes with authorized, confirmed inventory and POS mutations.
+// - Method/Action: POST, PATCH, or DELETE / Save product, restock, sale, customer, or asset changes
+// - Expected Input/Payload: InventoryAction plus authenticated role/session and durable idempotency key
+// - Expected Response: Canonical changed records; sale/tenders/debt/stock and restock/stock commit atomically
+// - UI State to Wire: Await confirmation before updating state; preserve drafts and expose retry/conflict errors
 export function applyInventoryAction(store: InventoryStore, owner: OwnerIdentity | null, action: InventoryAction): InventoryStore {
   if (!owner || ('command' in action && action.command.ownerId !== owner.id)) return store;
   return inventoryReducer(store, action);

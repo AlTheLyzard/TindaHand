@@ -8,6 +8,11 @@ import type { Customer } from '@/types/pos';
 const InventoryContext = createContext<{ store: InventoryStore; getStore: () => InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void } | null>(null);
 function SessionInventory({ children }: { children: ReactNode }) {
   const auth = useAuthFlow();
+  // TODO(backend): Initialize session inventory from authorized server reads instead of the demo loader.
+  // - Method/Action: GET / Fetch inventory store state
+  // - Expected Input/Payload: Authenticated session and role/capability scope
+  // - Expected Response: InventoryStore-compatible products, assets, batches, and POS records
+  // - UI State to Wire: Add request loading/error/empty states and refresh the shared store after mutations
   const [store, setStore] = useState<InventoryStore>(() => loadMockInventory(auth.deviceSession?.role !== 'operator'));
   const current = useRef(store);
   const [feedback, setFeedback] = useState('');
@@ -24,8 +29,11 @@ function SessionInventory({ children }: { children: ReactNode }) {
     return true;
   }
   function ensureCustomer(name: string, id: string) {
-    // TODO(BACKEND): Name matching only simulates customer linking; agree identity,
-    // duplicate-name and create/link rules before API use. See docs/api-contract.md#customers-and-debts.
+    // TODO(backend): Resolve or create customer identity under the current store on the server.
+    // - Method/Action: GET / Search customers; POST / Create or link customer
+    // - Expected Input/Payload: Normalized name and optional selected customer ID
+    // - Expected Response: Canonical Customer ID or a duplicate/validation result
+    // - UI State to Wire: Replace local name matching and retain selection when linking fails
     if (!auth.owner || !name.trim()) return null;
     const existing = current.current.pos?.customers.find(customer => customerNameKey(customer.name) === customerNameKey(name));
     if (existing) return existing;

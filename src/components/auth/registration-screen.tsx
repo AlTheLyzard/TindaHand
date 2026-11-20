@@ -149,7 +149,6 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
             <Text className="mt-0.5 text-center font-poppins text-[10px] leading-[15px] text-text-secondary">{t('auth.registration.instructions')}</Text>
 
             <View className="mx-1 mt-4 gap-6 rounded-[20px] bg-[#D9E7F5] px-5 py-8">
-              <Text className="font-poppins text-[10px] text-text-secondary">Fields marked * are required.</Text>
               {fieldOrder.map((field, index) => {
                 const label = { name: t('fields.name'), email: 'Email Address', password: t('fields.password'), confirmPassword: t('fields.confirmPassword'), pin: t('fields.pin'), confirmPin: t('fields.confirmPin') }[field];
                 const pin = field === 'pin' || field === 'confirmPin';
@@ -167,6 +166,7 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
                     editable={!busy}
                     help={field === 'password' ? t(PASSWORD_HELP_KEY) : undefined}
                     password={field === 'password' || field === 'confirmPassword'}
+                    passwordIndicators={field === 'password' || field === 'confirmPassword'}
                     pin={pin}
                     pinIndicators={pin}
                     pinVisibilityToggle={pin}

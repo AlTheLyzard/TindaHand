@@ -40,8 +40,11 @@ type AuthFlow = {
 const AuthFlowContext = createContext<AuthFlow | null>(null);
 
 /** Local mock account directory, identity-only login hints, and ephemeral sessions/drafts. */
-// BACKEND INTEGRATION: Replace mock restoration with the agreed secure session
-// adapter; server authorization is mandatory. See docs/authentication-handoff.md.
+// TODO(backend): Restore and maintain device sessions through the secure authentication service.
+// - Method/Action: Auth / Restore, refresh, lock, and revoke session
+// - Expected Input/Payload: Secure device credential; role and store come from the server session
+// - Expected Response: DeviceSession or signed-out state with canonical role/capabilities
+// - UI State to Wire: Drive restoring, session context, and direct-route capability gates from server state
 export function AuthFlowProvider({ children }: { children: ReactNode }) {
   const profiles = useSyncExternalStore(authenticationService.profile.subscribe, authenticationService.profile.getSnapshot, authenticationService.profile.getSnapshot);
   const [deviceSession, setDeviceSession] = useState<DeviceSession | null>(null);

@@ -248,7 +248,6 @@ export const en = {
   "starter.animationsTitle": "Animations",
   "common.selectedSuffix": " · Selected",
   "fields.requiredLabel": "{{label}} *",
-  "fields.requiredNote": "Fields marked with * are required.",
   "fields.requiredAccessibility": "{{label}}, required",
   "fields.show": "Show {{label}}",
   "fields.hide": "Hide {{label}}",

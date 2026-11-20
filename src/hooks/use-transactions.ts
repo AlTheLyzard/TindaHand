@@ -22,7 +22,11 @@ export function useTransactions() {
   [scope, revision, pos, ledger]);
   useEffect(() => {
     let active = true;
-    // TODO: Backend integration: replace this local read with the authenticated API call. Pass the current page, limit (8), search, category, and date/payment filters, and refetch when any of them change.
+    // TODO(backend): Replace this local read with the authenticated, paginated transaction API.
+    // - Method/Action: GET / Fetch transaction page
+    // - Expected Input/Payload: Page, limit (8), search, category, date range, payment method, and session-derived scope
+    // - Expected Response: { items: TransactionRecord[]; total: number }
+    // - UI State to Wire: Use the existing loading/error/retry state and refetch when filters or page change
     const request = ownerId ? readTransactions(ownerId, source, scope) : Promise.resolve([]);
     void request.then(rows => { if (active) setResult({ rows, source, error: '' }); })
       .catch(() => { if (active) setResult({ rows: [], source, error: 'Could not load transactions. Please try again.' }); });

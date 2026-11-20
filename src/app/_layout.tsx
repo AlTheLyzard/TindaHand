@@ -19,6 +19,7 @@ import { InventoryProvider } from "@/state/inventory";
 import { QuickAddProvider } from "@/state/quick-add";
 import { PosProvider } from "@/state/pos";
 import { NavigationMotionProvider } from "@/state/navigation-motion";
+import { ToastOverlayProvider } from "@/components/ui/toast-overlay";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -45,13 +46,15 @@ function RootNavigation() {
             <NavigationMotionProvider>
               <StatusBar style="dark" />
               <NavigationBar hidden={false} style="dark" />
-              <Stack
-                screenOptions={{
-                  ...stackMotion,
-                  headerShown: false,
-                  contentStyle: { backgroundColor: "#F0F8FF" },
-                }}
-              />
+              <ToastOverlayProvider>
+                <Stack
+                  screenOptions={{
+                    ...stackMotion,
+                    headerShown: false,
+                    contentStyle: { backgroundColor: "#F0F8FF" },
+                  }}
+                />
+              </ToastOverlayProvider>
             </NavigationMotionProvider>
             </PosProvider>
           </QuickAddProvider>

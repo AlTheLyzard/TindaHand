@@ -1,6 +1,11 @@
 import type { QuickAddRecord } from './quick-add';
 
 /** Frontend catalog contract; no backend schema has been agreed yet. */
+// TODO(backend): Verify catalog and checkout product fields against inventory/POS API schemas.
+// - Method/Action: GET / Read POS catalog; POST / Complete sale
+// - Expected Input/Payload: ProductSelection snapshots and PaymentDraft with customer/tender details
+// - Expected Response: PosProduct[] or canonical sale/payment records with current stock and integer-centavo totals
+// - UI State to Wire: Refresh catalog/stock and clear checkout drafts only after confirmed sale responses
 export type ProductCategory = 'drinks' | 'canned' | 'snacks' | 'coldCuts' | 'groceries' | 'household' | 'personalCare';
 export type PosProduct = {
   id: string;
@@ -25,6 +30,11 @@ export type PaymentDraft = {
   partialAmount: string; partialMethod: TenderMethod | null; partialReference: string;
   customerId: string | null; customerName: string;
 };
+// TODO(backend): Verify customer identity fields and store scope against the customer API schema.
+// - Method/Action: GET / Read customers; POST / Create or link customer
+// - Expected Input/Payload: Search query or normalized customer name and optional stable ID
+// - Expected Response: Customer with canonical ID and display name
+// - UI State to Wire: Preserve selected customer IDs and map duplicate/name validation errors
 export type Customer = { id: string; name: string };
 export type SalePayment = {
   id: string; saleId: string; method: PaymentMethod;
@@ -35,6 +45,11 @@ export type SalePayment = {
   cashChangeCentavos: number;
 };
 /** In-memory records only. Map through an adapter once an API contract is agreed. */
+// TODO(backend): Verify completed sale and tender records against the POS API schema.
+// - Method/Action: POST / Complete sale and record tenders atomically
+// - Expected Input/Payload: CheckoutCommand with owner/store session, item snapshots, and payment draft
+// - Expected Response: MockSale-compatible canonical sale, payment, and any receivable records
+// - UI State to Wire: Show success and refresh stock/history only after server confirmation
 export type MockSale = {
   id: string; ownerId: string; occurredAt: string; customerId: string | null;
   items: ProductSelection;

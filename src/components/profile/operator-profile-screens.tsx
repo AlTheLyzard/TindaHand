@@ -10,7 +10,7 @@ import { KeyboardAwareScrollView } from '@/components/ui/keyboard-aware-scroll-v
 import { MotionModal } from '@/components/ui/motion-modal';
 import { PosDialog } from '@/components/pos/pos-dialog';
 import { SuccessContent } from '@/components/ui/success-content';
-import { ProfileError, ProfileNotice, ProfileText } from '@/components/profile/profile-ui';
+import { ProfileError, ProfileNotice, ProfileSection, ProfileText } from '@/components/profile/profile-ui';
 import { SettingsCard, SettingsRow } from '@/components/settings/settings-ui';
 import { OperatorProfileFrame } from '@/components/profile/operator-profile-frame';
 import { quickAddColors } from '@/components/dashboard/quick-add-ui';
@@ -84,12 +84,12 @@ export function OperatorProfileScreen() {
         </View>
         <View className="mt-4"><Button variant="outlined" onPress={() => router.push('/operator-profile/edit')}>Edit Profile</Button></View>
       </SettingsCard>
-      <Text accessibilityRole="header" className="mb-3 mt-5 font-poppins-semibold text-[12px] leading-[18px] text-[#7399CC]">Store</Text>
+      <ProfileSection>Store</ProfileSection>
       <SettingsCard>
         <ProfileText bold>{profiles.get(session.ownerId)?.storeName || 'Not set'}</ProfileText>
       </SettingsCard>
       {hasCapability(session, 'settings') && <>
-        <Text accessibilityRole="header" className="mb-3 mt-5 font-poppins-semibold text-[12px] leading-[18px] text-[#7399CC]">Account</Text>
+        <ProfileSection>Account</ProfileSection>
         <SettingsCard>
           <SettingsRow inCard title="Settings" description="Preferences and app settings" icon="settings" onPress={() => router.navigate({ pathname: '/operator-more', params: { section: 'settings' } })} />
         </SettingsCard>

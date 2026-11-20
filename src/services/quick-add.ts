@@ -4,10 +4,11 @@ import { quickAddErrors, quickAddTotal } from '@/utils/quick-add';
 import { createPayablesRepository } from '@/services/payables';
 
 /** Record-only mock boundary. No cash, sales, revenue, or inventory effects are authorized. */
-// TODO(BACKEND): Replace this local Map with authorized debt/expense writes and
-// durable owner-scoped idempotency. Revalidate amounts, dates and item snapshots;
-// resolve only after server confirmation. Posting/customer linking rules remain
-// open; see docs/backend-handoff.md#quick-add-and-expenses and docs/api-contract.md#customers-and-debts.
+// TODO(backend): Replace the local Map with authorized debt and expense writes.
+// - Method/Action: POST / Create customer debt, store debt, or expense
+// - Expected Input/Payload: Authenticated session, QuickAddDraft, and durable owner-scoped idempotency key
+// - Expected Response: Canonical QuickAddRecord with validated amounts, dates, links, and item snapshots
+// - UI State to Wire: Resolve only after confirmation; retain drafts and surface validation/retry errors
 export function createQuickAddService() {
   const saved = new Map<string, QuickAddRecord>();
   const payables = createPayablesRepository();

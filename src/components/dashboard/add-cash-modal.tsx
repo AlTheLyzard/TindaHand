@@ -68,8 +68,11 @@ export function AddCashModal({ onClose, onSaved }: { onClose: () => void; onSave
       clear();
       dismiss(onSaved);
     } catch {
-      // TODO(BACKEND): Map submission/refresh failures to safe, retryable feedback.
-      // Keep the draft and token so an uncertain result cannot create a second addition.
+      // TODO(backend): Map cash movement submission and balance refresh failures to safe feedback.
+      // - Method/Action: POST / Record cash movement, then GET / Refresh register balance
+      // - Expected Input/Payload: Amount in centavos and stable submission token
+      // - Expected Response: Confirmed movement and updated authoritative cash balance
+      // - UI State to Wire: Keep the amount/token on failure and expose an explicit retry message
       setSaveError('Could not add cash. Your amount is preserved. Please try again.');
     } finally {
       setSaving(false);

@@ -15,7 +15,7 @@ The existing handler authenticates the fictional `TH-DEMO-OWNER` fixture in deve
 ## Behavior
 
 - Owner ID entry uppercases letters and inserts the two separators. Manually typed or pasted separators are accepted without duplication. Selection mapping preserves earlier edits, replacement selections, and backspace across separators, including repeated digits. Hyphens alone are empty.
-- The persistent note above the first field reads “Fields marked with * are required.” Owner Login labels use red asterisks in the shared form field's existing error red, `#B42318`; label text keeps its existing color. Other forms retain their existing required-label style.
+- The former persistent required-fields note above the first field has been removed. Owner Login labels use red asterisks in the shared form field's existing error red, `#B42318`; label text keeps its existing color. Other forms retain their existing required-label style.
 - No validation errors appear initially. Blur enables validation for that field; submission enables all applicable errors and focuses the first invalid input before any login handler can run. Errors revalidate on every change. Missing values use “Enter your Owner ID.” and “Enter your PIN.” Nonempty invalid values use ID-format or existing four-digit PIN validation.
 - Required semantics and current errors are included in each input's accessibility label. Inline errors retain alert semantics and a polite live region. Screen-reader speech has not been tested on devices.
 

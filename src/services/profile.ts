@@ -49,9 +49,11 @@ export function createMockProfileService(options: {
       return { ok: true, value: current };
     }),
     save: ({ draft, ownerPin }) => operation('save', current => {
-      // BACKEND TODO: Derive actor/store from the authenticated session, reauthenticate
-      // the Owner server-side with throttling, validate fields and immutable Owner ID.
-      // Request is editable fields + request-only PIN; return canonical profile/pending email.
+      // TODO(backend): Save editable profile fields after server-side Owner reauthentication.
+      // - Method/Action: PATCH / Update Owner profile
+      // - Expected Input/Payload: ProfileDraft and request-only Owner PIN; actor/store come from session
+      // - Expected Response: Canonical OwnerProfile, avatar assignment, and pending-email state
+      // - UI State to Wire: Replace the profile snapshot only after confirmation; retain draft on failure
       if (!options.verifyPin(current.ownerId, ownerPin)) return fail('The Owner PIN you entered is incorrect.');
       if (Object.keys(validateProfile(draft)).length) return fail('Check the profile fields before saving.');
       const clean = normalizeProfile(draft);
@@ -63,18 +65,18 @@ export function createMockProfileService(options: {
           ? current.pendingEmail?.address === clean.email ? current.pendingEmail : { address: clean.email, status: 'pending', expiresAt: now() + 900000, resendAt: now() + 30000 }
           : current.pendingEmail,
       };
-      // BACKEND TODO: Persist atomically and audit actor/account changes without PINs.
-      // Recheck at commit, after the async boundary. A failed replacement keeps
-      // the previous assignment reserved and leaves the caller's draft intact.
+      // Commit profile and avatar changes atomically; preserve the previous assignment if either fails.
       const result = avatars.replace(current.ownerId, current.ownerId, clean.avatarId!, () => {
         options.onIdentity(updated); put(updated);
       });
       return result.ok ? { ok: true, value: updated } : fail(result.message);
     }),
     email: action => operation('email', current => {
-      // BACKEND TODO: Implement server-owned pending-email lifecycle, single-use expiring
-      // links, delivery/resend limits, cancellation and atomic verified-email replacement.
-      // A current PIN is reauthentication only; it never proves new-email ownership.
+      // TODO(backend): Implement the server-owned pending-email verification lifecycle.
+      // - Method/Action: POST / Resend or cancel verification; GET / Check status; Auth / Verify link
+      // - Expected Input/Payload: Email action and single-use verification token; PIN is reauthentication only
+      // - Expected Response: Canonical OwnerProfile with pending/verified/expired status and absolute deadlines
+      // - UI State to Wire: Refresh email status and show server retry/resend timing or request errors
       const pending = current.pendingEmail;
       if (!pending) return fail('There is no pending email change.');
       if (action === 'cancel') return put({ ...current, pendingEmail: null });
@@ -100,8 +102,11 @@ export function createMockProfileService(options: {
   };
   return Object.assign(service, {
     initialize(owner: RegisteredOwner, email: string, demo = false) {
-      // BACKEND TODO: Hydrate/migrate account avatar assignments transactionally
-      // at the service boundary, never by persisting a fallback during rendering.
+      // TODO(backend): Hydrate or migrate profile and avatar assignments transactionally.
+      // - Method/Action: GET / Fetch Owner profile and assigned avatar
+      // - Expected Input/Payload: Authenticated Owner session
+      // - Expected Response: Canonical OwnerProfile and store avatar assignments
+      // - UI State to Wire: Initialize snapshots from server data without persisting render-time fallbacks
       if (!enabled || snapshot.has(owner.id)) return;
       const result = avatars.initializeStore(owner.id, { id: owner.id, avatarId: DEFAULT_OWNER_AVATAR_ID });
       if (result.ok) put({ ownerId: owner.id, name: owner.name, email: email.trim().toLowerCase(), storeName: demo ? demoProfile.storeName : '', avatarId: result.value.get(owner.id)!, pendingEmail: null });

@@ -15,7 +15,6 @@ import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { PosIcon } from '@/components/pos/pos-icon';
 import { PosDialog } from '@/components/pos/pos-dialog';
 import { RegistrationToast } from '@/components/auth/registration-toast';
-import { SuccessMark } from '@/components/auth/success-mark';
 import { ProfileFrame, operatorsRoot } from './profile-frame';
 import { AccountBadge, ProfileAvatar, ProfileError, ProfileNotice, ProfileText } from './profile-ui';
 
@@ -97,7 +96,7 @@ function OperatorDetails({ operator, created }: { operator: Cashier; created: bo
   }
   return <ProfileFrame title="View Account" busy={statusBusy}>
     {created && <RegistrationToast expiresAt={toast} onDismiss={dismissToast} title="Operator created" message={`${operator.name} can log in with the Owner ID and assigned PIN.`} />}
-    <SettingsCard>{created && <View className="mb-4"><SuccessMark animate eventKey={operator.id} /></View>}<OperatorIdentity operator={operator} /><View className="mt-4 gap-1"><ProfileText small bold>Linked Owner ID</ProfileText><ProfileText>{operator.ownerId}</ProfileText></View></SettingsCard>
+    <SettingsCard><OperatorIdentity operator={operator} /><View className="mt-4 gap-1"><ProfileText small bold>Linked Owner ID</ProfileText><ProfileText>{operator.ownerId}</ProfileText></View></SettingsCard>
     <View className="my-4"><ProfileNotice title="Store operations">Changes apply only to this Operator account.</ProfileNotice></View>
     <SettingsCard>{permissionGroups.map((group, index) => {
       const checked = !inactive && group.capabilities.every(capability => permissions.includes(capability));
