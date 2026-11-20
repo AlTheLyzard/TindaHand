@@ -44,18 +44,20 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   const [apiMovements, setApiMovements] = useState<CashMovement[] | null>(null);
   const [apiLoading, setApiLoading] = useState(owner.mode === 'confirmed');
 
-  useEffect(() => {
+  const refreshDashboard = useCallback(() => {
     if (owner.mode !== 'confirmed') return;
-    let cancelled = false;
     setApiLoading(true);
     Promise.allSettled([getDashboardSummary(), getCashMovements()])
       .then(([summaryResult, movementsResult]) => {
-        if (cancelled) return;
         if (summaryResult.status === 'fulfilled') setApiSummary(summaryResult.value);
         if (movementsResult.status === 'fulfilled') setApiMovements(movementsResult.value);
         setApiLoading(false);
       });
-    return () => { cancelled = true; };
+  }, [owner.mode]);
+
+  useEffect(() => {
+    refreshDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner.mode]);
 
   const { t } = useTranslation();
@@ -159,7 +161,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     <DashboardQuickAdd onSelect={action => { preview.reset(); setQuickKind(action === 'dashboard.quick.customerDebt' ? 'customerDebt' : action === 'dashboard.quick.storeDebt' ? 'storeDebt' : 'expense'); }} />
     {quickKind && <QuickAddModal initialKind={quickKind} onClose={() => setQuickKind(null)} />}
     {cashToastExpiresAt !== null && <RegistrationToast expiresAt={cashToastExpiresAt} onDismiss={dismissCashToast} title="Amount Saved!" message="Cash added successfully." />}
-    {cashOpen && <AddCashModal onClose={() => setCashOpen(false)} onSaved={() => { setCashOpen(false); setCashToastExpiresAt(Date.now() + 15000); }} />}
+    {cashOpen && <AddCashModal onClose={() => setCashOpen(false)} onSaved={() => { setCashOpen(false); setCashToastExpiresAt(Date.now() + 15000); refreshDashboard(); }} />}
     <Modal visible={!!notice} onRequestClose={() => setNotice(null)}>
       <View className="flex-1 items-center justify-center px-6">
         <View accessibilityViewIsModal className="w-full max-w-[412px] gap-4 rounded-card bg-white p-6">

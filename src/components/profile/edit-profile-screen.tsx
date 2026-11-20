@@ -27,7 +27,7 @@ export function EditProfileScreen() {
 }
 function ProfileEditor({ profile }: { profile: OwnerProfile }) {
   const [state, dispatch] = useReducer(profileEditor, profileDraft(profile), createProfileEditor);
-  const { owner } = useAuthFlow();
+  const { owner, refreshSession } = useAuthFlow();
   const [touched, setTouched] = useState<Partial<Record<keyof ProfileDraft, boolean>>>({});
   const [dialog, setDialog] = useState<'save' | 'discard' | null>(null);
   const [pin, setPin] = useState('');
@@ -106,6 +106,10 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
           storeName: state.draft.storeName.trim(),
           avatarId: state.draft.avatarId ?? undefined,
         });
+        if (!active.current) return;
+        // Refresh the in-memory session so the new name propagates app-wide
+        // (dashboard greeting, header, etc.) without requiring a full re-login.
+        await refreshSession();
         if (!active.current) return;
         setLeaving(true); disablePrevention();
         router.dismissTo({ pathname: profileRoot, params: { updated: 'complete' } });
