@@ -11,7 +11,7 @@ import { ConfirmationContent } from '@/components/ui/confirmation-content';
 import { InvCard, InvDateField, InvField, InventoryFrame, InvText, InvSelect, inventoryIllustrations } from './inventory-ui';
 import { BatchCard, ExistingBatchCard, batchExpiryLabel } from './batch-card';
 import { useInventory } from '@/state/inventory';
-import { suppressAuthLock, releaseAuthLock } from '@/state/auth-flow';
+import { suppressAuthLock, releaseAuthLock, useAuthFlow } from '@/state/auth-flow';
 import { createProduct, updateProduct, deleteProduct as deleteProductApi, deleteBatch as deleteBatchApi, addRestock as addRestockApi } from '@/services/inventory';
 import type { BatchDraft, BatchErrors, InventoryProduct, ProductDraft } from '@/types/inventory';
 import { categoryLabels, earliestExpiry, productBatches, productExpiry, productStock, stockCategory, todayInManila, validDate } from '@/utils/inventory';
@@ -30,6 +30,7 @@ export function ProductScreen() {
   const push = usePushOnce();
   const params = useLocalSearchParams<{ id?: string; mode?: string }>();
   const { store, getStore, dispatch, setFeedback } = useInventory();
+  const { owner } = useAuthFlow();
   const preview = useContentPreview();
   const mode = ['add', 'edit', 'restock', 'delete', 'details'].includes(params.mode ?? '') ? params.mode! : 'details';
   const liveProduct = store.products.find(p => p.id === params.id);
@@ -199,16 +200,19 @@ export function ProductScreen() {
       }
     } else if (mode === 'edit' && product) {
       if (product.id.startsWith('prod-')) {
-        try {
-          await updateProduct(product.id, {
-            name: builtProduct.name,
-            category: builtProduct.category,
-            unitPriceCentavos: builtProduct.unitPriceCentavos,
-            costCentavos: builtProduct.costCentavos,
-            photoUri: builtProduct.photoUri,
-          });
-        } catch {
-          // Offline — keep the local edit.
+        // updateProduct requires owner role — Kahera (operator) skips this call.
+        if (owner) {
+          try {
+            await updateProduct(product.id, {
+              name: builtProduct.name,
+              category: builtProduct.category,
+              unitPriceCentavos: builtProduct.unitPriceCentavos,
+              costCentavos: builtProduct.costCentavos,
+              photoUri: builtProduct.photoUri,
+            });
+          } catch {
+            // Offline — keep the local edit.
+          }
         }
         // Delete any batches that were removed during this edit.
         // Compare the original product's batches against the saved draft's batches

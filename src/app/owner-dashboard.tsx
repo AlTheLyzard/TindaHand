@@ -7,7 +7,7 @@ import { clearToken, getToken } from "@/services/token-storage";
 import { useAuthFlow } from "@/state/auth-flow";
 import type { OwnerIdentity } from "@/types/auth";
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function OwnerDashboardRoute() {
@@ -48,7 +48,7 @@ export default function OwnerDashboardRoute() {
   const owner = mockOwner ?? (serverOwner === 'loading' ? null : serverOwner);
   const isLoading = restoring || (!mockOwner && serverOwner === 'loading');
 
-  if (isLoading) return null; // wait for JWT check before redirecting
+  if (isLoading) return <View className="flex-1 items-center justify-center bg-canvas"><Text className="font-poppins text-[14px] text-brand">Restoring your session…</Text></View>;
   // If the session is locked (background timer or cold restart with persisted lock),
   // redirect to the PIN screen instead of showing the dashboard.
   if (deviceSession?.locked) return <Redirect href={{ pathname: '/login', params: { role: 'owner' } }} />;
