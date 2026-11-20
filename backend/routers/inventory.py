@@ -219,6 +219,33 @@ def delete_product(
     return OkResponse(message="Product deleted")
 
 
+@router.delete("/products/{product_id}/batches/{batch_id}", response_model=OkResponse)
+def delete_batch(
+    product_id: str,
+    batch_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),  # owner or Kahera can delete batches
+):
+    owner_id = _resolve_owner_id(db, current_user)
+    # Verify the product belongs to this owner.
+    p = db.query(Product).filter(
+        Product.id == product_id,
+        Product.owner_id == owner_id,
+        Product.is_deleted == False,
+    ).first()
+    if not p:
+        raise HTTPException(404, "Product not found")
+    batch = db.query(StockBatch).filter(
+        StockBatch.id == batch_id,
+        StockBatch.product_id == product_id,
+    ).first()
+    if not batch:
+        raise HTTPException(404, "Batch not found")
+    db.delete(batch)
+    db.commit()
+    return OkResponse(message="Batch deleted")
+
+
 # ── RESTOCK ──────────────────────────────────────────────────────────────────
 
 @router.post("/products/{product_id}/restock", response_model=RestockOut, status_code=201)

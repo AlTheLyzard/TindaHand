@@ -12,7 +12,7 @@ import { InvCard, InvDateField, InvField, InventoryFrame, InvText, InvSelect, in
 import { BatchCard, ExistingBatchCard, batchExpiryLabel } from './batch-card';
 import { useInventory } from '@/state/inventory';
 import { suppressAuthLock, releaseAuthLock } from '@/state/auth-flow';
-import { createProduct, updateProduct, deleteProduct as deleteProductApi, addRestock as addRestockApi } from '@/services/inventory';
+import { createProduct, updateProduct, deleteProduct as deleteProductApi, deleteBatch as deleteBatchApi, addRestock as addRestockApi } from '@/services/inventory';
 import type { BatchDraft, BatchErrors, InventoryProduct, ProductDraft } from '@/types/inventory';
 import { categoryLabels, earliestExpiry, productBatches, productExpiry, productStock, stockCategory, todayInManila, validDate } from '@/utils/inventory';
 import { batchErrors, buildDraftProduct, clearInventoryStep, createInventoryDraft, detailsErrors, draftQuantity, newBatch, toStockBatches } from '@/utils/inventory-draft';
@@ -210,6 +210,15 @@ export function ProductScreen() {
         } catch {
           // Offline — keep the local edit.
         }
+        // Delete any batches that were removed during this edit.
+        // Compare the original product's batches against the saved draft's batches
+        // and call the backend for each one that was removed.
+        const originalBatchIds = new Set(productBatches(product).map(b => b.id));
+        const remainingBatchIds = new Set((builtProduct.batches ?? []).map(b => b.id));
+        const deletedBatchIds = [...originalBatchIds].filter(id => !remainingBatchIds.has(id));
+        await Promise.allSettled(
+          deletedBatchIds.map(batchId => deleteBatchApi(product.id, batchId))
+        );
       }
     }
     const saved = dispatch({ type: 'saveProduct', product: builtProduct });
