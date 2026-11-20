@@ -15,15 +15,18 @@ export function SettingsDescription({ children }: { children: ReactNode }) {
 export function SettingsSection({ children }: { children: string }) {
   return <Text className="mb-4 mt-1 font-poppins-bold text-[12px] leading-[18px] text-text-secondary">{children}</Text>;
 }
-export function SettingsCard({ children }: { children: ReactNode }) {
-  return <View className="rounded-control border bg-white p-4" style={{ borderColor: tokens.color.borderOutline }}>{children}</View>;
+export function SettingsCard({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
+  return <View className={`rounded-control border bg-white ${compact ? 'p-3' : 'p-4'}`} style={{ borderColor: tokens.color.borderOutline }}>{children}</View>;
 }
-export function SettingsRow({ title, description, icon, onPress, inCard = false }: {
+export function SettingsRow({ title, description, icon, onPress, inCard = false, compact = false }: {
   title: string; description: string; icon: ComponentProps<typeof SettingsIcon>['name']; onPress: () => void;
-  inCard?: boolean;
+  inCard?: boolean; compact?: boolean;
 }) {
+  const cardClassName = compact
+    ? 'min-h-12 flex-row items-center gap-2 rounded-control bg-white py-1 active:bg-[#D9E7F4]'
+    : 'min-h-[68px] flex-row items-center gap-3 rounded-control bg-white py-3 active:bg-[#D9E7F4]';
   return <Pressable accessibilityRole="button" onPress={onPress}
-    className={inCard ? 'min-h-[68px] flex-row items-center gap-3 rounded-control bg-white py-3 active:bg-[#D9E7F4]' : 'mb-3 min-h-[68px] flex-row items-center gap-3 rounded-control border bg-white px-4 py-3 active:bg-[#D9E7F4]'} style={{ borderColor: tokens.color.borderOutline }}>
+    className={inCard ? cardClassName : 'mb-3 min-h-[68px] flex-row items-center gap-3 rounded-control border bg-white px-4 py-3 active:bg-[#D9E7F4]'} style={{ borderColor: tokens.color.borderOutline }}>
     <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><SettingsIcon name={icon} /></View>
     <View className="min-w-0 flex-1 gap-1">
       <Text className="font-poppins-bold text-[14px] leading-[21px] text-[#0C1B3C]">{title}</Text>

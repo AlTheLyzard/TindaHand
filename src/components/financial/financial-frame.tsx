@@ -5,12 +5,11 @@ import { useCallback, type ReactNode } from 'react';
 import { BackHandler, Image, Platform, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
-import { DashboardAction, DashboardCircle } from '@/components/dashboard/dashboard-ui';
+import { MainHeader } from '@/components/dashboard/main-header';
 import { PosIcon } from '@/components/pos/pos-icon';
 import { IconButton } from '@/components/ui/button';
 import { BackButton } from '@/components/ui/back-button';
 import { useTranslation } from '@/i18n/use-translation';
-import { useAuthFlow } from '@/state/auth-flow';
 import tokens from '@/constants/design-tokens.json';
 
 export const financialRoot = '/owner-menu/financial-statements' as const;
@@ -18,7 +17,6 @@ export function FinancialFrame({ title, landing = false, children, refreshing = 
   title: string; landing?: boolean; children: ReactNode; refreshing?: boolean; onRefresh?: () => void;
 }) {
   const { t } = useTranslation();
-  const { owner } = useAuthFlow();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const back = useCallback(() => router.dismissTo(landing ? '/owner-dashboard' : financialRoot), [landing]);
@@ -31,16 +29,7 @@ export function FinancialFrame({ title, landing = false, children, refreshing = 
       <BackgroundImage source={require('@/assets/images/financial/report-background.svg')} contentFit="fill" style={StyleSheet.absoluteFill} accessible={false} />
       <Image source={require('@/assets/images/financial/store-background.png')} resizeMode="stretch" style={{ position: 'absolute', bottom: landing ? tokens.navigation.height + insets.bottom : 0, width: '100%', height: 80, opacity: landing ? 1 : 0.22 }} />
     </View>
-    <View className="border-b border-[#ADC9EE] bg-white">
-      <View className="w-full max-w-[460px] flex-row items-center gap-2 self-center px-5 py-2">
-        <Image source={require('@/assets/images/brand/tindahand-mark.png')} style={{ width: 32, height: 34 }} resizeMode="contain" accessible={false} />
-        <Text className="min-w-0 flex-1 font-poppins-bold text-[20px] text-brand">TindaHand</Text>
-        {!landing && <>
-          <DashboardAction label={t('navigation.settings')} onPress={() => router.navigate('/owner-menu/settings')}><PosIcon name="settings" color="#112F6F" /></DashboardAction>
-          <DashboardAction label={t('navigation.profile')} onPress={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'profile' } })}><DashboardCircle><Text className="font-poppins-bold text-action">{owner?.name.trim().charAt(0).toUpperCase()}</Text></DashboardCircle></DashboardAction>
-        </>}
-      </View>
-    </View>
+    <MainHeader showActions={!landing} />
     <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
       refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined}

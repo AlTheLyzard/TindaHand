@@ -3,7 +3,8 @@ import { MotionContent, MotionRegion } from '@/components/ui/motion-content';
 import { usePushOnce } from '@/hooks/use-push-once';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { Image, Keyboard, View, useWindowDimensions } from 'react-native';
 import { Button, IconButton } from '@/components/ui/button';
 import { PosIcon } from '@/components/pos/pos-icon';
@@ -28,7 +29,10 @@ const statuses = { good: 'In Stock', low: 'Low Stock', out: 'Out of Stock' } as 
 export function InventoryScreen({ readOnly = false }: { readOnly?: boolean }) {
   const push = usePushOnce();
   const { tab, status: routeStatus } = useLocalSearchParams<{ tab?: string; status?: string }>();
-  const { store: liveStore } = useInventory();
+  const { store: liveStore, refetchProducts } = useInventory();
+  // Re-sync with the backend whenever this screen comes into focus.
+  // This ensures May-Ari sees Kahera's restocks, and Kahera sees May-Ari's edits.
+  useFocusEffect(useCallback(() => { void refetchProducts(); }, [refetchProducts]));
   const { fontScale } = useWindowDimensions();
   const preview = useContentPreview(listPreviewStates);
   const store = preview.empty ? { ...liveStore, products: [], assets: [] } : liveStore;

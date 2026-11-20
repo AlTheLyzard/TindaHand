@@ -6,7 +6,7 @@ import { ProductCatalog } from './product-catalog';
 import { useInventory } from '@/state/inventory';
 import tokens from '@/constants/design-tokens.json';
 import type { ProductSelection } from '@/types/pos';
-import { removeSelectedProduct, selectProduct, selectionSummary, setSelectedQuantity, stockConflicts } from '@/utils/pos';
+import { selectProduct, selectionSummary, stockConflicts } from '@/utils/pos';
 import { formatPesos } from '@/utils/dashboard';
 
 /** Selection is a local transaction. Confirm publishes snapshots to the debt
@@ -24,23 +24,21 @@ export function CreditProductBrowser({ name, selection, onConfirm, onReturn }: {
     returned.current = true; Keyboard.dismiss();
     if (confirm) onConfirm(draft); else onReturn();
   };
-  return <View testID="credit-product-browser" style={{ flex: 1, backgroundColor: '#F0F8FF' }}>
-    <View style={{ width: '100%', maxWidth: 460, flex: 1, alignSelf: 'center' }}>
+  return <View testID="credit-product-browser" style={{ flex: 1, minHeight: 0, maxHeight: '100%', backgroundColor: '#F0F8FF' }}>
+    <View style={{ width: '100%', maxWidth: 460, flex: 1, minHeight: 0, alignSelf: 'center', overflow: 'hidden' }}>
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><BackButton accessibilityLabel="Back to debt form" onPress={() => finish(false)} />
           <Text accessibilityRole="header" style={{ flex: 1, fontFamily: 'Poppins_700Bold', fontSize: 22, color: tokens.color.textPrimary }}>Select Products</Text></View>
         <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, color: tokens.color.textSecondary }}>Choose items and quantities for this Customer Debt.</Text>
         {!!name.trim() && <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: tokens.color.textPrimary }}>Customer: {name}</Text>}
       </View>
-      <ProductCatalog products={products} selection={draft} onAdd={id => {
-        const product = products.find(item => item.id === id);
-        if (product) setDraft(previous => selectProduct(previous, product));
-      }} onDecrease={id => {
-        const product = products.find(item => item.id === id);
-        setDraft(previous => !previous[id] ? previous : previous[id].quantity === 1 ? removeSelectedProduct(previous, id)
-          : product ? setSelectedQuantity(previous, product, previous[id].quantity - 1) : previous);
-      }} />
-      <View style={{ padding: 16, gap: 12, borderTopWidth: 1, borderColor: tokens.color.borderOutline, backgroundColor: '#FFFFFF' }}>
+      <View style={{ flex: 1, minHeight: 0 }}>
+        <ProductCatalog products={products} selection={draft} onAdd={id => {
+          const product = products.find(item => item.id === id);
+          if (product) setDraft(previous => selectProduct(previous, product));
+        }} />
+      </View>
+      <View style={{ flexShrink: 0, padding: 16, gap: 12, borderTopWidth: 1, borderColor: tokens.color.borderOutline, backgroundColor: '#FFFFFF' }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 }}>
           <Text accessibilityLiveRegion="polite" style={{ fontFamily: 'Poppins_600SemiBold', color: tokens.color.textSecondary }}>{summary.quantity} selected</Text>
           <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 20, color: tokens.color.textPrimary }}>{formatPesos(summary.totalCentavos)}</Text>

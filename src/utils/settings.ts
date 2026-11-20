@@ -1,4 +1,4 @@
-import type { CashierValues, PinValues, SettingsErrors, SyncState } from '@/types/settings';
+import type { CashierValues, OperatorProfileValues, PinValues, SettingsErrors, SyncState } from '@/types/settings';
 
 export function validatePinPair(values: Pick<CashierValues, 'pin' | 'confirmPin'>): SettingsErrors {
   const errors: SettingsErrors = {};
@@ -17,6 +17,13 @@ export function validatePinChange(values: PinValues): SettingsErrors {
 export function validateCashier(values: CashierValues): SettingsErrors {
   return { ...validatePinPair(values), ...(!values.name.trim() ? { name: 'Please complete the required fields.' } : {}) };
 }
+export function validateOperatorProfile(values: OperatorProfileValues): SettingsErrors {
+  const errors: SettingsErrors = {};
+  const name = values.name.trim();
+  if (!name) errors.name = 'Enter your name.';
+  else if (name.length > 120) errors.name = 'Use 120 characters or fewer.';
+  return errors;
+}
 export function canClearCache(state: SyncState): boolean {
-  return state.pendingRecords === 0 && state.status !== 'syncing';
+  return state.pendingRecords === 0 && (state.status === 'up-to-date' || state.status === 'complete');
 }

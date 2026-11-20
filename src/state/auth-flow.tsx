@@ -15,7 +15,8 @@ export function suppressAuthLock() { _lockSuppressed = true; }
 export function releaseAuthLock()  { _lockSuppressed = false; }
 import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
-import { getKaheraId, getRole, getToken } from '@/services/token-storage';
+import { settingsService } from '@/services/settings';
+import { clearSessionLocked, getKaheraId, getOwnerId, getOwnerName, getRole, getSessionLocked, getToken, saveSessionLocked } from '@/services/token-storage';
 import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
 import { defaultOperatorPermissions } from '@/utils/operator-access';
 
@@ -54,8 +55,11 @@ type AuthFlow = {
 const AuthFlowContext = createContext<AuthFlow | null>(null);
 
 /** Local mock account directory, identity-only login hints, and ephemeral sessions/drafts. */
-// BACKEND INTEGRATION: Replace mock restoration with the agreed secure session
-// adapter; server authorization is mandatory. See docs/authentication-handoff.md.
+// TODO(backend): Restore and maintain device sessions through the secure authentication service.
+// - Method/Action: Auth / Restore, refresh, lock, and revoke session
+// - Expected Input/Payload: Secure device credential; role and store come from the server session
+// - Expected Response: DeviceSession or signed-out state with canonical role/capabilities
+// - UI State to Wire: Drive restoring, session context, and direct-route capability gates from server state
 export function AuthFlowProvider({ children }: { children: ReactNode }) {
   const profiles = useSyncExternalStore(authenticationService.profile.subscribe, authenticationService.profile.getSnapshot, authenticationService.profile.getSnapshot);
   const [deviceSession, setDeviceSession] = useState<DeviceSession | null>(null);
@@ -99,39 +103,63 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
       // No mock session — try the real JWT stored in SecureStore.
       const token = await getToken();
       if (token) {
-        const [me, storedRole, kaheraId] = await Promise.all([
-          fetchMe(token),
+        const [me, storedRole, kaheraId, savedOwnerId, savedOwnerName, wasLocked] = await Promise.all([
+          fetchMe(token).catch(() => null),   // graceful offline fallback
           getRole(),
           getKaheraId(),
+          getOwnerId(),
+          getOwnerName(),
+          getSessionLocked(),   // was the session locked when the app last closed?
         ]);
-        if (me) {
-          const owner = { id: me.formatted_id, name: me.name };
-          if (storedRole === 'cashier' && kaheraId) {
+        // For a cashier, /auth/me returns Kahera's own ID (TH-KH-XXXX), NOT the
+        // owner's ID.  Using it as ownerId would point the session at the wrong store.
+        // Always use savedOwnerId for cashier sessions — it was saved correctly at login.
+        // For owners, prefer the live formatted_id from /me (more reliable than the
+        // typed ID saved at login).
+        const isCashier    = storedRole === 'cashier';
+        const resolvedId   = isCashier ? savedOwnerId : (me?.formatted_id ?? savedOwnerId);
+        const resolvedName = me?.name ?? savedOwnerName ?? '';
+        if (resolvedId) {
+          const owner = { id: resolvedId, name: resolvedName };
+          if (isCashier && kaheraId) {
             // Cashier session — build an operator DeviceSession.
+            // If the session was locked when the app last closed, restore it as locked
+            // so the app shows the PIN screen instead of going straight to the POS.
             const realSession: DeviceSession = {
               kind: 'mock',
               id: token,
               role: 'operator',
               owner,
-              ownerId: me.formatted_id,
+              ownerId: resolvedId,
               operatorId: kaheraId,
-              displayName: me.name,
-              operator: { id: kaheraId, name: me.name, permissions: [...defaultOperatorPermissions] },
+              displayName: resolvedName,
+              operator: { id: kaheraId, name: resolvedName, permissions: [...defaultOperatorPermissions] },
               expiresAt: Date.now() + 8 * 60 * 60 * 1000,
-              locked: false,
+              locked: wasLocked,
             };
             authenticationService.seedRealOwner(owner);
+            // Seed the Kahera into the local settings store so the profile screen
+            // and drawer can display their name/avatar without a mock setup.
+            settingsService.seedRealCashier({
+              id: kaheraId,
+              ownerId: resolvedId,
+              name: resolvedName,
+              status: 'active',
+              avatarId: 'avatar-0',
+            });
             setDeviceSession(realSession);
             return realSession;
           }
           // Owner session.
+          // If the session was locked when the app last closed, restore it as locked
+          // so the app shows the PIN screen instead of going straight to the dashboard.
           const realSession: DeviceSession = {
             kind: 'mock',           // discriminant reused; not sent anywhere
             id: token,
             role: 'owner',
             owner,
             expiresAt: Date.now() + 8 * 60 * 60 * 1000,
-            locked: false,
+            locked: wasLocked,
           };
           // Seed the mock directory so login.tsx's directory.owners.length check passes.
           authenticationService.seedRealOwner(owner);
@@ -162,6 +190,8 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
 
   async function lock() {
     await authenticationService.lockSession();
+    // Persist the locked flag so a cold restart shows PIN screen, not full login.
+    await saveSessionLocked();
     const current = await authenticationService.restoreSession();
     setDeviceSession(current);
     if (current) setDraft(emptyDraft);
@@ -169,15 +199,21 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void Promise.resolve().then(() => refreshSession());
+    // Grace period before locking: short app switches (notification shade, quick-settings,
+    // system overlays) go inactive briefly. Only lock after 3 minutes in background
+    // so brief switches don't kick the user back to the PIN screen (matches banking apps).
+    let lockTimer: ReturnType<typeof setTimeout> | null = null;
     const subscription = AppState.addEventListener('change', state => {
       if (state !== 'active') {
         // Skip the lock while a system overlay (photo picker, camera, etc.) is open.
-        // Those overlays put the app in the background momentarily without the user
-        // actually leaving — locking would kick them back to the role-selection screen.
-        if (!_lockSuppressed) void lock();
-      } else void refreshSession();
+        if (_lockSuppressed) return;
+        lockTimer = setTimeout(() => { lockTimer = null; void lock(); }, 180000);
+      } else {
+        if (lockTimer !== null) { clearTimeout(lockTimer); lockTimer = null; }
+        void refreshSession();
+      }
     });
-    return () => { subscription.remove(); };
+    return () => { subscription.remove(); if (lockTimer !== null) clearTimeout(lockTimer); };
   }, [refreshSession]);
   // SECURITY: Navigation gates only. Backend authorization is required for every
   // read/write. Neither registration completion nor a remembered ID grants access.

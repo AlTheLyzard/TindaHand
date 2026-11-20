@@ -17,6 +17,11 @@ const specs = [
   { customer: 5, amount: 120000, paid: 120000, due: '2026-10-22' },
 ];
 /** Fictional independent borrowings; totals and relative dates are derived by selectors. */
+// TODO(backend): Replace receivables fixtures with store-scoped customer debt records.
+// - Method/Action: GET / Fetch customers, debts, and receivable payments
+// - Expected Input/Payload: None (authenticated session and applied customer/status filters)
+// - Expected Response: { customers: Customer[]; debts: QuickAddRecord[]; payments: ReceivablePayment[] }
+// - UI State to Wire: Replace the local ledger and derive balances, statuses, and totals from returned data
 export const receivablesSeed: { customers: Customer[]; debts: QuickAddRecord[]; payments: ReceivablePayment[] } = {
   customers,
   debts: specs.map((spec, index) => ({ id: `ar-demo-debt-${index}`, ownerId, kind: 'customerDebt', customerId: customers[spec.customer].id, name: customers[spec.customer].name,

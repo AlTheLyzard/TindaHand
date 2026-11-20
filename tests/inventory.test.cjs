@@ -152,6 +152,15 @@ test('add review and edit details retain draft values and do not write until fin
   const cleared = drafts.clearInventoryStep(draft, 'stock', 'new');
   assert.equal(cleared.details, draft.details); assert.equal(cleared.batches.length, 1); assert.equal(cleared.batches[0].quantity, '');
 });
+test('restock dirty state follows batch values and added or removed batches rather than generated IDs', () => {
+  const initial = [drafts.newBatch('original')];
+  assert.equal(drafts.batchDraftsChanged([drafts.newBatch('cleared')], initial), false);
+  assert.equal(drafts.batchDraftsChanged([{ ...initial[0], quantity: '4' }], initial), true);
+  assert.equal(drafts.batchDraftsChanged([{ ...initial[0], noExpiry: true }], initial), true);
+  assert.equal(drafts.batchDraftsChanged([{ ...initial[0], expirationDate: '2027-01-01' }], initial), true);
+  assert.equal(drafts.batchDraftsChanged([...initial, drafts.newBatch('added')], initial), true);
+  assert.equal(drafts.batchDraftsChanged([], initial), true);
+});
 test('new batch validation requires positive whole quantities and explicit valid dates or no expiry', () => {
   const batch = { id: 'a', quantity: '1', expirationDate: today, noExpiry: false };
   for (const quantity of ['0', '-1', '1.5', '', '1000001']) assert.ok(drafts.batchErrors({ ...batch, quantity }).quantity);

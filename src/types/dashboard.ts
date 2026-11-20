@@ -1,6 +1,11 @@
 /** Frontend fixtures only; these are not backend response contracts. */
 export type SalesPeriod = 'daily' | 'weekly' | 'monthly';
 /** Internal chart input. A future adapter must validate/map the agreed API schema. */
+// TODO(backend): Verify dashboard and analytics types against the reporting API response schema.
+// - Method/Action: GET / Read dashboard summary and growth series
+// - Expected Input/Payload: Reporting period and authenticated store context
+// - Expected Response: GrowthMetrics, DemoSale-compatible snapshots, and DashboardActivity records
+// - UI State to Wire: Map server timestamps, centavo values, and empty periods into dashboard views
 export type GrowthMetrics = {
   source: 'demo' | 'backend';
   reportingPeriod: SalesPeriod;

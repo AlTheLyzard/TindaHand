@@ -11,9 +11,9 @@ import { alphabetIndexAtOffset } from '@/utils/alphabet-index';
 export const alphabetIndexWidth = 44;
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-export function AlphabetIndex({ letters, active, onPick, gridStart, scrollY, viewportHeight }: {
+export function AlphabetIndex({ letters, active, onPick, gridStart, viewportHeight }: {
   letters: readonly string[]; active: string | null; onPick: (letter: string | null, dragging?: boolean) => void;
-  gridStart: SharedValue<number>; scrollY: SharedValue<number>; viewportHeight: SharedValue<number>;
+  gridStart: SharedValue<number>; viewportHeight: SharedValue<number>;
 }) {
   const { t } = useTranslation();
   const reduced = useMotionReduced();
@@ -30,14 +30,14 @@ export function AlphabetIndex({ letters, active, onPick, gridStart, scrollY, vie
   const frozenHeight = useSharedValue(0);
   const railTop = () => {
     'worklet';
-    // Use the list's full height on short screens; never cover the cart sheet.
-    return Math.min(Math.max(0, gridStart.value - scrollY.value), Math.max(0, viewportHeight.value - entries.length * 12));
+    // Keep the expanded letter chip inside the viewport at both ends.
+    return Math.min(Math.max(12, gridStart.value + 24), Math.max(12, viewportHeight.value - entries.length * 9 - 18));
   };
   useEffect(() => () => { if (releaseTimer.current) clearTimeout(releaseTimer.current); }, []);
 
   const position = useAnimatedStyle(() => {
     const top = frozen.value ? frozenTop.value : railTop();
-    const available = frozen.value ? frozenHeight.value : Math.max(0, viewportHeight.value - top);
+    const available = frozen.value ? frozenHeight.value : Math.max(0, viewportHeight.value - top - 18);
     const visible = viewportHeight.value > 0;
     return { top, height: visible ? available : 0, opacity: visible ? 1 : 0 };
   });
@@ -70,11 +70,12 @@ export function AlphabetIndex({ letters, active, onPick, gridStart, scrollY, vie
     if (releaseTimer.current) clearTimeout(releaseTimer.current);
     const top = railTop();
     frozenTop.set(top);
-    frozenHeight.set(Math.max(0, viewportHeight.value - top));
+    frozenHeight.set(Math.max(0, viewportHeight.value - top - 18));
     frozen.set(true);
     touch.current = { down: true, ready: false, pageY, top: 0, height: 0, index: -1 };
     setHighlighted(active);
     setInteracting(true);
+    emphasis.set(reduced ? 1 : withTiming(1, { duration: motion.press, easing: motion.ease }));
     track.current?.measureInWindow((_x, y, _width, height) => {
       if (!touch.current.down) return;
       touch.current.top = y;
@@ -83,7 +84,7 @@ export function AlphabetIndex({ letters, active, onPick, gridStart, scrollY, vie
       seek(false);
     });
   }
-  return <Animated.View testID="alphabet-index" style={[{ position: 'absolute', right: 0, width: alphabetIndexWidth, overflow: 'hidden', justifyContent: 'center' }, position]}>
+  return <Animated.View testID="alphabet-index" style={[{ position: 'absolute', right: 0, width: alphabetIndexWidth, overflow: 'visible', justifyContent: 'flex-start', zIndex: 20, elevation: 20 }, position]}>
     <View ref={track} testID="alphabet-index-track" collapsable={false}
       style={{ flex: 1, maxHeight: entries.length * 18, width: alphabetIndexWidth, touchAction: 'none' }}
       onStartShouldSetResponderCapture={() => true} onMoveShouldSetResponderCapture={() => true}
@@ -97,17 +98,26 @@ export function AlphabetIndex({ letters, active, onPick, gridStart, scrollY, vie
         onPress={() => { setHighlighted(letter); emphasis.set(1); onPick(letter, false); finish(); }}
         style={{ flex: 1, minHeight: 0, maxHeight: 18, width: alphabetIndexWidth, alignItems: 'center', justifyContent: 'center' }}>
         <Text maxFontSizeMultiplier={1} style={{ fontFamily: 'Poppins_400Regular', fontSize: 8, lineHeight: 9, color: tokens.color.textSecondary, opacity: enabled(letter) ? 1 : 0.35 }}>{letter}</Text>
-        <IndexIndicator letter={letter} selected={enabled(letter) && (interacting ? highlighted : active) === letter} emphasis={emphasis} />
+        <IndexIndicator letter={letter} selected={enabled(letter) && (interacting ? highlighted : active) === letter}
+          focused={enabled(letter) && highlighted === letter} emphasis={emphasis} />
       </Pressable>)}
     </View>
   </Animated.View>;
 }
 
-function IndexIndicator({ letter, selected, emphasis }: { letter: string; selected: boolean; emphasis: SharedValue<number> }) {
+function IndexIndicator({ letter, selected, focused, emphasis }: { letter: string; selected: boolean; focused: boolean; emphasis: SharedValue<number> }) {
   const reduced = useMotionReduced();
-  const appearance = useAnimatedStyle(() => ({ opacity: selected ? 1 : 0, transform: [{ scaleX: reduced ? 1 : 1 + emphasis.value * 0.08 }] }));
-  return <Animated.View testID={`alphabet-index-indicator-${letter}`} pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden
-    style={[{ position: 'absolute', minWidth: 20, height: '100%', maxHeight: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.accentBase }, appearance]}>
-    <Text maxFontSizeMultiplier={1} style={{ fontFamily: 'Poppins_700Bold', fontSize: 8, lineHeight: 9, color: tokens.color.surfaceCard }}>{letter}</Text>
-  </Animated.View>;
+  const restAppearance = useAnimatedStyle(() => ({ opacity: selected ? 1 - emphasis.value : 0 }));
+  const popOutAppearance = useAnimatedStyle(() => ({
+    opacity: focused ? emphasis.value : 0,
+    transform: [{ translateX: reduced ? 0 : 10 * (1 - emphasis.value) }, { scale: reduced ? 1 : 0.8 + emphasis.value * 0.2 }],
+  }));
+  return <View testID={`alphabet-index-indicator-${letter}`} pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}>
+    <Animated.View style={[{ position: 'absolute', top: '50%', left: 11, marginTop: -9, width: 22, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.accentContainer }, restAppearance]}>
+      <Text maxFontSizeMultiplier={1} style={{ fontFamily: 'Poppins_700Bold', fontSize: 8, lineHeight: 9, color: '#245399' }}>{letter}</Text>
+    </Animated.View>
+    <Animated.View style={[{ position: 'absolute', top: '50%', right: alphabetIndexWidth, marginTop: -18, width: 42, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.accentBase, boxShadow: '0px 3px 8px #112F6F45', zIndex: 2, elevation: 2 }, popOutAppearance]}>
+      <Text maxFontSizeMultiplier={1} style={{ fontFamily: 'Poppins_700Bold', fontSize: 16, lineHeight: 20, color: tokens.color.surfaceCard }}>{letter}</Text>
+    </Animated.View>
+  </View>;
 }

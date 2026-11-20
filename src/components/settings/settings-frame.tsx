@@ -5,7 +5,7 @@ import tokens from "@/constants/design-tokens.json";
 import { useNavigationHeight } from "@/state/navigation-motion";
 import { router, useFocusEffect, type Href } from "expo-router";
 import { useCallback, type ReactNode } from "react";
-import { BackHandler, Image, Keyboard, Platform, Text, View } from "react-native";
+import { BackHandler, Image, Keyboard, Platform, StyleSheet, Text, View } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -16,11 +16,15 @@ export function SettingsFrame({
   title,
   parent = settingsRoot,
   landing = false,
+  storefrontArtwork = true,
+  navigationRole = 'owner',
   children,
 }: {
   title: string;
   parent?: Href;
   landing?: boolean;
+  storefrontArtwork?: boolean;
+  navigationRole?: 'owner' | 'operator';
   children: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
@@ -39,7 +43,22 @@ export function SettingsFrame({
     }, [back]),
   );
   return (
-    <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-canvas">
+    <View className={`flex-1 ${storefrontArtwork ? '' : 'bg-canvas'}`}>
+      {storefrontArtwork && <Image
+        source={require('@/assets/images/auth/background.png')}
+        resizeMode="cover"
+        accessible={false}
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+      />}
+      {storefrontArtwork && <Image
+        source={require('@/assets/images/auth/header-background.png')}
+        resizeMode="stretch"
+        accessible={false}
+        pointerEvents="none"
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top + 120 }}
+      />}
+      <SafeAreaView edges={["top", "left", "right"]} className="flex-1" style={storefrontArtwork ? { backgroundColor: 'transparent' } : undefined}>
       <View
         className="border-b bg-white"
         style={{ borderColor: tokens.color.navigationBorder }}
@@ -99,11 +118,12 @@ export function SettingsFrame({
       </KeyboardAvoidingView>
       {landing && (
         <DashboardNavigation
-          onHome={() => router.navigate("/owner-dashboard")}
-          onPos={() => router.navigate("/owner-pos")}
+          onHome={() => router.navigate(navigationRole === 'operator' ? '/operator-pos' : '/owner-dashboard')}
+          onPos={() => router.navigate(navigationRole === 'operator' ? '/operator-pos' : '/owner-pos')}
           onUnavailable={() => {}}
         />
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }

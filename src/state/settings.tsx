@@ -4,7 +4,11 @@ import type { SettingsService } from '@/types/settings';
 import { defaultOperatorPermissions } from '@/utils/operator-access';
 
 const Context = createContext<SettingsService>(settingsService);
-/** Replace the adapter here when an authenticated backend contract is approved. */
+// TODO(backend): Provide the authenticated settings service for operator and sync screens.
+// - Method/Action: GET / Read settings; POST or PATCH / Manage operators, PINs, and capabilities
+// - Expected Input/Payload: Session-derived Owner/operator identity and validated setting changes
+// - Expected Response: SettingsSnapshot and SettingsResult-compatible canonical records
+// - UI State to Wire: Publish request-backed snapshots and map server errors into settings feedback
 export function SettingsProvider({ children, service = settingsService }: { children: ReactNode; service?: SettingsService }) {
   return <Context.Provider value={service}>{children}</Context.Provider>;
 }

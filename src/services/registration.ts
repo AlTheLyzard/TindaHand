@@ -1,12 +1,17 @@
-import type { RegistrationFormValues, RegistrationResult } from '@/types/auth';
+import type { RegistrationFormValues, RegistrationResult } from "@/types/auth";
 
-import { saveToken } from '@/services/token-storage';
-import { API_URL } from '@/services/api';
+import { API_URL } from "@/services/api";
+import { saveToken } from "@/services/token-storage";
 
-export async function registerOwner(values: RegistrationFormValues): Promise<RegistrationResult> {
+export async function registerOwner(
+  values: RegistrationFormValues,
+): Promise<RegistrationResult> {
   const res = await fetch(`${API_URL}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true",
+    },
     body: JSON.stringify({
       full_name: values.name.trim(),
       email: values.email.trim().toLowerCase(),
@@ -15,7 +20,7 @@ export async function registerOwner(values: RegistrationFormValues): Promise<Reg
     }),
   });
 
-    if (res.ok) {
+  if (res.ok) {
     const data = await res.json();
     // data.id is already formatted as "TH-MA-XXXX" from the backend
     const ownerId = data.id;
@@ -23,7 +28,7 @@ export async function registerOwner(values: RegistrationFormValues): Promise<Reg
       await saveToken(data.access_token, data.full_name, ownerId);
     }
     return {
-      status: 'confirmed',
+      status: "confirmed",
       account: {
         id: ownerId,
         name: data.full_name,
@@ -33,10 +38,17 @@ export async function registerOwner(values: RegistrationFormValues): Promise<Reg
 
   if (res.status === 400) {
     const data = await res.json();
-    if (data.detail?.includes('already registered')) {
-      return { status: 'error', message: 'This email is already registered. Try logging in.' };
+    if (data.detail?.includes("already registered")) {
+      return {
+        status: "error",
+        message: "This email is already registered. Try logging in.",
+      };
     }
   }
 
-  return { status: 'error', message: 'Could not connect to server. Check your connection and try again.' };
+  return {
+    status: "error",
+    message:
+      "Could not connect to server. Check your connection and try again.",
+  };
 }

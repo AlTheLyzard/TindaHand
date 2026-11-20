@@ -7,7 +7,7 @@ export type ProfileEditorAction =
   | { type: 'field'; field: keyof ProfileDraft; value: string }
   | { type: 'pick' }
   | { type: 'preview'; avatarId: AvatarId }
-  | { type: 'apply-avatar' }
+  | { type: 'apply-avatar'; avatarId?: AvatarId }
   | { type: 'cancel-step' }
   | { type: 'verify' }
   | { type: 'discard' };
@@ -20,7 +20,10 @@ export function profileEditor(state: ProfileEditorState, action: ProfileEditorAc
     case 'field': return { ...state, draft: { ...state.draft, [action.field]: action.value } };
     case 'pick': return { ...state, phase: 'avatar', preview: state.draft.avatarId };
     case 'preview': return { ...state, preview: action.avatarId };
-    case 'apply-avatar': return { ...state, phase: 'edit', draft: applyAvatar(state.draft, state.preview, true) };
+    case 'apply-avatar': {
+      const avatarId = action.avatarId ?? state.preview;
+      return { ...state, phase: 'edit', preview: avatarId, draft: applyAvatar(state.draft, avatarId, true) };
+    }
     case 'cancel-step': return { ...state, phase: 'edit', preview: state.draft.avatarId };
     case 'verify': return { ...state, phase: 'verify' };
     case 'discard': return createProfileEditor(state.saved);

@@ -8,14 +8,14 @@ import { useRef, type ReactNode } from 'react';
 import { useTranslation } from '@/i18n/use-translation';
 import { PosIcon } from '@/components/pos/pos-icon';
 
-export function PosDialog({ visible, title, message, children, confirmLabel, cancelLabel, onClose, onConfirm, destructive = false, actionLayout = 'stack', busy = false, confirmDisabled = false }: {
+export function PosDialog({ visible, title, message, children, confirmLabel, cancelLabel, onClose, onConfirm, onHidden, destructive = false, actionLayout = 'stack', busy = false, confirmDisabled = false }: {
   visible: boolean; title: string; message?: string; children?: ReactNode; confirmLabel: string;
   onClose: () => void; onConfirm: () => void; destructive?: boolean; cancelLabel?: string;
-  actionLayout?: 'stack' | 'row'; busy?: boolean; confirmDisabled?: boolean;
+  onHidden?: () => void; actionLayout?: 'stack' | 'row'; busy?: boolean; confirmDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   const close = useRef<ViewInstance>(null);
-  return <Modal backdropColor="rgba(16,35,48,0.36)" visible={visible} onRequestClose={onClose} onShow={() => {
+  return <Modal backdropColor="rgba(16,35,48,0.36)" visible={visible} onRequestClose={onClose} onHidden={onHidden} onShow={() => {
     if (!close.current) return;
     if (Platform.OS === 'web') close.current.focus();
     else AccessibilityInfo.sendAccessibilityEvent(close.current, 'focus');

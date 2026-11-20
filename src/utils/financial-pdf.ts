@@ -5,7 +5,7 @@ import { reportTitles, periodLabel, reportTimestamp, accountExplanation, balance
 export function escapeReportHtml(value: string) {
   return value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
 }
-const money = (amount: number) => `₱${((amount || 0) / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (amount: number) => `₱${(Math.abs(amount || 0) / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const cell = (value: string | number, numeric = false) => `<td${numeric ? ' class="number"' : ''}>${escapeReportHtml(String(value))}</td>`;
 const row = (name: string, amount: number) => `<tr>${cell(name)}${cell(money(amount), true)}</tr>`;
 function table(headers: string[], body: string) { return `<table><thead><tr>${headers.map(value => `<th>${escapeReportHtml(value)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`; }
@@ -20,16 +20,16 @@ export function financialReportHtml(report: FinancialReport) {
   if (!report.hasActivity) body += '<p>No posted activity for this period.</p>';
   if (report.kind === 'general-journal') {
     for (const day of report.journal.days) {
-      body += `<h2>${escapeReportHtml(day.date)}</h2>` + table(['Particulars', 'Debit', 'Credit'], day.entries.map(entry => `<tr class="description"><td colspan="3">${escapeReportHtml(`${entry.id} · ${entry.description}`)}</td></tr>` + entry.lines.map(line => `<tr><td${line.credit ? ' class="indent"' : ''}>${escapeReportHtml(report.ledger.find(account => account.id === line.accountId)?.name ?? line.accountId)}</td>${cell(line.debit ? money(line.debit) : '—', true)}${cell(line.credit ? money(line.credit) : '—', true)}</tr>`).join('')).join('') + `<tr class="total">${cell('Daily totals')}${cell(money(day.debit), true)}${cell(money(day.credit), true)}</tr>`);
+      body += `<h2>${escapeReportHtml(day.date)}</h2>` + table(['Particulars', 'Debit', 'Credit'], day.entries.map(entry => `<tr class="description"><td colspan="3">${escapeReportHtml(`${entry.id} · ${entry.description}`)}</td></tr>` + entry.lines.map(line => `<tr><td${line.credit ? ' class="indent"' : ''}>${escapeReportHtml(report.ledger.find(account => account.id === line.accountId)?.name ?? line.accountId)}</td>${cell(money(line.debit), true)}${cell(money(line.credit), true)}</tr>`).join('')).join('') + `<tr class="total">${cell('Daily totals')}${cell(money(day.debit), true)}${cell(money(day.credit), true)}</tr>`);
     }
     body += table(['Overall totals', 'Debit', 'Credit'], `<tr class="total">${cell('All posted entries in period')}${cell(money(report.journal.debit), true)}${cell(money(report.journal.credit), true)}</tr>`);
     body += `<p class="${report.journal.balanced ? 'good' : 'bad'}">${report.journal.balanced ? 'Double-entry balance check: Total Debits = Total Credits' : 'Balance discrepancy: Total Debits do not equal Total Credits'}</p>`;
   } else if (report.kind === 'general-ledger') {
     for (const account of report.ledger) {
-      const amount = (value: number) => `${money(Math.abs(value))} ${balanceSide(value) === 'debit' ? 'Dr' : 'Cr'}`;
+      const amount = (value: number) => money(value);
       body += `<h2>${escapeReportHtml(account.name)}</h2>` + table(['Date / Particulars', 'Debit', 'Credit', 'Balance'],
-        `<tr>${cell(`Opening balance · before ${report.selection.from}`)}${cell('—', true)}${cell('—', true)}${cell(amount(account.opening), true)}</tr>` +
-        account.rows.map(item => `<tr>${cell(`${item.date} · ${item.description}`)}${cell(item.debit ? money(item.debit) : '—', true)}${cell(item.credit ? money(item.credit) : '—', true)}${cell(amount(item.balance), true)}</tr>`).join('') +
+        `<tr>${cell(`Opening balance · before ${report.selection.from}`)}${cell(money(0), true)}${cell(money(0), true)}${cell(amount(account.opening), true)}</tr>` +
+        account.rows.map(item => `<tr>${cell(`${item.date} · ${item.description}`)}${cell(money(item.debit), true)}${cell(money(item.credit), true)}${cell(amount(item.balance), true)}</tr>`).join('') +
         `<tr class="total">${cell('Period activity / Ending balance')}${cell(money(account.debit), true)}${cell(money(account.credit), true)}${cell(amount(account.ending), true)}</tr>`);
       body += summary(`Ending ${balanceSide(account.ending)} balance`, Math.abs(account.ending)) + `<p>${escapeReportHtml(accountExplanation(account.normal, account.name))}</p>`;
     }

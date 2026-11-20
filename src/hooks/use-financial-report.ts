@@ -17,6 +17,11 @@ export function useFinancialReport(kind: ReportKind) {
   const error = !loading && !!result?.error;
   useEffect(() => {
     let current = true;
+    // TODO(backend): Load the selected report from the authenticated financial reporting API.
+    // - Method/Action: GET / Fetch financial report
+    // - Expected Input/Payload: ReportKind and applied ReportSelection with session-derived Owner scope
+    // - Expected Response: FinancialReport for the selected period
+    // - UI State to Wire: Drive the existing loading/error/refresh state from the request lifecycle
     void financialRepository.getReport(owner, kind, filters.applied).then(value => {
       if (current) setResult({ selection: filters.applied, revision, ownerId: owner?.id, kind, report: value, error: false });
     }).catch(() => { if (current) setResult({ selection: filters.applied, revision, ownerId: owner?.id, kind, report: null, error: true }); });

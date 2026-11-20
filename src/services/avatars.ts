@@ -35,11 +35,12 @@ export function reconcileStoreAvatars(owner: AvatarAccount, operators: readonly 
 
 /** In-memory assignment authority shared by profile and account creation adapters.
  * Reads and previews never mutate assignments. Inactive accounts are never released.
- * BACKEND TODO: Allocate and replace transactionally with account writes, enforce
- * UNIQUE(store_id, avatar_id) across Owner and Operators (including inactive), and
- * migrate missing/duplicate assignments Owner-first in stable Operator ID order.
- * Frontend checks cannot prevent simultaneous assignments across devices/clients.
  */
+// TODO(backend): Move avatar allocation and replacement into the account/profile transactions.
+// - Method/Action: POST or PATCH / Assign or replace store avatar
+// - Expected Input/Payload: Account ID and avatarId with store/actor derived from session
+// - Expected Response: Canonical account assignment; enforce store-wide uniqueness including inactive operators
+// - UI State to Wire: Refresh avatar snapshots after commit and preserve the prior assignment on conflicts
 export function createAvatarService() {
   let snapshot: AvatarSnapshot = new Map();
   const listeners = new Set<() => void>();

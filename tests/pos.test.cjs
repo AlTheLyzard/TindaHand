@@ -11,7 +11,7 @@ function load(relative) {
   return context.exports;
 }
 const { posProducts } = load('src/data/pos.ts');
-const { filterProducts, selectProduct, selectionSummary, setSelectedQuantity, removeSelectedProduct, stockConflicts } = load('src/utils/pos.ts');
+const { filterProducts, selectProduct, selectionSummary, setSelectedQuantity, removeSelectedProduct, stockConflicts, cartStockStatus } = load('src/utils/pos.ts');
 
 test('live inventory changes flag deleted or reduced stock while preserving cart snapshots', () => {
   const product = posProducts[0];
@@ -70,6 +70,16 @@ test('cart quantities recalculate totals while preserving snapshots and enforcin
     assert.equal(setSelectedQuantity(cart, product, invalid), cart);
   }
   assert.equal(setSelectedQuantity({}, product, 1)[product.id], undefined);
+});
+
+test('cart stock status follows remaining availability as requested quantity changes', () => {
+  assert.equal(cartStockStatus(20, 1, 5), null);
+  assert.equal(JSON.stringify(cartStockStatus(10, 5, 5)), JSON.stringify({ kind: 'low', available: 5 }));
+  assert.equal(JSON.stringify(cartStockStatus(10, 6, 5)), JSON.stringify({ kind: 'low', available: 4 }));
+  assert.equal(cartStockStatus(10, 4, 5), null);
+  assert.equal(JSON.stringify(cartStockStatus(10, 10, 5)), JSON.stringify({ kind: 'depleted', available: 0 }));
+  assert.equal(JSON.stringify(cartStockStatus(0, 1, 5)), JSON.stringify({ kind: 'unavailable', available: 0 }));
+  assert.equal(JSON.stringify(cartStockStatus(3, 4, 5)), JSON.stringify({ kind: 'insufficient', available: 3 }));
 });
 
 test('confirmed removal releases selection without mutating other lines or stock', () => {

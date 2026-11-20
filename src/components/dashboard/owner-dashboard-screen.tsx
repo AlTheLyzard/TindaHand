@@ -5,12 +5,11 @@ import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { useTranslation } from '@/i18n/use-translation';
 import { router } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Image, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BestSellersCard, CashCard, RecentActivityCard, SalesCard, StockCard } from '@/components/dashboard/dashboard-cards';
-import { DashboardAction, DashboardIcon, dashboardIcons } from '@/components/dashboard/dashboard-ui';
-import { OwnerAvatar } from '@/components/profile/profile-ui';
+import { MainHeader } from '@/components/dashboard/main-header';
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
 import { DashboardQuickAdd, type QuickAddAction } from '@/components/dashboard/dashboard-quick-add';
 import { Button } from '@/components/ui/button';
@@ -58,12 +57,11 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   const scroll = useRef<ScrollViewInstance>(null);
   const summary = summarizeDashboard(period, data, preview.empty ? 0 : addedCentavos);
   const stock = inventorySummary(preview.empty ? [] : products, todayInManila());
-  // TODO(BACKEND): Replace growthPreview and the demo summary percentage together
-  // with validated GrowthMetrics: source, reportingPeriod, metric, unit,
-  // ordered points [{ timestamp (ISO), metricValue (integer centavos) }], and
-  // percentageChange (number | null) for that same period and comparison window.
-  // Never mix real percentages with placeholder history. No endpoint is defined yet.
-  // See docs/api-contract.md#dashboard for the proposed display contract.
+  // TODO(backend): Replace the decorative growth series and demo comparison with confirmed analytics.
+  // - Method/Action: GET / Fetch sales growth series and comparison summary
+  // - Expected Input/Payload: Selected period, comparison window, timezone, and authenticated store session
+  // - Expected Response: GrowthMetrics and matching summary with the same reporting window
+  // - UI State to Wire: Show a true empty state or server error instead of demo trend data
   const growthMetrics = summary.saleCount > 0 && period === growthPreview.reportingPeriod ? { ...growthPreview, percentageChange: summary.growth } : null;
   const [todayDate] = useState(() => new Date());
   const dateOptions = { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' } as const;
@@ -71,17 +69,8 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   function unavailable(feature: NavigationLabelKey) {
     setNotice(feature);
   }
-  return <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: '#F0F8FF' }}>
-    <View className="border-b border-[#ADC9EE] bg-white">
-      <View className="w-full max-w-[460px] flex-row items-center gap-2 self-center px-5 py-2">
-        <Image source={require('@/assets/images/brand/tindahand-mark.png')} style={{ width: 32, height: 34 }} resizeMode="contain" accessible={false} />
-        <Text className="flex-1 font-poppins-bold text-[20px] leading-[30px] text-brand">TindaHand</Text>
-        <DashboardAction label={t('navigation.settings')} onPress={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'settings' } })}><DashboardIcon source={dashboardIcons.settings} size={26} /></DashboardAction>
-        <DashboardAction label={t('navigation.profile')} onPress={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'profile' } })}>
-          <OwnerAvatar />
-        </DashboardAction>
-      </View>
-    </View>
+  return <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: tokens.color.appBackground }}>
+    <MainHeader />
     <ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: navigationHeight + insets.bottom + tokens.spacing.three + 56 + tokens.spacing.three }}>
       <View className="w-full max-w-[460px] self-center pt-4" style={{ paddingHorizontal: width < 360 ? 16 : 24 }}>
         <Text accessibilityRole="header" className="font-poppins-bold text-[22px] leading-[33px] text-[#28549A]">{t('dashboard.greeting', { name: owner.name.trim().split(/\s+/)[0] })}</Text>
@@ -114,9 +103,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     <DashboardNavigation onHome={() => scroll.current?.scrollTo({ y: 0, animated: true })} onPos={() => router.navigate('/owner-pos')} onUnavailable={unavailable} />
     <DashboardQuickAdd onSelect={action => { preview.reset(); setQuickKind(action === 'dashboard.quick.customerDebt' ? 'customerDebt' : action === 'dashboard.quick.storeDebt' ? 'storeDebt' : 'expense'); }} />
     {quickKind && <QuickAddModal initialKind={quickKind} onClose={() => setQuickKind(null)} />}
-    {cashToastExpiresAt !== null && <View pointerEvents="box-none" className="absolute left-0 right-0 items-center px-4" style={{ top: insets.top + 56 }}>
-      <View pointerEvents="box-none" className="w-full max-w-[460px]"><RegistrationToast expiresAt={cashToastExpiresAt} onDismiss={dismissCashToast} title="Amount Saved!" message="Cash added successfully." /></View>
-    </View>}
+    {cashToastExpiresAt !== null && <RegistrationToast expiresAt={cashToastExpiresAt} onDismiss={dismissCashToast} title="Amount Saved!" message="Cash added successfully." />}
     {cashOpen && <AddCashModal onClose={() => setCashOpen(false)} onSaved={() => { setCashOpen(false); setCashToastExpiresAt(Date.now() + 15000); }} />}
     <Modal visible={!!notice} onRequestClose={() => setNotice(null)}>
       <View className="flex-1 items-center justify-center px-6">

@@ -1,13 +1,13 @@
 # Transaction History
 
-The read-only owner screen lives at `/owner-menu/transaction-history`. More Tools and Dashboard View All use that destination; the legacy dynamic tool URL redirects to it. The existing owner-menu layout guards direct entry. Cashier access is unchanged: the project does not yet have an authenticated cashier workspace.
+The read-only Owner screen lives at `/owner-menu/transaction-history`. Owner More Tools and Dashboard View All use that destination; the legacy dynamic tool URL redirects to it. The Operator view uses `/operator-more?section=transactions` and checks the active session's `transactions` capability. Both views share the history screen; Operator reads are scoped to the session's owner ID and include sales and customer receivables only. Expenses, store debts, and supplier payments remain Owner-only. The Operator More Tools drawer exposes Transaction History, Settings, and Log Out.
 
 ## References and scope
 
 Inspected `AGENTS.md`, the relevant original workbook cells in **MAY-ARI MODULE**, **KAHERA MODULE**, and **Copy of MAY-ARI MODULE**, the relevant System Request, Requirements Engineering and Project Charter sections, and the existing frontend plan, API/handoff, More Tools, expenses, AR/AP and navigation documentation. The source requirements are unchanged.
 
-- MA-MT-002 criteria 1–2 and 4–6 establish history, information, search and date/type filtering. Its criteria 3 and 7–11 include details and record management; the copy omits the detail/edit/update/delete criteria. The current user request explicitly limits this feature to read-only history, with no invented detail flow. No general transaction detail route exists; rows have no tap action.
-- KH-MT-001 permits viewing/search/filter/details and forbids editing/deletion. This task does not authorize opening owner routes to cashiers, including expenses.
+- MA-MT-002 criteria 1–2 and 4–6 establish history, information, search and date/type filtering. Its criteria 3 and 7–11 include details and record management; the copy omits the detail/edit/update/delete criteria. The Owner implementation has no transaction detail or receipt view, and rows have no tap action; this Operator pass reuses the existing read-only presentation without inventing a new detail flow.
+- KH-MT-001 permits viewing/search/filter/details and forbids editing/deletion. Operator history uses the assigned store scope and excludes Owner expenses and payables. The underlying acceptance criteria mention transaction details, but the Owner UI/design does not supply a detail pattern to reuse.
 - MA-DASH-006 criterion 6 connects View All to history. POS and AR payment stories establish confirmed sales and separate repayments; their existing local ledgers remain authoritative for this frontend.
 - The current request supersedes the older More Tools note requiring every row to stay neutral: reopening the drawer now marks the current destination. Drawer width, modal lifecycle, backdrop, animations and navigation visibility are preserved.
 

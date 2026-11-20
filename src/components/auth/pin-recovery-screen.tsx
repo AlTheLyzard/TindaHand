@@ -135,7 +135,6 @@ export function ResetPinScreen() {
     <RecoveryHeading title="Create New PIN">Enter a new four-digit PIN for your May-Ari account.</RecoveryHeading>
     {status === 'verifying' && <Text accessibilityRole="alert" className="font-poppins text-[14px] text-brand">Verifying recovery link…</Text>}
     {status === 'ready' && <>
-      <Text className="mb-4 font-poppins text-[10px] text-text-secondary">Fields marked * are required.</Text>
       <View className="mx-3 gap-6">
         <FormField ref={pinInput} label="New PIN" requiredIndicator="asterisk" pin pinIndicators pinVisibilityToggle value={pin} editable={!busy} error={touched.pin ? pinError : undefined}
           onChangeText={value => { setPin(value.replace(/[^0-9]/g, '').slice(0, 4)); setTouched(current => ({ ...current, pin: true })); }} onBlur={() => setTouched(current => ({ ...current, pin: true }))}

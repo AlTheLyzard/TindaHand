@@ -7,8 +7,8 @@ import { usePresentationVisible } from '@/state/presentation';
 import { formatPesos } from '@/utils/dashboard';
 
 /** Shared with the implemented Quick Add confirmation, including its replay key. */
-export function SuccessContent({ title, amountCentavos, message, eventKey, onClose, visible, testID }: {
-  title: string; amountCentavos: number; message: string; eventKey: string;
+export function SuccessContent({ title, amountCentavos, value, message, eventKey, onClose, visible, testID }: {
+  title: string; amountCentavos?: number; value?: string; message: string; eventKey: string;
   onClose: () => void; visible: boolean; testID: string;
 }) {
   const done = useRef<ViewInstance>(null);
@@ -23,7 +23,7 @@ export function SuccessContent({ title, amountCentavos, message, eventKey, onClo
     <SuccessHalo visible={visible} eventKey={eventKey} />
     <Text accessibilityRole="header" style={{ textAlign: 'center', fontFamily: 'Poppins_600SemiBold', fontSize: 24, lineHeight: 36, color: '#102342' }}>{title}</Text>
     <View accessible accessibilityRole="alert" style={{ gap: 4 }}>
-      <Text testID={`${testID}-amount`} style={{ textAlign: 'center', fontFamily: 'Poppins_700Bold', fontSize: 22, lineHeight: 33, color: tokens.color.textPrimary }}>{formatPesos(amountCentavos)}</Text>
+      <Text testID={`${testID}-amount`} style={{ textAlign: 'center', fontFamily: 'Poppins_700Bold', fontSize: 22, lineHeight: 33, color: tokens.color.textPrimary }}>{value ?? (amountCentavos === undefined ? '' : formatPesos(amountCentavos))}</Text>
       <Text style={{ textAlign: 'center', fontFamily: 'Poppins_400Regular', fontSize: 14, lineHeight: 22, color: tokens.color.textSecondary }}>{message}</Text>
     </View>
     <Button ref={done} onPress={onClose}>Done</Button>

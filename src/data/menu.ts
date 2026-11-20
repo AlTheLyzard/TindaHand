@@ -34,6 +34,9 @@ export const ownerProfileTool: OwnerTool = {
   temporaryMessage: 'Profile editing and cashier access management are not available in this frontend demo yet.',
 };
 
+/** Operator More Tools deliberately exposes only permitted history and settings. */
+export const operatorMenuTools = ownerMenuTools.filter(tool => tool.id === 'transaction-history' || tool.id === 'settings');
+
 export function findOwnerTool(id: string | undefined): OwnerTool | undefined {
   return [...ownerMenuTools, ownerProfileTool].find(tool => tool.id === id);
 }

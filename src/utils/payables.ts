@@ -2,6 +2,7 @@ import type { PayableDebt, PayablePayment, PayablesLedger, PayableStatus } from 
 import type { QuickAddRecord } from '@/types/quick-add';
 import { formatCalendarDate } from '@/utils/date';
 import { parsePaymentAmount } from '@/utils/pos-payment';
+import { todayInManila } from '@/utils/inventory-stock';
 
 export function payableBalance(debt: PayableDebt, payments: readonly PayablePayment[]) {
   const history = payments.filter(payment => payment.debtId === debt.id && payment.ownerId === debt.ownerId);
@@ -11,16 +12,20 @@ export function payableBalance(debt: PayableDebt, payments: readonly PayablePaym
   return { paidCentavos, remainingCentavos, status, progress: paidCentavos / debt.originalAmountCentavos * 100, history };
 }
 
-export function payableLists(ledger: PayablesLedger, query: string) {
+export function payableLists(ledger: PayablesLedger, query: string, today = todayInManila()) {
   const rows = ledger.debts.map(debt => ({ debt, ...payableBalance(debt, ledger.payments) }));
   const open = rows.filter(row => row.remainingCentavos > 0);
   const matching = rows.filter(row => row.debt.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const paid = matching.filter(row => row.status === 'paid');
+  const overdue = matching.filter(row => row.remainingCentavos > 0 && !!row.debt.dueDate && row.debt.dueDate < today);
+  const overdueIds = new Set(overdue.map(row => row.debt.id));
   return {
-    pending: matching.filter(row => row.status === 'pending'),
-    partial: matching.filter(row => row.status === 'partial'), paid,
+    overdue,
+    pending: matching.filter(row => row.status === 'pending' && !overdueIds.has(row.debt.id)),
+    partial: matching.filter(row => row.status === 'partial' && !overdueIds.has(row.debt.id)), paid,
     outstandingCentavos: open.reduce((sum, row) => sum + row.remainingCentavos, 0),
     creditorCount: new Set(open.map(row => row.debt.creditorId)).size,
+    transactionCount: open.length,
     paidCentavos: paid.reduce((sum, row) => sum + row.debt.originalAmountCentavos, 0),
   };
 }

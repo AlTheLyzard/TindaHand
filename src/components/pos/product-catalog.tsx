@@ -1,5 +1,5 @@
 import { KeyboardAwareScrollView as ScrollView, KeyboardInput as TextInput } from '@/components/ui/keyboard-aware-scroll-view';
-import { Button, IconButton } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { MotionContent, MotionRegion } from '@/components/ui/motion-content';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
@@ -22,10 +22,11 @@ import { RecordSkeleton } from '@/components/ui/content-skeletons';
 
 export type ProductCatalogHandle = { scrollToTop: () => void };
 const ready = { mode: 'ready' as const, loading: false, reset() {} };
+const categoryEdgePadding = 16;
 
 /** Shared POS/debt catalog; all selection state and commits belong to the caller. */
-export function ProductCatalog({ products, selection, onAdd, onDecrease, onOpenInventory, preview = ready, control, ref }: {
-  products: readonly PosProduct[]; selection: ProductSelection; onAdd: (id: string) => void; onDecrease?: (id: string) => void;
+export function ProductCatalog({ products, selection, onAdd, onOpenInventory, preview = ready, control, ref }: {
+  products: readonly PosProduct[]; selection: ProductSelection; onAdd: (id: string) => void;
   onOpenInventory?: () => void; preview?: { mode: PreviewState; loading: boolean; reset: () => void }; control?: ReactNode; ref?: Ref<ProductCatalogHandle>;
 }) {
   const metrics = usePosMetrics();
@@ -92,7 +93,7 @@ export function ProductCatalog({ products, selection, onAdd, onDecrease, onOpenI
 
   return <MotionContent changeKey={preview.mode} className="w-full max-w-[460px] flex-1 self-center">
         <View className="flex-1" onLayout={event => { viewportHeight.value = event.nativeEvent.layout.height; updateActiveLetter(); }}>
-        <ScrollView ref={scroll} testID="pos-product-list" style={{ marginRight: alphabetIndexWidth }} alwaysBounceVertical={false} contentInsetAdjustmentBehavior="never"
+        <ScrollView ref={scroll} testID="pos-product-list" alwaysBounceVertical={false} contentInsetAdjustmentBehavior="never"
           onContentSizeChange={(_width, height) => { contentHeight.current = height; updateActiveLetter(); }}
           onTouchStart={() => { indexSeek.current = null; }} onScrollBeginDrag={() => { indexSeek.current = null; }} onScroll={event => {
           const offset = event.nativeEvent.contentOffset.y;
@@ -100,8 +101,8 @@ export function ProductCatalog({ products, selection, onAdd, onDecrease, onOpenI
           updateActiveLetter(offset);
         }} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingLeft: metrics.gutter, paddingBottom: 12 }}>
-          {control}
-          <View className="relative z-20">
+          {control ? <View style={{ marginRight: alphabetIndexWidth }}>{control}</View> : null}
+          <View className="relative z-20" style={{ marginRight: alphabetIndexWidth }}>
           <View className="flex-row items-center rounded-control border border-[#D9E7F4] bg-white px-3" style={{ minHeight: searchHeight + 2, boxShadow: '0px 2px 3px #ADC9EE' }}>
             <View accessible={false} style={{ width: 15, height: 15, borderWidth: 2, borderColor: '#4A607A', borderRadius: 8, marginRight: 10 }}><View style={{ position: 'absolute', width: 7, height: 2, backgroundColor: '#4A607A', right: -5, bottom: -3, transform: [{ rotate: '45deg' }] }} /></View>
             <TextInput accessibilityLabel={t('pos.search')} placeholder={t('pos.searchPlaceholder')} value={query} onChangeText={changeQuery} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
@@ -112,20 +113,20 @@ export function ProductCatalog({ products, selection, onAdd, onDecrease, onOpenI
             {suggestions.map(product => <Pressable key={product.id} accessibilityRole="button" onPress={() => { changeQuery(product.name); setFocused(false); Keyboard.dismiss(); }} className="min-h-12 justify-center px-3"><Text className="font-poppins text-[12px] text-brand">{product.name}</Text></Pressable>)}
           </MotionRegion>}
           </View>
-          <ScrollView ref={categoriesScroll} horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" decelerationRate="fast" snapToOffsets={categorySnaps} contentContainerStyle={{ gap: 8, paddingHorizontal: 8, paddingVertical: 2, alignItems: 'center' }} style={{ flexGrow: 0, marginHorizontal: -8 }}
-            onContentSizeChange={() => setCategorySnaps(Object.values(categoryOffsets.current).map(value => Math.max(0, value - 8)).sort((a, b) => a - b))}>
+          <ScrollView ref={categoriesScroll} horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" decelerationRate="fast" snapToOffsets={categorySnaps} contentContainerStyle={{ gap: 8, paddingHorizontal: categoryEdgePadding, paddingVertical: 8, alignItems: 'center' }} style={{ flexGrow: 0, marginLeft: -metrics.gutter, overflow: 'visible' }}
+            onContentSizeChange={() => setCategorySnaps(Object.values(categoryOffsets.current).map(value => Math.max(0, value - categoryEdgePadding)).sort((a, b) => a - b))}>
             {([null, ...posCategories] as const).map(value => <View key={value ?? 'all'} style={{ flexShrink: 0 }} onLayout={event => {
               categoryOffsets.current[value ?? 'all'] = event.nativeEvent.layout.x;
-              const next = Object.values(categoryOffsets.current).map(x => Math.max(0, x - 8)).sort((a, b) => a - b);
+              const next = Object.values(categoryOffsets.current).map(x => Math.max(0, x - categoryEdgePadding)).sort((a, b) => a - b);
               setCategorySnaps(previous => previous.length === next.length && previous.every((x, index) => x === next[index]) ? previous : next);
-            }}><PosChip selected={category === value} onPress={() => { resetPosition(); setCategory(value); categoriesScroll.current?.scrollTo({ x: Math.max(0, (categoryOffsets.current[value ?? 'all'] ?? 8) - 8), animated: !reduceMotion }); }} label={value ? t(`pos.category.${value}`) : t('pos.all')} /></View>)}
+            }}><PosChip selected={category === value} onPress={() => { resetPosition(); setCategory(value); categoriesScroll.current?.scrollTo({ x: Math.max(0, (categoryOffsets.current[value ?? 'all'] ?? categoryEdgePadding) - categoryEdgePadding), animated: !reduceMotion }); }} label={value ? t(`pos.category.${value}`) : t('pos.all')} /></View>)}
           </ScrollView>
-          <View className="relative mb-5 mt-3 flex-row items-center justify-between gap-2">
+          <View className="relative mb-5 mt-3 flex-row items-center justify-between gap-2" style={{ marginRight: alphabetIndexWidth }} onLayout={event => { gridStart.value = event.nativeEvent.layout.y; }}>
             <Text accessibilityRole="header" className="font-poppins-bold text-[16px] text-[#102342]">{t('pos.products')}</Text>
             {(!!query || !!category) && <View className="absolute -top-3 right-20"><Button variant="text" fullWidth={false} compact accessibilityLabel={t('pos.reset')} onPress={reset}>{t('pos.resetShort')}</Button></View>}
             <Text accessibilityLiveRegion="polite" className="font-poppins-bold text-[10px] text-text-secondary">{preview.loading ? 'Loading products' : t(visible.length === 1 ? 'pos.productCountOne' : 'pos.productCount', { count: visible.length })}</Text>
           </View>
-          <View className="flex-row" onLayout={event => { gridOffset.current = event.nativeEvent.layout.y; gridStart.value = event.nativeEvent.layout.y; updateActiveLetter(); }}>
+          <View className="flex-row" style={{ marginRight: alphabetIndexWidth }} onLayout={event => { gridOffset.current = event.nativeEvent.layout.y; updateActiveLetter(); }}>
             <View className="flex-1">
               {preview.loading ? <RecordSkeleton kind="catalog" /> : visible.length === 0 ? <EmptyState icon={products.length ? 'search' : 'inventory'}
                 title={!products.length ? 'No products yet' : preview.mode === 'search' || (preview.mode !== 'filtered' && query.trim()) ? 'No products match your search' : 'No products in this category'}
@@ -135,18 +136,13 @@ export function ProductCatalog({ products, selection, onAdd, onDecrease, onOpenI
                 <View className="flex-row flex-wrap gap-y-4" style={{ marginHorizontal: -metrics.columnGap / 2 }}>
                   {visible.filter(product => product.name.charAt(0).toUpperCase() === initial).map(product => <View key={product.id} style={{ width: '50%', paddingHorizontal: metrics.columnGap / 2 }}>
                     <ProductTile product={product} quantity={selection[product.id]?.quantity ?? 0} onAdd={onAdd} />
-                    {onDecrease && !!selection[product.id] && <View className="flex-row items-center justify-between">
-                      <IconButton accessibilityLabel={`Decrease ${product.name}`} onPress={() => onDecrease(product.id)} icon={({ color }) => <PosIcon name="minus" color={color} size={18} />} />
-                      <Text accessibilityLiveRegion="polite" className="font-poppins-bold text-[12px] text-brand">{selection[product.id].quantity} selected</Text>
-                      <IconButton accessibilityLabel={`Increase ${product.name}`} disabled={selection[product.id].quantity >= product.stock} onPress={() => onAdd(product.id)} icon={({ color }) => <PosIcon name="plus" color={color} size={18} />} />
-                    </View>}
                   </View>)}
                 </View>
               </ProductSection>)}
             </View>
           </View>
         </ScrollView>
-        {!preview.loading && <AlphabetIndex letters={letters} active={currentLetter} onPick={jumpTo} gridStart={gridStart} scrollY={scrollY} viewportHeight={viewportHeight} />}
+        {!preview.loading && <AlphabetIndex letters={letters} active={currentLetter} onPick={jumpTo} gridStart={gridStart} viewportHeight={viewportHeight} />}
         </View>
       </MotionContent>;
 }

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Text, View } from 'react-native';
 import { EmptyState } from '@/components/ui/content-state';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
@@ -8,6 +8,7 @@ import { SettingsCard, SettingsDescription, SettingsRow, SettingsSection } from 
 import { SettingsIcon } from './settings-icon';
 import { Button } from '@/components/ui/button';
 import { useAuthFlow } from '@/state/auth-flow';
+import { useTranslation } from '@/i18n/use-translation';
 
 export function SettingsLandingScreen() {
   return <SettingsFrame title="Settings" landing parent="/owner-dashboard">
@@ -21,19 +22,26 @@ export function SettingsLandingScreen() {
     <SettingsRow title="Data Management" description="Data synchronization and device storage." icon="data" onPress={() => router.navigate(`${settingsRoot}/data`)} />
     <View className="h-1" /><SettingsSection>SUPPORT</SettingsSection>
     <SettingsRow title="Help & FAQs" description="Guides for everyday store operations" icon="help" onPress={() => router.navigate(`${settingsRoot}/help`)} />
+    <SettingsRow title="App Guide & Tutorial" description="Learn how to use TindaHand" icon="help" onPress={() => router.navigate(`${settingsRoot}/guide`)} />
+    <SettingsRow title="Replay App Walkthrough" description="View the introduction again" icon="replay" onPress={() => router.navigate(`${settingsRoot}/replay`)} />
   </SettingsFrame>;
 }
-export function LanguageScreen() {
-  return <SettingsFrame title="Language">
+export function LanguageScreen({ parent }: { parent?: Href } = {}) {
+  const { locale } = useTranslation();
+  const englishActive = locale === 'en';
+  const tagalogActive = locale === 'fil';
+  return <SettingsFrame title="Language" parent={parent}>
     <SettingsDescription>Your app display language</SettingsDescription>
     <SettingsCard>
-      <View accessibilityRole="radio" accessibilityState={{ checked: true }} accessibilityLabel="English, current language" className="flex-row items-center gap-3 pb-4">
-        <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><PosIcon name="checkCircle" color="#112F6F" /></View>
-        <View className="flex-1 gap-1"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">English</Text><Text className="font-poppins text-[12px] text-text-secondary">Current language</Text></View>
+      <View accessibilityRole="radio" accessibilityState={{ checked: englishActive }} accessibilityLabel={`English${englishActive ? ', current language' : ''}`} className="min-h-12 flex-row items-center gap-3 pb-4">
+        <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><SettingsIcon name="language" /></View>
+        <View className="flex-1 gap-1"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">English</Text><Text className="font-poppins text-[12px] text-text-secondary">{englishActive ? 'Current language' : 'Available'}</Text></View>
+        <View className="h-9 w-9 items-center justify-center">{englishActive ? <PosIcon name="check" size={20} color="#112F6F" active /> : null}</View>
       </View>
-      <Pressable disabled accessibilityRole="radio" accessibilityState={{ disabled: true, checked: false }} accessibilityLabel="Tagalog, coming soon" className="min-h-12 flex-row items-center gap-3 border-t border-[#ADC9EE] pt-4">
+      <Pressable disabled accessibilityRole="radio" accessibilityState={{ disabled: true, checked: tagalogActive }} accessibilityLabel={`Tagalog${tagalogActive ? ', current language' : ', coming soon'}`} className="min-h-12 flex-row items-center gap-3 border-t border-[#ADC9EE] pt-4">
         <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><SettingsIcon name="lock" /></View>
-        <View className="flex-1 gap-1"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">Tagalog</Text><Text className="font-poppins text-[12px] text-text-secondary">Coming soon</Text></View>
+        <View className="flex-1 gap-1"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">Tagalog</Text><Text className="font-poppins text-[12px] text-text-secondary">{tagalogActive ? 'Current language' : 'Coming soon'}</Text></View>
+        <View className="h-9 w-9 items-center justify-center">{tagalogActive ? <PosIcon name="check" size={20} color="#112F6F" active /> : null}</View>
       </Pressable>
     </SettingsCard>
     <View className="mt-4 gap-2 rounded-control bg-[#D1E1F5] p-4"><Text className="font-poppins-bold text-[12px] text-brand">English is currently available</Text><Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">Tagalog support is coming soon.</Text></View>

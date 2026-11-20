@@ -73,7 +73,6 @@ export function CredentialForm<T>({ mode, onSave, onSuccess, onCancel, fieldsCar
     }
   }
   return <View className="flex-1">
-    <Text className="mb-4 font-poppins text-[10px] text-text-secondary">Fields marked * are required.</Text>
     <View className={fieldsCard ? 'gap-7 rounded-[20px] bg-[#D9E7F5] px-5 py-6' : 'gap-7'} key={epoch}>
       {fields.map((field, index) => {
         const name = field === 'name';

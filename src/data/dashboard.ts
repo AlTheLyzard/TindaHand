@@ -1,6 +1,11 @@
 import type { DashboardActivity, DemoSale } from '@/types/dashboard';
 
 /** Fictional reference-day data, never associated with a registered store. */
+// TODO(backend): Replace the reference dashboard snapshot with store-scoped records.
+// - Method/Action: GET / Fetch dashboard snapshot
+// - Expected Input/Payload: None (authenticated store session and selected reporting period)
+// - Expected Response: { asOf, openingCashCentavos, movements, products, sales, activity, previousSalesCentavos }
+// - UI State to Wire: Replace this fixture and refresh dashboard cards, activity, and derived summaries
 export const dashboardDemo = {
   asOf: '2026-10-10T12:00:00+08:00',
   openingCashCentavos: 1010000,

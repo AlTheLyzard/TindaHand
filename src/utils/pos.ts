@@ -6,6 +6,18 @@ export function stockConflicts(selection: ProductSelection, products: readonly P
   return Object.values(selection).filter(line => !catalog.has(line.productId) || line.quantity > catalog.get(line.productId)!.stock).map(line => line.productId);
 }
 
+export type CartStockStatus = { kind: 'unavailable' | 'insufficient' | 'depleted' | 'low'; available: number };
+
+/** Stock remaining after this cart line's requested quantity is accounted for. */
+export function cartStockStatus(stock: number | undefined, quantity: number, lowStockThreshold: number): CartStockStatus | null {
+  if (stock === undefined || stock <= 0) return { kind: 'unavailable', available: 0 };
+  if (quantity > stock) return { kind: 'insufficient', available: stock };
+  const available = stock - quantity;
+  if (available === 0) return { kind: 'depleted', available };
+  if (available <= lowStockThreshold) return { kind: 'low', available };
+  return null;
+}
+
 export function filterProducts(products: readonly PosProduct[], query: string, category: ProductCategory | null, letter: string | null) {
   const search = query.trim().toLocaleLowerCase('en');
   return products.filter(product => product.name.toLocaleLowerCase('en').includes(search)

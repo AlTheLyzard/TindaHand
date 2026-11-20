@@ -1,7 +1,7 @@
 import { KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useRef } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useRef } from 'react';
 import { Keyboard, Platform, Text, View } from 'react-native';
 import { PosFrame, posHref, type PosRouteBase } from './pos-frame';
 import { PaymentPreviewToast } from './payment-preview-toast';
@@ -22,7 +22,10 @@ export function ProductBrowsingScreen({ owner, basePath = '/owner-pos' }: { owne
   const metrics = usePosMetrics();
   const { preview: previewControl } = useLocalSearchParams<{ preview?: string }>();
   const preview = useContentPreview(listPreviewStates);
-  const { store: { products } } = useInventory();
+  const { store: { products }, refetchProducts } = useInventory();
+  // Re-sync with the backend when the POS screen gains focus so Kahera
+  // always sees the latest inventory changes from May-Ari.
+  useFocusEffect(useCallback(() => { void refetchProducts(); }, [refetchProducts]));
   const { selection, add } = usePos();
   const { t } = useTranslation();
   const catalog = useRef<ProductCatalogHandle>(null);

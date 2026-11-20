@@ -4,12 +4,13 @@ import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { demoCashiers, syncFixtures } from '@/data/settings';
 import type { AuthSecretStorage, LocalRecordStorage, OperatorPermission, OwnerIdentity } from '@/types/auth';
 import { defaultOperatorPermissions, permissionGroups, updatePermission } from '@/utils/operator-access';
-import type { Cashier, CashierValues, PinValues, SettingsOperation, SettingsResult, SettingsService, SettingsSnapshot, SyncState, SyncStatus } from '@/types/settings';
-import { canClearCache, validateCashier, validatePinChange } from '@/utils/settings';
-import { createAvatarService } from '@/services/avatars';
+import type { Cashier, CashierValues, OperatorProfileValues, PinValues, SettingsOperation, SettingsResult, SettingsService, SettingsSnapshot, SyncState, SyncStatus } from '@/types/settings';
+import { canClearCache, validateCashier, validateOperatorProfile, validatePinChange } from '@/utils/settings';
+import { avatarInUse, createAvatarService } from '@/services/avatars';
 import { authRecordStorage } from '@/services/auth-record-storage';
 import { authSecretStorage } from '@/services/auth-secret-storage';
 import { operatorPinKey, ownerPinKey } from '@/services/auth-storage-keys';
+import { avatarPickerOrder } from '@/constants/profile-avatar-ids';
 
 type Options = { empty?: boolean; scenario?: SyncStatus; failNext?: SettingsOperation; delayMs?: number; recordStorage?: LocalRecordStorage; secretStorage?: AuthSecretStorage };
 const OPERATOR_RECORDS_KEY = 'tindahand-operators-v1';
@@ -28,7 +29,13 @@ export function createMockSettingsService(options: Options = {}) {
   const secretStorage = options.secretStorage ?? authSecretStorage;
   const seedRecords = !MOCK_AUTH_ENABLED || options.empty ? [] : demoCashiers.map(item => ({ ...item }));
   const storedRecords = !MOCK_AUTH_ENABLED || options.empty ? [] : readOperatorRecords(recordStorage);
-  let records: readonly Cashier[] = [...seedRecords, ...storedRecords.filter(item => !seedRecords.some(seed => seed.id === item.id))];
+  let records: readonly Cashier[] = [
+    ...seedRecords.map(seed => {
+      const stored = storedRecords.find(item => item.id === seed.id && item.ownerId === seed.ownerId);
+      return stored ? { ...seed, name: stored.name || seed.name, avatarId: stored.avatarId || seed.avatarId } : seed;
+    }),
+    ...storedRecords.filter(item => !seedRecords.some(seed => seed.id === item.id)),
+  ];
   const avatars = createAvatarService();
   for (const ownerId of new Set(records.map(item => item.ownerId))) {
     const operators = records.filter(item => item.ownerId === ownerId);
@@ -65,7 +72,11 @@ export function createMockSettingsService(options: Options = {}) {
     return MOCK_AUTH_ENABLED && !!owner?.id && (owner.mode === 'mock' || owner.mode === 'preview') && ownerPins.has(owner.id);
   }
   function persistRecords(next: readonly Cashier[]) {
-    recordStorage.write(OPERATOR_RECORDS_KEY, JSON.stringify(next.filter(item => item.ownerId !== demoOwner.id)));
+    recordStorage.write(OPERATOR_RECORDS_KEY, JSON.stringify(next.filter(item => {
+      if (item.ownerId !== demoOwner.id) return true;
+      const seed = demoCashiers.find(record => record.id === item.id && record.ownerId === item.ownerId);
+      return !!seed && (item.name !== seed.name || item.avatarId !== seed.avatarId);
+    })));
   }
   async function operation<T>(owner: OwnerIdentity, kind: SettingsOperation, work: () => SettingsResult<T> | Promise<SettingsResult<T>>, stillAuthorized?: () => boolean): Promise<SettingsResult<T>> {
     if (!authorized(owner)) return failed('This mock operation needs a demo Owner session. Real account services are not connected.');
@@ -97,7 +108,19 @@ export function createMockSettingsService(options: Options = {}) {
     ready,
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     getSnapshot: () => snapshot,
+    // TODO(backend): Load the authenticated Owner's operator and permission records.
+    // - Method/Action: GET / Fetch operators and assigned capabilities
+    // - Expected Input/Payload: Authenticated Owner session; derive store scope server-side
+    // - Expected Response: Cashier[] and permission groups without credential material
+    // - UI State to Wire: Hydrate settings snapshots and expose initial loading/error/retry states
     cashiers: ownerId => records.filter(item => item.ownerId === ownerId),
+    seedRealCashier(cashier: Cashier) {
+      // Only seed if not already present — avoids overwriting a richer mock record.
+      if (!records.some(item => item.id === cashier.id)) {
+        records = [...records, Object.freeze(cashier)];
+        publish();
+      }
+    },
     syncState,
     createCashier(owner, values: CashierValues, stillAuthorized) {
       return operation(owner, 'create', async () => {
@@ -106,8 +129,11 @@ export function createMockSettingsService(options: Options = {}) {
         if (duplicate(owner.id, values.pin)) return duplicateError();
         const id = `TH-KH-${String(nextId).padStart(4, '0')}`;
         let cashier: Cashier;
-        // BACKEND TODO: Allocate the first free preset and create the account in one
-        // transaction; enforce store-wide uniqueness even for inactive Operators.
+        // TODO(backend): Create an Operator and allocate its avatar in one authorized transaction.
+        // - Method/Action: POST / Create operator
+        // - Expected Input/Payload: { name, pin } with PIN request-only; store/actor derived from session
+        // - Expected Response: Canonical Cashier with server-assigned ID, status, and avatarId
+        // - UI State to Wire: Show completion only after confirmation and retain form values on failure
         try { await secretStorage.write(operatorPinKey(id), values.pin); }
         catch { return failed('The Kahera account could not be saved. Please try again.'); }
         const result = avatars.allocate(owner.id, id, avatarId => {
@@ -133,6 +159,11 @@ export function createMockSettingsService(options: Options = {}) {
     },
     changeOwnerPin(owner, values) {
       return operation(owner, 'change-pin', async () => {
+        // TODO(backend): Change the authenticated Owner PIN with server-side reauthentication.
+        // - Method/Action: PATCH / Change Owner PIN
+        // - Expected Input/Payload: { ownerPin, pin } as request-only secrets
+        // - Expected Response: Success status or safe validation/rate-limit error
+        // - UI State to Wire: Clear credential fields only after success and keep values on failure
         const error = verify(owner, values);
         if (error) return error;
         try { await secretStorage.write(ownerPinKey(owner.id), values.pin); }
@@ -143,6 +174,11 @@ export function createMockSettingsService(options: Options = {}) {
     },
     resetCashierPin(owner, cashierId, values, stillAuthorized) {
       return operation(owner, 'reset-pin', async () => {
+        // TODO(backend): Reset an Operator PIN after verifying Owner authority and store membership.
+        // - Method/Action: PATCH / Reset operator PIN
+        // - Expected Input/Payload: { operatorId, ownerPin, pin } as request-only secrets
+        // - Expected Response: Updated Cashier identity or safe authorization/validation error
+        // - UI State to Wire: Show confirmation and invalidate affected Operator sessions on success
         const error = verify(owner, values);
         if (error && !error.ok) return error;
         const cashier = records.find(item => item.id === cashierId && item.ownerId === owner.id);
@@ -156,8 +192,11 @@ export function createMockSettingsService(options: Options = {}) {
       }, stillAuthorized);
     },
     setOperatorActive(owner, operatorId, active, stillAuthorized) {
-      // BACKEND TODO: Check authenticated store membership, update status without
-      // deleting history/attribution or permissions, audit actor, revoke active sessions.
+      // TODO(backend): Change Operator status while preserving history and auditing the Owner actor.
+      // - Method/Action: PATCH / Update operator active status
+      // - Expected Input/Payload: { operatorId, active } with store derived from session
+      // - Expected Response: Canonical updated Cashier and revoked-session status when deactivated
+      // - UI State to Wire: Refresh operator lists and show mutation errors or confirmation
       return operation(owner, 'operator-status', async () => {
         const operator = records.find(item => item.id === operatorId && item.ownerId === owner.id);
         if (!operator) return failed('Kahera unavailable.');
@@ -171,12 +210,49 @@ export function createMockSettingsService(options: Options = {}) {
         return { ok: true, value: updated };
       }, stillAuthorized);
     },
+    async updateOperatorProfile(operatorId: string, values: OperatorProfileValues, stillAuthorized) {
+      // TODO(backend): Save the active Operator's self-service name and avatar changes.
+      // - Method/Action: PATCH / Update current operator profile
+      // - Expected Input/Payload: { name, avatarId } with operator identity derived from session
+      // - Expected Response: Canonical Cashier profile and reserved avatar assignment
+      // - UI State to Wire: Refresh profile/session snapshots and retain the draft on failure
+      const operator = records.find(item => item.id === operatorId && item.status === 'active');
+      if (!operator) return failed('Your Operator profile is unavailable. Please log in again.');
+      const lockId = operator.ownerId;
+      if (locks.has(lockId)) return failed('Another operation is in progress. Please wait.');
+      locks.add(lockId);
+      try {
+        await ready;
+        await pause();
+        if (stillAuthorized && !stillAuthorized()) return failed('Your Operator session changed. Log in and try again.');
+        if (failure === 'operator-profile') { failure = undefined; return failed('The demo service could not save this change. Please try again.'); }
+        const fields = validateOperatorProfile(values);
+        if (Object.keys(fields).length) return { ok: false, message: 'Check the highlighted fields.', fields };
+        if (!avatarPickerOrder.includes(values.avatarId)) return failed('Choose one of the supplied profile photos.');
+        if (avatarInUse(avatars.getSnapshot(), operator.ownerId, operator.id, values.avatarId)) return failed('This profile photo is in use by another account. Choose another photo.');
+
+        const updated: Cashier = { ...operator, name: values.name.trim(), avatarId: values.avatarId };
+        const next = records.map(item => item.id === operator.id ? updated : item);
+        try {
+          const result = avatars.replace(operator.ownerId, operator.id, values.avatarId, () => {
+            persistRecords(next);
+            records = next;
+          });
+          if (!result.ok) return failed(result.message);
+          emit();
+          return { ok: true, value: updated };
+        } catch { return failed('Your Operator profile could not be saved. Please try again.'); }
+      } catch {
+        return failed('The demo service is unavailable. Please try again.');
+      } finally { locks.delete(lockId); }
+    },
     operatorPermissions: operatorId => permissions.get(operatorId) ?? defaultOperatorPermissions,
     setOperatorPermission(owner, operatorId, group, allowed, stillAuthorized) {
-      // BACKEND TODO: Authorize current Owner/store from session, enforce the fixed
-      // capability allowlist on every protected request, audit before/after and actor.
-      // Proposed request: internal Operator ID, permission group, boolean; response:
-      // canonical capabilities. No UI-supplied Owner/store ID authorizes this action.
+      // TODO(backend): Update an Operator capability after server-side Owner/store authorization.
+      // - Method/Action: PATCH / Update operator capability
+      // - Expected Input/Payload: { operatorId, group, allowed }; store and actor derive from session
+      // - Expected Response: Canonical capability list constrained to the fixed allowlist
+      // - UI State to Wire: Refresh permissions and capability gates after confirmed updates
       return operation(owner, 'permission', () => {
         const operator = records.find(item => item.id === operatorId && item.ownerId === owner.id);
         if (!operator || operator.status !== 'active') return failed('Only active Operators in this store can have permissions changed.');
@@ -189,8 +265,11 @@ export function createMockSettingsService(options: Options = {}) {
       }, stillAuthorized);
     },
     async synchronize(owner) {
-      // TODO(BACKEND): Replace simulated progress with the agreed authenticated sync
-      // protocol, durable pending-write queue, server conflict handling and confirmed state.
+      // TODO(backend): Replace simulated synchronization with the approved authenticated sync protocol.
+      // - Method/Action: POST / Synchronize pending records
+      // - Expected Input/Payload: Authenticated Owner session and pending-write metadata
+      // - Expected Response: Confirmed sync status, progress, pending count, and conflict details
+      // - UI State to Wire: Drive progress/retry/conflict states from the server response
       if (!authorized(owner)) return failed('Synchronization is available for demo Owner sessions only.');
       if (locks.has(owner.id) || syncState(owner.id).status === 'syncing') return failed('Synchronization is already in progress.');
       locks.add(owner.id);
@@ -208,8 +287,11 @@ export function createMockSettingsService(options: Options = {}) {
       } finally { locks.delete(owner.id); }
     },
     clearCache(owner) {
-      // TODO(BACKEND): Define which server-backed records may be cleared and preserve
-      // unsynced writes; confirm the cache operation before showing completion.
+      // TODO(backend): Define the authorized cache clear operation while preserving unsynced writes.
+      // - Method/Action: DELETE / Clear eligible cached records
+      // - Expected Input/Payload: Authenticated Owner session and explicit confirmation
+      // - Expected Response: Success status and remaining pending-record count
+      // - UI State to Wire: Confirm completion only after server/cache acknowledgement
       return operation(owner, 'clear-cache', () => {
         // Recheck after the asynchronous boundary, including when the dialog was opened earlier.
         if (!canClearCache(syncState(owner.id))) return failed('Sync pending records before clearing cached data.');
@@ -221,8 +303,8 @@ export function createMockSettingsService(options: Options = {}) {
   return Object.assign(service, {
     avatars,
     operatorRevision: (id: string) => revisions.get(id) ?? 0,
-    // MOCK ONLY: Credential matching stays behind the service. Inactive accounts
-    // cannot log in. BACKEND INTEGRATION: identify Operator + permitted actions server-side.
+    // MOCK ONLY: Credential matching stays behind the service. Inactive accounts cannot log in.
+    // The Operator login endpoint is documented at the authentication service boundary.
     matchOperator: (ownerId: string, pin: string) => {
       if (!MOCK_AUTH_ENABLED || !/^[0-9]{4}$/.test(pin)) return null;
       const matches = records.filter(item => item.ownerId === ownerId && item.status === 'active' && cashierPins.get(item.id) === pin);
@@ -255,7 +337,7 @@ const failure = __DEV__ ? process.env.EXPO_PUBLIC_SETTINGS_FAIL_NEXT : undefined
 export const settingsService = createMockSettingsService({
   empty: __DEV__ && process.env.EXPO_PUBLIC_SETTINGS_EMPTY === 'true',
   scenario: scenario && Object.prototype.hasOwnProperty.call(syncFixtures, scenario) ? scenario as SyncStatus : undefined,
-  failNext: ['create', 'change-pin', 'reset-pin', 'sync', 'clear-cache', 'permission', 'operator-status'].includes(failure ?? '') ? failure as SettingsOperation : undefined,
+  failNext: ['create', 'change-pin', 'reset-pin', 'sync', 'clear-cache', 'permission', 'operator-status', 'operator-profile'].includes(failure ?? '') ? failure as SettingsOperation : undefined,
 });
 
 // ── Real API functions ────────────────────────────────────────────────────────────────────

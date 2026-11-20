@@ -26,7 +26,7 @@ export function ProfileText({ children, bold = false, small = false }: { childre
   return <Text className={`${bold ? 'font-poppins-bold' : 'font-poppins'} ${small ? 'text-[12px] leading-[18px] text-text-secondary' : 'text-[14px] leading-[22px] text-[#102342]'}`}>{children}</Text>;
 }
 export function ProfileSection({ children }: { children: string }) {
-  return <Text className="mb-3 mt-5 font-poppins-semibold text-[12px] leading-[18px] text-[#7399CC]">{children}</Text>;
+  return <Text accessibilityRole="header" className="mb-2 mt-3 font-poppins-bold text-[12px] leading-[18px] text-text-secondary uppercase">{children}</Text>;
 }
 export function ProfileNotice({ title, children }: { title: string; children: ReactNode }) {
   return <View className="gap-1 rounded-control bg-[#D1E2F8] p-4"><Text className="font-poppins-bold text-[12px] leading-[18px] text-brand">{title}</Text><ProfileText small>{children}</ProfileText></View>;

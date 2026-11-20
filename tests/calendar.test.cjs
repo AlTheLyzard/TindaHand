@@ -49,6 +49,43 @@ test('range selection restarts after a complete range and orders a backwards end
   assert.equal(committed.from, '2026-10-01'); assert.equal(committed.to, '2026-10-31');
 });
 
+function calendarUIHarness() {
+  let cursor = 0;
+  const slots = [];
+  const dependencies = {
+    react: { useState(initial) {
+      const index = cursor++;
+      if (!(index in slots)) slots[index] = typeof initial === 'function' ? initial() : initial;
+      return [slots[index], next => { slots[index] = typeof next === 'function' ? next(slots[index]) : next; }];
+    } },
+    'react/jsx-runtime': require('react/jsx-runtime'),
+    'react-native': { Text: 'Text', View: 'View', useWindowDimensions: () => ({ fontScale: 1 }) },
+    './button': { Button: 'Button', IconButton: 'IconButton' },
+    './motion-pressable': { MotionPressable: 'Pressable' },
+    '@/components/pos/pos-icon': { PosIcon: 'Icon' },
+    '@/constants/design-tokens.json': require('../src/constants/design-tokens.json'),
+    '@/utils/date': load(path.join(__dirname, '../src/utils/date.ts')),
+    '@/utils/calendar': load(path.join(__dirname, '../src/utils/calendar.ts')),
+  };
+  const context = { exports: {}, require(name) {
+    if (name in dependencies) return dependencies[name];
+    throw Error('Unexpected dependency ' + name);
+  } };
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/components/ui/date-picker.tsx', 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
+  }).outputText, context);
+  return props => { cursor = 0; return context.exports.DateCalendar(props); };
+}
+
+test('shared date calendar uses the larger semibold day numbers across date-picker surfaces', () => {
+  const tree = calendarUIHarness()({ selection: { from: '2026-11-19', to: '2026-11-19' }, mode: 'single', month: '2026-11', onMonth() {}, onSelect() {} });
+  const visit = node => Array.isArray(node) ? node.flatMap(visit) : node?.props ? [node, ...visit(node.props.children)] : [];
+  const day = visit(tree).find(node => node.type === 'Text' && typeof node.props.children === 'number');
+  assert.ok(day);
+  assert.equal(day.props.style.fontFamily, 'Poppins_600SemiBold');
+  assert.equal(day.props.style.fontSize, 18);
+});
+
 function pickerHarness(component, props) {
   const slots = []; let cursor = 0;
   const context = { exports: {}, require(name) {

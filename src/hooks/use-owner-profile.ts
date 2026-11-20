@@ -29,6 +29,11 @@ export function useOwnerProfile() {
       return;
     }
     let active = true;
+    // TODO(backend): Read the current Owner profile from the authenticated profile API.
+    // - Method/Action: GET / Fetch Owner profile
+    // - Expected Input/Payload: Authenticated Owner session
+    // - Expected Response: OwnerProfile or a safe unavailable/authorization error
+    // - UI State to Wire: Drive profile loading/error and reload state from the request result
     void authenticationService.profile.read().then(result => {
       if (active) setResult({ key, error: result.ok ? '' : result.message });
     }).catch(() => { if (active) setResult({ key, error: 'Profile unavailable. Please retry.' }); });

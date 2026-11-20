@@ -11,7 +11,7 @@ module.exports = {
       spacing: { 'card-gap': `${tokens.spacing.four}px` },
       colors: {
         'warning-base': tokens.color.warningBase,
-        canvas: '#F0F8FF',
+        canvas: tokens.color.appBackground,
         brand: '#112F6F',
         action: '#245399',
         'action-hover': '#1A3E78',

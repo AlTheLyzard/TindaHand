@@ -17,6 +17,11 @@ function entry(id: string, date: string, description: string, debitId: string, c
 }
 /** A single fictional posted accounting book. Independent from unposted operational demo state.
  * No inferred POS/expense postings: source cost, payment-source and opening-balance contracts remain open. */
+// TODO(backend): Replace the fictional posted book with confirmed store financial records.
+// - Method/Action: GET / Fetch posted financial data
+// - Expected Input/Payload: Authenticated store session and report period/timezone
+// - Expected Response: { storeName, timezone, updatedAt, accounts, entries }
+// - UI State to Wire: Feed financial report reads from server-confirmed entries and surface loading/errors
 export const financialSeed: FinancialDataset = {
   storeName: 'JDC Sari-Sari Store', timezone: 'Asia/Manila', updatedAt: '2026-11-09T10:00:00+08:00', accounts,
   entries: [

@@ -6,10 +6,10 @@ import { ScrollView, Text, View } from 'react-native';
 import Animated, { FadeOut, LinearTransition, ReduceMotion } from 'react-native-reanimated';
 
 import { PosDialog } from '@/components/pos/pos-dialog';
-import { PosBackButton } from '@/components/pos/pos-back-button';
 import { PosFrame, posHref, type PosRouteBase } from '@/components/pos/pos-frame';
 import { PosIcon } from '@/components/pos/pos-icon';
 import { Button, IconButton } from '@/components/ui/button';
+import { QuantityStepper } from '@/components/ui/quantity-stepper';
 import tokens from '@/constants/design-tokens.json';
 import { inventoryRules } from '@/constants/inventory-rules';
 import { useInventory } from '@/state/inventory';
@@ -17,7 +17,7 @@ import { useTranslation } from '@/i18n/use-translation';
 import { usePos } from '@/state/pos';
 import type { OwnerIdentity } from '@/types/auth';
 import { formatPesos } from '@/utils/dashboard';
-import { selectionSummary } from '@/utils/pos';
+import { cartStockStatus, selectionSummary } from '@/utils/pos';
 import { EmptyState, useContentPreview } from '@/components/ui/content-state';
 import { RecordSkeleton } from '@/components/ui/content-skeletons';
 import { usePosMetrics } from './pos-metrics';
@@ -65,12 +65,11 @@ export function CartReviewScreen({ owner, basePath = '/owner-pos' }: { owner: Ow
     : confirmation?.kind === 'remove' ? t('pos.cart.removeHelp', { name: confirmation.name })
     : 'You have unsaved changes. Are you sure you want to close without saving?';
 
-  return <PosFrame owner={owner} basePath={basePath} step="cart" onPos={browse}>
+  return <PosFrame owner={owner} basePath={basePath} step="cart" onPos={browse} backAction={{ label: t('pos.cart.back'), onPress: browse }}>
     <ScrollView showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: tokens.spacing.four }}>
       <MotionContent changeKey={preview.mode} className="w-full max-w-[460px] self-center" style={{ paddingHorizontal: metrics.gutter }}>
         <View className="mb-5 mt-2 flex-row items-center justify-between gap-3">
-          <PosBackButton label={t('pos.cart.back')} onPress={browse} />
           <Text accessibilityRole="header" className="flex-1 font-poppins-bold text-[16px] text-[#102342]">{t('pos.cart.title')}</Text>
           <Text accessibilityLiveRegion="polite" className="font-poppins-bold text-[11px] text-text-secondary">{preview.loading ? 'Loading cart' : t(items.length === 1 ? 'pos.cart.lineCountOne' : 'pos.cart.lineCount', { count: items.length })}</Text>
         </View>
@@ -80,10 +79,12 @@ export function CartReviewScreen({ owner, basePath = '/owner-pos' }: { owner: Ow
             const product = products.find(product => product.id === item.productId);
             const stock = product?.stock ?? 0;
             const atLimit = item.quantity >= stock;
-            const blocking = !product || stock <= 0 || item.quantity > stock;
-            const status = !product || stock <= 0 ? 'Product unavailable. Remove it from the cart.'
-              : item.quantity > stock ? `Insufficient stock. Only ${stock} available.`
-              : atLimit ? t('pos.cart.stockLimit') : stock <= inventoryRules.lowStock ? `Low stock: ${stock} available. Requested quantity is available.` : null;
+            const stockStatus = cartStockStatus(product?.stock, item.quantity, inventoryRules.lowStock);
+            const blocking = stockStatus?.kind === 'unavailable' || stockStatus?.kind === 'insufficient';
+            const status = stockStatus?.kind === 'unavailable' ? 'Product unavailable. Remove it from the cart.'
+              : stockStatus?.kind === 'insufficient' ? `Insufficient stock. Only ${stockStatus.available} available.`
+              : stockStatus?.kind === 'depleted' ? 'Out of stock. Requested quantity is available; no additional units remain.'
+              : stockStatus?.kind === 'low' ? `Low Stock: ${stockStatus.available} available. Requested quantity is available.` : null;
             return <Animated.View key={item.productId} collapsable={false} layout={moveRow} exiting={removeRow} style={{ marginBottom: tokens.spacing.three, borderRadius: tokens.radius.card, backgroundColor: '#FFFFFF', padding: tokens.spacing.three }}>
               <View className="flex-row items-start justify-between gap-2">
                 <View className="flex-1">
@@ -93,25 +94,20 @@ export function CartReviewScreen({ owner, basePath = '/owner-pos' }: { owner: Ow
                 <IconButton accessibilityLabel={t('pos.cart.removeLabel', { name: item.itemName })} onPress={() => requestConfirmation({ kind: 'remove', productId: item.productId, name: item.itemName })} className="min-h-12 min-w-12 items-center justify-center" variant="destructiveText" icon={({ color }) => <PosIcon name="trash" color={color} />} />
               </View>
               <View className="mt-3 flex-row flex-wrap items-center justify-between gap-3">
-                <View className="flex-row items-center gap-2">
-                  <IconButton variant="primary" accessibilityLabel={t('pos.cart.decrease', { name: item.itemName })} onPress={() => item.quantity === 1 ? requestConfirmation({ kind: 'zero', productId: item.productId, name: item.itemName }) : changeQuantity(item.productId, -1)}
-                    style={{ minWidth: 40, minHeight: 40 }}
-                    icon={({ color }) => <Text style={{ fontFamily: tokens.button.fontFamily, fontSize: 18, color }}>−</Text>} />
-                  <Text accessibilityLabel={t('pos.cart.quantity', { name: item.itemName, count: item.quantity })} className="min-w-6 text-center font-poppins-bold text-[16px] text-[#102342]">{item.quantity}</Text>
-                  <IconButton variant="primary" accessibilityLabel={t('pos.cart.increase', { name: item.itemName })} disabled={atLimit} onPress={() => changeQuantity(item.productId, 1)}
-                    style={{ minWidth: 40, minHeight: 40 }}
-                    icon={({ color }) => <Text style={{ fontFamily: tokens.button.fontFamily, fontSize: 18, color }}>+</Text>} />
-                </View>
+                <QuantityStepper value={item.quantity} valueLabel={t('pos.cart.quantity', { name: item.itemName, count: item.quantity })}
+                  decreaseLabel={t('pos.cart.decrease', { name: item.itemName })} increaseLabel={t('pos.cart.increase', { name: item.itemName })}
+                  onDecrease={() => item.quantity === 1 ? requestConfirmation({ kind: 'zero', productId: item.productId, name: item.itemName }) : changeQuantity(item.productId, -1)}
+                  onIncrease={() => changeQuantity(item.productId, 1)} increaseDisabled={atLimit} />
                 <View className="ml-auto items-end">
                   <Text className="font-poppins text-[11px] text-text-secondary">{item.quantity} × {formatPesos(item.unitPriceCentavos)}</Text>
                   <Text className="mt-1 font-poppins-bold text-[16px] text-brand">{formatPesos(item.quantity * item.unitPriceCentavos)}</Text>
                 </View>
               </View>
-              {status && <View className="mt-2 flex-row items-start gap-2" style={!atLimit && !blocking ? { backgroundColor: `${tokens.color.warningBase}20`, borderRadius: tokens.button.radius, padding: tokens.spacing.two } : undefined}>
-                {!atLimit && !blocking && <View accessible={false} style={{ marginTop: 3, width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: tokens.color.warningBase }} />}
-                <Text accessibilityRole={blocking ? 'alert' : undefined} className="flex-1 font-poppins-bold text-[11px]"
-                  style={{ color: atLimit || blocking ? tokens.color.errorBase : tokens.color.textSecondary }}>{status}</Text>
-              </View>}
+              <View className="mt-2 flex-row items-start gap-2" style={{ minHeight: 16 }}>
+                {!!status && stockStatus?.kind !== 'unavailable' && stockStatus?.kind !== 'insufficient' && <View accessible={false} style={{ marginTop: 3, width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: tokens.color.warningBase }} />}
+                {!!status && <Text accessibilityRole={blocking ? 'alert' : undefined} className="flex-1 font-poppins-bold text-[11px] leading-[16px]"
+                  style={{ color: blocking ? tokens.color.errorBase : stockStatus?.kind === 'low' || stockStatus?.kind === 'depleted' ? '#7A5000' : tokens.color.textSecondary }}>{status}</Text>}
+              </View>
             </Animated.View>;
           })}
         </View>
@@ -121,14 +117,14 @@ export function CartReviewScreen({ owner, basePath = '/owner-pos' }: { owner: Ow
         </Button>}
         {!preview.empty && hasStockConflict && <Text accessibilityRole="alert" className="my-3 font-poppins text-[12px]" style={{ color: tokens.color.errorBase }}>{t('pos.catalogChanged')}</Text>}
         {items.length === 0 && <EmptyState icon="cart" title={t('pos.cart.empty')} description={t('pos.cart.emptyHelp')} action={t('pos.cart.browse')} onAction={() => { preview.reset(); browse(); }} />}
-        <View accessibilityLiveRegion="polite" className="mt-6 rounded-card bg-[#D1E1F5] p-5">
+        <View accessibilityLiveRegion="polite" className="mt-6 rounded-card bg-[#D1E1F5] p-4">
           <Text accessibilityRole="header" className="font-poppins-bold text-[17px] text-[#102342]">{t('pos.cart.summary')}</Text>
-          <View className="mt-4 flex-row flex-wrap justify-between gap-2 border-b border-[#ADC9EE] pb-4">
+          <View className="mt-3 flex-row flex-wrap justify-between gap-2 border-b border-[#ADC9EE] pb-3">
             <Text className="font-poppins text-[14px] text-brand">{t('pos.cart.subtotal')}</Text>
             <Text className="font-poppins-bold text-[14px] text-[#102342]">{formatPesos(summary.totalCentavos)}</Text>
           </View>
-          <Text className="mt-3 font-poppins-bold text-[11px] text-[#102342]">{t('pos.cart.total')}</Text>
-          <Text className="mt-2 font-poppins-bold text-[28px] text-brand">{formatPesos(summary.totalCentavos)}</Text>
+          <Text className="mt-2 font-poppins-bold text-[11px] text-[#102342]">{t('pos.cart.total')}</Text>
+          <Text className="mt-1 font-poppins-bold text-[28px] text-brand">{formatPesos(summary.totalCentavos)}</Text>
         </View>
         <View className="mt-6 flex-row gap-4">
           <View className="flex-1"><Button variant="secondary" disabled={items.length === 0} onPress={() => requestConfirmation({ kind: 'clear' })}>{t('pos.cart.emptyAction')}</Button></View>

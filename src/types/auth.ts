@@ -18,6 +18,11 @@ export type RememberedIdentities = Partial<Record<AccountRole, string>>;
 export type IdentityStorage = { read(): string | null; write(value: string): void };
 
 /** Internal adapter result, not a backend wire schema. */
+// TODO(backend): Verify account and session models against the authentication API schemas.
+// - Method/Action: Auth / Register, authenticate, restore, and verify account sessions
+// - Expected Input/Payload: RegistrationFormValues or credential/session requests; secrets are request-only
+// - Expected Response: RegisteredOwner, DeviceSession, or AuthResult with server-issued role and capabilities
+// - UI State to Wire: Map canonical session/profile results and validation failures into the existing auth flow
 export type RegisteredOwner = { name: string; id: string };
 export type AccountDirectorySnapshot = Readonly<{
   owners: readonly RegisteredOwner[];
@@ -43,7 +48,7 @@ export type RegistrationCompletion = RegisteredOwner & {
 /** Proposed adapter contracts; no HTTP schema has been agreed. Secrets are request-only. */
 export type AuthFailure = { ok: false; code: 'unavailable' | 'invalid' | 'expired' | 'used' | 'missing' | 'limited'; message: string };
 export type AuthResult<T> = { ok: true; value: T } | AuthFailure;
-export type OperatorPermission = 'pos' | 'inventory-edit' | 'restock' | 'assets-read' | 'receivables' | 'transactions' | 'profile' | 'settings';
+export type OperatorPermission = 'pos' | 'inventory-edit' | 'restock' | 'receivables' | 'transactions' | 'profile' | 'settings' | 'assets-read';
 export type DeviceSession = {
   kind: 'mock'; id: string; owner: RegisteredOwner; expiresAt: number; locked: boolean;
 } & ({ role: 'owner' } | {
@@ -65,6 +70,7 @@ export interface AuthenticationService {
   createOperator(input: import('./settings').CashierValues): Promise<import('./settings').SettingsResult<import('./settings').Cashier>>;
   resetOperatorPin(input: import('./settings').PinValues & { operatorId: string }): Promise<import('./settings').SettingsResult<import('./settings').Cashier>>;
   setOperatorActive(input: { operatorId: string; active: boolean }): Promise<import('./settings').SettingsResult<import('./settings').Cashier>>;
+  updateOperatorProfile(input: import('./settings').OperatorProfileValues): Promise<import('./settings').SettingsResult<import('./settings').Cashier>>;
   setOperatorPermission(input: { operatorId: string; group: import('@/utils/operator-access').PermissionGroup; allowed: boolean }): Promise<import('./settings').SettingsResult<readonly OperatorPermission[]>>;
   restoreSession(): Promise<DeviceSession | null>;
   restoreRememberedIdentities(): Promise<RememberedIdentities>;

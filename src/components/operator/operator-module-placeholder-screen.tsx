@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Image, Text, View, useWindowDimensions } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
+import { OperatorHeader } from '@/components/operator/operator-header';
 import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { Button } from '@/components/ui/button';
 import type { NavigationLabelKey } from '@/i18n';
@@ -12,8 +13,8 @@ import { useAuthFlow } from '@/state/auth-flow';
 import { useNavigationHeight } from '@/state/navigation-motion';
 import { posHref } from '@/components/pos/pos-frame';
 
-export function OperatorModulePlaceholderScreen({ title, description, showSignOut = false }: {
-  title: string; description: string; showSignOut?: boolean;
+export function OperatorModulePlaceholderScreen({ title, description, showSignOut = false, activeAction }: {
+  title: string; description: string; showSignOut?: boolean; activeAction?: 'settings';
 }) {
   const { fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -29,12 +30,7 @@ export function OperatorModulePlaceholderScreen({ title, description, showSignOu
   }
 
   return <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-canvas">
-    <View className="border-b border-[#ADC9EE] bg-white">
-      <View className="w-full max-w-[460px] flex-row items-center gap-2 self-center px-5 py-2">
-        <Image source={require('@/assets/images/brand/tindahand-mark.png')} style={{ width: 32, height: 34 }} resizeMode="contain" accessible={false} />
-        <Text className="font-poppins-bold text-[20px] leading-[30px] text-brand">TindaHand</Text>
-      </View>
-    </View>
+    <OperatorHeader activeAction={activeAction} />
     <View className="w-full max-w-[460px] flex-1 self-center px-5 pt-7" style={{ paddingBottom: navigationHeight + insets.bottom + 16 }}>
       <Text accessibilityRole="header" className="font-poppins-bold text-[26px] text-brand" style={{ lineHeight: 36 * fontScale }}>{title}</Text>
       <Text className="mt-3 font-poppins text-[14px] text-text-secondary" style={{ lineHeight: 22 * fontScale }}>{description}</Text>

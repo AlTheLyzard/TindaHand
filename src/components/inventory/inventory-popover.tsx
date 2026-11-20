@@ -7,11 +7,12 @@ import tokens from '@/constants/design-tokens.json';
 import { usePresentationVisible } from '@/state/presentation';
 
 type Anchor = { x: number; y: number; width: number; height: number };
+type Placement = 'auto' | 'below';
 
 /** A separate modal window escapes the sheet's clipped scroll body without changing its layout. */
-export function InventoryPopover({ visible, anchorRef, onClose, onHidden, label, children, width, testID }: {
+export function InventoryPopover({ visible, anchorRef, onClose, onHidden, label, children, width, placement = 'auto', testID }: {
   visible: boolean; anchorRef: RefObject<ViewInstance | null>; onClose: () => void; onHidden?: () => void;
-  label: string; children: ReactNode; width?: number; testID: string;
+  label: string; children: ReactNode; width?: number; placement?: Placement; testID: string;
 }) {
   const window = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -37,7 +38,7 @@ export function InventoryPopover({ visible, anchorRef, onClose, onHidden, label,
   const anchorBottom = Math.max(topEdge + margin, Math.min((anchor?.y ?? 0) + (anchor?.height ?? 0), bottomEdge - margin));
   const below = Math.max(0, bottomEdge - anchorBottom - margin);
   const above = Math.max(0, anchorTop - margin - topEdge);
-  const opensBelow = below >= Math.min(240, (bottomEdge - topEdge) / 2) || below >= above;
+  const opensBelow = placement === 'below' || (below >= Math.min(240, (bottomEdge - topEdge) / 2) || below >= above);
   return <MotionModal visible={visible} backdropColor="transparent" onShow={measureAnchor} onRequestClose={onClose}
     onHidden={() => { setAnchor(null); onHidden?.(); }}>
     <MeasureOnPresentation measure={measureAnchor} />
