@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { authenticationService } from '@/services/authentication';
 import { useAuthFlow } from '@/state/auth-flow';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
+import { getOwnerProfile } from '@/services/settings';
 import type { OwnerProfile } from '@/types/profile';
 
 export function useProfileSnapshot() {
@@ -19,36 +20,38 @@ export function useOwnerProfile() {
   const [result, setResult] = useState<{ key: string; error: string } | null>(null);
   const key = `${owner?.id ?? ''}:${attempt}`;
 
+  // Real profile fetched from the backend (confirmed sessions only).
+  const [realProfile, setRealProfile] = useState<OwnerProfile | undefined>(undefined);
+
   useEffect(() => {
-    // When mock auth is off, we're using a real JWT session. The mock profile
-    // service won't work (it's gated behind enabled()). Instead, build a minimal
-    // profile directly from the owner identity we already have from the JWT.
-    // We mark the result as ok immediately — no network call needed.
     if (!MOCK_AUTH_ENABLED) {
-      setResult({ key, error: '' });
-      return;
+      // Real path — fetch owner profile from GET /settings/profile.
+      if (!owner) return;
+      let active = true;
+      getOwnerProfile()
+        .then(data => {
+          if (!active) return;
+          setRealProfile({
+            ownerId: owner.id,
+            name: data.name,
+            avatarId: (data.avatarId as AvatarId | null) ?? null,
+            storeName: data.storeName ?? '',
+            email: data.email ?? '',
+            pendingEmail: null,
+          });
+          setResult({ key, error: '' });
+        })
+        .catch(() => {
+          if (active) setResult({ key, error: 'Profile unavailable. Please retry.' });
+        });
+      return () => { active = false; };
     }
     let active = true;
-    // TODO(backend): Read the current Owner profile from the authenticated profile API.
-    // - Method/Action: GET / Fetch Owner profile
-    // - Expected Input/Payload: Authenticated Owner session
-    // - Expected Response: OwnerProfile or a safe unavailable/authorization error
-    // - UI State to Wire: Drive profile loading/error and reload state from the request result
     void authenticationService.profile.read().then(result => {
       if (active) setResult({ key, error: result.ok ? '' : result.message });
     }).catch(() => { if (active) setResult({ key, error: 'Profile unavailable. Please retry.' }); });
     return () => { active = false; };
-  }, [key]);
-
-  // When mock is off, synthesize a minimal profile from the JWT-sourced owner identity.
-  const realProfile: OwnerProfile | undefined = !MOCK_AUTH_ENABLED && owner ? {
-    ownerId: owner.id,
-    name: owner.name,
-    avatarId: null,
-    storeName: '',
-    email: '',
-    pendingEmail: null,
-  } : undefined;
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resolvedProfile = MOCK_AUTH_ENABLED ? profile : realProfile;
 

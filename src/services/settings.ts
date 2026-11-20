@@ -118,7 +118,7 @@ export function createMockSettingsService(options: Options = {}) {
       // Only seed if not already present — avoids overwriting a richer mock record.
       if (!records.some(item => item.id === cashier.id)) {
         records = [...records, Object.freeze(cashier)];
-        publish();
+        emit();
       }
     },
     syncState,
@@ -354,6 +354,7 @@ export interface ApiCashier {
 export interface OwnerProfile {
   id: string;        // e.g. "TH-MA-0001"
   name: string;
+  email: string;
   storeName: string;
   avatarId: string;
 }
@@ -363,15 +364,19 @@ export async function getOwnerProfile(): Promise<OwnerProfile> {
   return apiFetch<OwnerProfile>('/settings/profile');
 }
 
-/** Update name, storeName, or avatarId. */
+/** Update name, storeName, or avatarId. Converts to snake_case for the backend. */
 export async function updateOwnerProfile(data: Partial<{
   name: string;
   storeName: string;
   avatarId: string;
 }>): Promise<OwnerProfile> {
+  const payload: Record<string, string> = {};
+  if (data.name !== undefined) payload['full_name'] = data.name;
+  if (data.storeName !== undefined) payload['store_name'] = data.storeName;
+  if (data.avatarId !== undefined) payload['avatar_id'] = data.avatarId;
   return apiFetch<OwnerProfile>('/settings/profile', {
     method: 'PATCH',
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -379,7 +384,7 @@ export async function updateOwnerProfile(data: Partial<{
 export async function changeOwnerPin(currentPin: string, newPin: string): Promise<void> {
   return apiFetch<void>('/settings/change-pin', {
     method: 'POST',
-    body: JSON.stringify({ currentPin, newPin }),
+    body: JSON.stringify({ current_pin: currentPin, new_pin: newPin }),
   });
 }
 
@@ -394,8 +399,35 @@ export async function updateCashier(kahera_id: string, data: Partial<{
   avatarId: string;
   isActive: boolean;
 }>): Promise<ApiCashier> {
+  const payload: Record<string, unknown> = {};
+  if (data.name !== undefined) payload['full_name'] = data.name;
+  if (data.avatarId !== undefined) payload['avatar_id'] = data.avatarId;
+  if (data.isActive !== undefined) payload['is_active'] = data.isActive;
   return apiFetch<ApiCashier>(`/settings/cashiers/${kahera_id}`, {
     method: 'PATCH',
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
+}
+
+/** Fetch the persisted permissions list for a single cashier. */
+export async function getCashierPermissions(kahera_id: string): Promise<readonly string[]> {
+  const data = await apiFetch<{ cashier_id: string; permissions: string[] }>(
+    `/settings/cashiers/${kahera_id}/permissions`,
+  );
+  return data.permissions;
+}
+
+/** Overwrite the full permissions list for a single cashier. */
+export async function updateCashierPermissions(
+  kahera_id: string,
+  permissions: readonly string[],
+): Promise<readonly string[]> {
+  const data = await apiFetch<{ cashier_id: string; permissions: string[] }>(
+    `/settings/cashiers/${kahera_id}/permissions`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ permissions: [...permissions] }),
+    },
+  );
+  return data.permissions;
 }

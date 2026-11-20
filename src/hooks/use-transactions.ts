@@ -1,4 +1,4 @@
-import { readTransactions } from "@/services/transactions";
+import { getTransactions, readTransactions } from "@/services/transactions";
 import { useAuthFlow } from "@/state/auth-flow";
 import { useInventory } from "@/state/inventory";
 import { useQuickAdd } from "@/state/quick-add";
@@ -13,6 +13,7 @@ export function useTransactions() {
   const operator = deviceSession?.role === "operator" ? deviceSession : null;
   const ownerId = owner?.id ?? operator?.ownerId;
   const scope = operator ? "operator" : "owner";
+  const confirmedMode = owner?.mode === "confirmed";
   const [result, setResult] = useState<{
     rows: TransactionRecord[];
     source: TransactionSources | null;
@@ -38,10 +39,13 @@ export function useTransactions() {
   );
   useEffect(() => {
     let active = true;
-    // TODO: Backend integration: replace this local read with the authenticated API call. Pass the current page, limit (8), search, category, and date/payment filters, and refetch when any of them change.
-    const request = ownerId
-      ? readTransactions(ownerId, source)
-      : Promise.resolve([]);
+    // Real API path: confirmed owners get live transaction data from the backend.
+    // Mock/preview sessions fall back to the local seed projection.
+    const request: Promise<TransactionRecord[]> = confirmedMode
+      ? getTransactions()
+      : ownerId
+        ? readTransactions(ownerId, source)
+        : Promise.resolve([]);
     void request
       .then((rows) => {
         if (active) setResult({ rows, source, error: "" });
@@ -57,7 +61,8 @@ export function useTransactions() {
     return () => {
       active = false;
     };
-  }, [ownerId, scope, source]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerId, confirmedMode, scope, revision]);
   return {
     rows: result.source === source ? result.rows : [],
     error: result.source === source ? result.error : "",

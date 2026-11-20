@@ -5,6 +5,8 @@ import { useOwnerProfile } from '@/hooks/use-owner-profile';
 import { useAuthFlow } from '@/state/auth-flow';
 import { authenticationService } from '@/services/authentication';
 import { AVATAR_IN_USE, avatarInUse } from '@/services/avatars';
+import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
+import { updateOwnerProfile } from '@/services/settings';
 import { FormField } from '@/components/ui/form-field';
 import { Button } from '@/components/ui/button';
 import { PosDialog } from '@/components/pos/pos-dialog';
@@ -62,7 +64,15 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
     if (errors.name) { nameInput.current?.focus(); return; }
     if (errors.storeName) { storeInput.current?.focus(); return; }
     if (errors.email) { emailInput.current?.focus(); return; }
-    if (dirty && !requestLock.current) { Keyboard.dismiss(); setDialog('save'); }
+    if (dirty && !requestLock.current) {
+      Keyboard.dismiss();
+      if (!MOCK_AUTH_ENABLED) {
+        // Real session: skip PIN verification, go straight to save confirmation dialog.
+        void save();
+      } else {
+        setDialog('save');
+      }
+    }
   }
   function applyAvatar(avatarId: AvatarId) {
     if (avatarInUse(authenticationService.profile.avatars.getSnapshot(), profile.ownerId, profile.ownerId, avatarId)) {
@@ -71,22 +81,36 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
     setFailure(''); dispatch({ type: 'apply-avatar', avatarId });
   }
   async function save() {
-    setPinTouched(true);
-    if (!/^[0-9]{4}$/.test(pin) || requestLock.current) return;
+    if (MOCK_AUTH_ENABLED) {
+      // Mock path: requires PIN verification via the mock profile service.
+      setPinTouched(true);
+      if (!/^[0-9]{4}$/.test(pin) || requestLock.current) return;
+    } else if (requestLock.current) return;
     requestLock.current = true; setBusy(true); setFailure(''); Keyboard.dismiss();
-    // Request-local only; clear the masked input before awaiting the service.
     const currentPin = pin; clearPin();
     try {
-      const result = await authenticationService.profile.save({ draft: state.draft, ownerPin: currentPin });
-      if (!active.current) return;
-      if (!result.ok) {
-        setFailure(result.message);
-        if (result.message === AVATAR_IN_USE) dispatch({ type: 'pick' });
-        return;
+      if (MOCK_AUTH_ENABLED) {
+        const result = await authenticationService.profile.save({ draft: state.draft, ownerPin: currentPin });
+        if (!active.current) return;
+        if (!result.ok) {
+          setFailure(result.message);
+          if (result.message === AVATAR_IN_USE) dispatch({ type: 'pick' });
+          return;
+        }
+        setLeaving(true); disablePrevention();
+        router.dismissTo({ pathname: profileRoot, params: { updated: result.value.pendingEmail ? 'pending' : 'complete' } });
+      } else {
+        // Real path: call PATCH /settings/profile — no PIN needed (backend uses JWT).
+        await updateOwnerProfile({
+          name: state.draft.name.trim(),
+          storeName: state.draft.storeName.trim(),
+          avatarId: state.draft.avatarId ?? undefined,
+        });
+        if (!active.current) return;
+        setLeaving(true); disablePrevention();
+        router.dismissTo({ pathname: profileRoot, params: { updated: 'complete' } });
       }
-      setLeaving(true); disablePrevention();
-      router.dismissTo({ pathname: profileRoot, params: { updated: result.value.pendingEmail ? 'pending' : 'complete' } });
-    } catch { if (active.current) setFailure('Unable to save your profile. Your draft is intact. Enter your PIN and retry.'); }
+    } catch { if (active.current) setFailure('Unable to save your profile. Please check your connection and try again.'); }
     finally { requestLock.current = false; if (active.current) setBusy(false); }
   }
   if (state.phase === 'avatar') return <ProfilePhotoSelectionScreen storeId={profile.ownerId} accountId={profile.ownerId}

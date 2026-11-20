@@ -2,7 +2,8 @@ import { KeyboardInput as TextInput } from '@/components/ui/keyboard-aware-scrol
 import { MotionContent, MotionRegion } from '@/components/ui/motion-content';
 import { usePushOnce } from '@/hooks/use-push-once';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { Image, Keyboard, View, useWindowDimensions, type ScrollViewInstance } from 'react-native';
 import { Button, IconButton } from '@/components/ui/button';
 import { PosIcon } from '@/components/pos/pos-icon';
@@ -43,8 +44,11 @@ export function ProductInventoryContent({
   animate?: boolean;
 }) {
   const push = usePushOnce();
-  const { store: liveStore } = useInventory();
+  const { store: liveStore, refetchProducts } = useInventory();
   const { fontScale } = useWindowDimensions();
+  // Re-sync with the backend whenever this screen comes into focus.
+  // This ensures Kahera sees May-Ari's edits, and vice versa.
+  useFocusEffect(useCallback(() => { void refetchProducts(); }, [refetchProducts]));
   const scrollRef = useRef<ScrollViewInstance>(null);
   const preview = useContentPreview(listPreviewStates);
   const store = preview.empty ? { ...liveStore, products: [] } : liveStore;

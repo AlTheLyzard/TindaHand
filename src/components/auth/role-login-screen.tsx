@@ -169,8 +169,11 @@ export function RoleLoginScreen({
           result.kaheraId,
         );
         await markHasKaheras();
-        setCredential("");
-        await flow.refreshSession();
+        setCredential('');
+        // showRestoring=true keeps the operator-pos layout in its "loading" state
+        // while the new Kahera session is being built, preventing a premature
+        // redirect back to choose-account.
+        await flow.refreshSession(true);
         flow.setSelectedRole(role);
         flow.notifyLogin();
         completed = true;

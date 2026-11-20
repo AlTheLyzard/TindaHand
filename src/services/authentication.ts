@@ -405,7 +405,7 @@ export function createAuthenticationService(
         return { ok: false, code: "unavailable", message: result.message };
       if (result.status !== "ok") return invalid();
 
-      await saveToken(result.token, result.name, result.kaheraId);
+      await saveToken(result.token, result.name, result.ownerId, 'cashier', result.kaheraId);
 
       // Build the owner identity for session scoping.
       // The cashier belongs to a specific owner — use the ownerId the backend confirmed.

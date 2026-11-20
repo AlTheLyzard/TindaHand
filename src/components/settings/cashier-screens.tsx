@@ -9,6 +9,8 @@ import { EmptyState } from '@/components/ui/content-state';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useAuthFlow } from '@/state/auth-flow';
 import { useSettings } from '@/state/settings';
+import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
+import { changeOwnerPin } from '@/services/settings';
 import { SettingsFrame, settingsRoot } from './settings-frame';
 import { CashierIdentity, OwnerStoreCard, SettingsCard, SettingsDescription, SettingsNotice } from './settings-ui';
 import { CredentialForm } from './credential-form';
@@ -54,9 +56,15 @@ export function ChangePinScreen({ cashier = false }: { cashier?: boolean }) {
       <SettingsDescription>{cashier ? 'Verify with your May-Ari PIN, then enter a new four-digit Kahera PIN.' : 'Enter your current May-Ari PIN and choose a new four-digit PIN.'}</SettingsDescription>
       {expiresAt && <RegistrationToast expiresAt={expiresAt} onDismiss={dismiss} title="PIN updated" message={success} />}
       <CredentialForm key={cashier ? selected!.id : 'owner'} mode={cashier ? 'cashier' : 'owner'}
-        onSave={values => cashier ? authenticationService.resetOperatorPin({ ...values, operatorId: selected!.id }).then(result => result.ok ? { ok: true as const, value: undefined } : result) : service.changeOwnerPin(owner, values)}
+        onSave={values => cashier
+          ? authenticationService.resetOperatorPin({ ...values, operatorId: selected!.id }).then(result => result.ok ? { ok: true as const, value: undefined } : result)
+          : MOCK_AUTH_ENABLED
+            ? service.changeOwnerPin(owner, values)
+            : changeOwnerPin(values.ownerPin, values.pin)
+                .then(() => ({ ok: true as const, value: undefined }))
+                .catch(() => ({ ok: false as const, message: 'PIN change failed. Check your current PIN and try again.' }))}
         onSuccess={() => { setSuccess(selected ? `PIN reset for ${selected.name} (${selected.id}).` : 'Your May-Ari PIN has been changed.'); setExpiresAt(Date.now() + 15000); }} />
-      <Text className="mt-2 font-poppins text-[11px] leading-4 text-text-secondary">Demo only. PIN changes are held in memory for this app session.</Text>
+      {MOCK_AUTH_ENABLED && <Text className="mt-2 font-poppins text-[11px] leading-4 text-text-secondary">Demo only. PIN changes are held in memory for this app session.</Text>}
     </>}
   </SettingsFrame>;
 }
@@ -92,7 +100,7 @@ export function CashierCreatedScreen() {
   if (!owner) return null;
   return <SettingsFrame title="User Management" parent={`${settingsRoot}/users`}>
     {!cashier ? <EmptyState title="Account details unavailable" description="The Kahera may belong to another store, or this demo session has ended." action="Back to User Management" onAction={() => router.dismissTo(`${settingsRoot}/users`)} /> : <>
-      <RegistrationToast expiresAt={expiresAt} onDismiss={dismiss} title="Account created" message={`${cashier.name} has been added to your demo store.`} />
+      <RegistrationToast expiresAt={expiresAt} onDismiss={dismiss} title="Account created" message={`${cashier.name} has been added to your store.`} />
       <View className="mb-6 mt-5 gap-4"><SuccessMark animate eventKey={cashier.id} /><Text accessibilityRole="header" className="font-poppins-bold text-[30px] leading-[42px] text-brand">Kahera Account Created Successfully!</Text></View>
       <SettingsCard>
         <CashierIdentity cashier={cashier} />
@@ -102,7 +110,7 @@ export function CashierCreatedScreen() {
         <View className="my-4 border-t border-[#ADC9EE]" />
         <Text className="font-poppins text-[14px] leading-[22px] text-[#0C1B3C]">For Kahera login, use this Store / May-Ari ID, and the assigned four-digit Kahera PIN.</Text>
       </SettingsCard>
-      <SettingsNotice>Demo account only. These details are not saved after the app reloads.</SettingsNotice>
+      {MOCK_AUTH_ENABLED && <SettingsNotice>Demo account only. These details are not saved after the app reloads.</SettingsNotice>}
       <View className="min-h-6 flex-1" /><View className="gap-4 pt-4">
         <Button onPress={() => leave(() => router.dismissTo('/owner-dashboard'))}>Go to Dashboard</Button>
       </View>

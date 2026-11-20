@@ -8,7 +8,9 @@ import { MotionContent } from '@/components/ui/motion-content';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { SegmentedSelector } from '@/components/ui/segmented-selector';
 import { BalancePanel } from '@/components/payables/payables-ui';
+import { useApiReceivables } from '@/hooks/use-receivables';
 import { useQuickAdd } from '@/state/quick-add';
+import { useAuthFlow } from '@/state/auth-flow';
 import { useReceivableDraft } from '@/state/receivable-draft';
 import { usePushOnce } from '@/hooks/use-push-once';
 import { localCalendarDate, receivableLists } from '@/utils/receivables';
@@ -20,7 +22,13 @@ import { ReceivableCard } from './receivable-card';
 export function ReceivableOverviewScreen({ pendingOnly = false }: { pendingOnly?: boolean }) {
   const { status, debtId } = useLocalSearchParams<{ status?: string; debtId?: string }>();
   const paid = !pendingOnly && status === 'paid';
-  const { records, receivablePayments } = useQuickAdd();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { records, receivablePayments: localPayments } = useQuickAdd();
+  const { debts: apiDebts, payments: apiPayments, refresh: refreshReceivables } = useApiReceivables(confirmedMode ? owner?.id : undefined);
+  // Use real API data for confirmed sessions; fall back to local seed for mock/preview.
+  const receivableRecords = confirmedMode ? apiDebts : records;
+  const receivablePayments = confirmedMode ? apiPayments : localPayments;
   const { query, setQuery } = useReceivableDraft();
   const scroll = useRef<ScrollViewInstance>(null);
   useEffect(() => {
@@ -31,7 +39,9 @@ export function ReceivableOverviewScreen({ pendingOnly = false }: { pendingOnly?
   const [today, setToday] = useState(localCalendarDate);
   const push = usePushOnce();
   useEffect(() => { const timer = setInterval(() => setToday(localCalendarDate()), 30000); return () => clearInterval(timer); }, []);
-  const lists = receivableLists(records, receivablePayments, query, today);
+  // Refresh real API data each time screen gains focus (e.g. after recording a new debt).
+  useEffect(() => { if (confirmedMode) refreshReceivables(); }, [confirmedMode, refreshReceivables]);
+  const lists = receivableLists(receivableRecords, receivablePayments, query, today);
   const groups = paid ? [{ title: '', category: null, rows: lists.paid, color: colors.green, surface: '#FFFFFF' }] : pendingOnly ? [{ title: 'Pending', category: 'pending', rows: lists.pending, color: colors.blue, surface: colors.pendingGroup }] : [
     { title: 'Overdue', category: 'overdue', rows: lists.overdue, color: colors.red, surface: colors.overdueGroup },
     { title: 'Pending', category: 'pending', rows: lists.pending, color: colors.blue, surface: colors.pendingGroup },

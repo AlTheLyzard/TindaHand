@@ -8,7 +8,9 @@ import { EmptyState } from '@/components/ui/content-state';
 import { MotionContent } from '@/components/ui/motion-content';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { SegmentedSelector } from '@/components/ui/segmented-selector';
+import { useApiPayables } from '@/hooks/use-payables';
 import { useQuickAdd } from '@/state/quick-add';
+import { useAuthFlow } from '@/state/auth-flow';
 import { usePayableDraft } from '@/state/payable-draft';
 import { usePushOnce } from '@/hooks/use-push-once';
 import { payableLists } from '@/utils/payables';
@@ -30,7 +32,12 @@ function PayableBalancesScreen({ pendingOnly = false }: { pendingOnly?: boolean 
   const { section, status } = useLocalSearchParams<{ section?: string; status?: string }>();
   const payable = section === 'payable' || pendingOnly;
   const paid = !pendingOnly && status === 'paid';
-  const { payables } = useQuickAdd();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { payables: localPayables } = useQuickAdd();
+  const { ledger: apiPayables, refresh: refreshPayables } = useApiPayables(confirmedMode ? owner?.id : undefined);
+  // Use real API data for confirmed sessions; fall back to local seed for mock/preview.
+  const payables = confirmedMode ? apiPayables : localPayables;
   const { searchQuery: query, setSearchQuery: setQuery } = usePayableDraft();
   const [today, setToday] = useState(todayInManila);
   const [refreshing, setRefreshing] = useState(false);
@@ -41,9 +48,11 @@ function PayableBalancesScreen({ pendingOnly = false }: { pendingOnly?: boolean 
   const refresh = useCallback(() => {
     setRefreshing(true);
     setToday(todayInManila());
+    if (confirmedMode) refreshPayables();
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
     refreshTimer.current = setTimeout(() => { refreshTimer.current = null; setRefreshing(false); }, 300);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmedMode]);
   useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
   const refreshControl = <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[payableColors.blue]} tintColor={payableColors.blue} />;
   const groups = paid ? [{ title: '', category: null, rows: lists.paid, color: payableColors.green, surface: '#FFFFFF' }] : pendingOnly ? [

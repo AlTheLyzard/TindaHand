@@ -12,16 +12,16 @@ export function getDashboardData(sales: readonly MockSale[] = []) {
 // ── Real API functions ────────────────────────────────────────────────────────────────────
 
 export interface TopProduct {
-  productId: number;
-  productName: string;
-  unitsSold: number;
+  productId: string;
+  name: string;
+  quantitySold: number;
   revenueCentavos: number;
 }
 
 export interface DashboardSummary {
-  cashOnHandCentavos: number;
-  todaySalesCentavos: number;
-  monthSalesCentavos: number;
+  cashBalanceCentavos: number;
+  totalSalesTodayCentavos: number;
+  totalSalesThisMonthCentavos: number;
   totalReceivablesCentavos: number;
   totalPayablesCentavos: number;
   topProducts: TopProduct[];

@@ -9,6 +9,8 @@ import { useKaheraList } from "@/hooks/use-kahera-list";
 import { useProfileSnapshot } from "@/hooks/use-owner-profile";
 import { authenticationService } from "@/services/authentication";
 import { createKahera } from "@/services/kahera-api";
+import { MOCK_AUTH_ENABLED } from "@/config/mock-auth";
+import { updateCashier, getCashierPermissions, updateCashierPermissions } from "@/services/settings";
 import { useAuthFlow } from "@/state/auth-flow";
 import { useSettings } from "@/state/settings";
 import type { OperatorPermission } from "@/types/auth";
@@ -140,7 +142,15 @@ function OperatorDetails({
   created: boolean;
 }) {
   const service = useSettings();
-  const canonical = service.operatorPermissions(operator.id);
+  // For mock sessions, canonical permissions come from the in-memory service.
+  // For real sessions, we fetch from the backend and store in realPermissions.
+  const mockCanonical = service.operatorPermissions(operator.id);
+  const [realPermissions, setRealPermissions] = useState<
+    readonly OperatorPermission[] | null
+  >(null);
+  const canonical: readonly OperatorPermission[] = MOCK_AUTH_ENABLED
+    ? mockCanonical
+    : (realPermissions ?? []);
   const [optimistic, setOptimistic] = useState<
     readonly OperatorPermission[] | null
   >(null);
@@ -166,6 +176,22 @@ function OperatorDetails({
     },
     [],
   );
+
+  // Real sessions: load persisted permissions from the backend on mount.
+  useEffect(() => {
+    if (MOCK_AUTH_ENABLED) return;
+    let mounted = true;
+    getCashierPermissions(operator.id)
+      .then(perms => {
+        if (mounted) setRealPermissions(perms as readonly OperatorPermission[]);
+      })
+      .catch(() => {
+        // Silently fall back to empty list; user will see all toggles off.
+        if (mounted) setRealPermissions([]);
+      });
+    return () => { mounted = false; };
+  }, [operator.id]);
+
   const permissions = optimistic ?? canonical;
   const inactive = operator.status === "inactive";
   async function changePermission(group: PermissionGroup, allowed: boolean) {
@@ -175,19 +201,29 @@ function OperatorDetails({
     setFailure("");
     setRetry(null);
     setFeedback("Saving…");
-    setOptimistic(updatePermission(canonical, group, allowed));
+    const nextPermissions = updatePermission(canonical, group, allowed);
+    setOptimistic(nextPermissions);
     try {
-      const result = await authenticationService.setOperatorPermission({
-        operatorId: operator.id,
-        group,
-        allowed,
-      });
-      if (!active.current) return;
-      if (!result.ok) {
-        setFailure(result.message);
-        setRetry({ group, allowed });
-        setFeedback("");
-      } else setFeedback("Saved");
+      if (MOCK_AUTH_ENABLED) {
+        const result = await authenticationService.setOperatorPermission({
+          operatorId: operator.id,
+          group,
+          allowed,
+        });
+        if (!active.current) return;
+        if (!result.ok) {
+          setFailure(result.message);
+          setRetry({ group, allowed });
+          setFeedback("");
+        } else {
+          setFeedback("Saved");
+        }
+      } else {
+        const saved = await updateCashierPermissions(operator.id, nextPermissions);
+        if (!active.current) return;
+        setRealPermissions(saved as readonly OperatorPermission[]);
+        setFeedback("Saved");
+      }
     } catch {
       if (active.current) {
         setFailure(
@@ -211,18 +247,22 @@ function OperatorDetails({
     setStatusBusy(true);
     setStatusError("");
     try {
-      const result = await authenticationService.setOperatorActive({
-        operatorId: operator.id,
-        active: inactive,
-      });
-      if (!active.current) return;
-      if (!result.ok) setStatusError(result.message);
-      else
-        setFeedback(
-          inactive
-            ? "Kahera reactivated with saved permissions."
-            : "Kahera deactivated. Stored permissions and transaction history are preserved.",
-        );
+      if (MOCK_AUTH_ENABLED) {
+        const result = await authenticationService.setOperatorActive({
+          operatorId: operator.id,
+          active: inactive,
+        });
+        if (!active.current) return;
+        if (!result.ok) { setStatusError(result.message); return; }
+      } else {
+        await updateCashier(operator.id, { isActive: inactive });
+        if (!active.current) return;
+      }
+      setFeedback(
+        inactive
+          ? "Kahera reactivated with saved permissions."
+          : "Kahera deactivated. Stored permissions and transaction history are preserved.",
+      );
     } catch {
       if (active.current)
         setStatusError("Unable to change account status. Please retry.");

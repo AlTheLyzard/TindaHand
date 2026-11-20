@@ -166,6 +166,11 @@ export async function deleteProduct(id: string): Promise<void> {
   return apiFetch<void>(`/inventory/products/${id}`, { method: "DELETE" });
 }
 
+/** Delete a single stock batch from a product. */
+export async function deleteBatch(productId: string, batchId: string): Promise<void> {
+  return apiFetch<void>(`/inventory/products/${productId}/batches/${batchId}`, { method: "DELETE" });
+}
+
 /** Get expiry alerts — products expiring within `daysAhead` days, sorted by soonest first. */
 export async function getExpiryAlerts(daysAhead = 30): Promise<ExpiryAlert[]> {
   return apiFetch<ExpiryAlert[]>(

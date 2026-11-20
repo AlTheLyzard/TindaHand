@@ -11,8 +11,8 @@ import { ConfirmationContent } from '@/components/ui/confirmation-content';
 import { InvCard, InvDateField, InvField, InventoryFrame, InvText, InvSelect, inventoryIllustrations } from './inventory-ui';
 import { BatchCard, ExistingBatchCard, batchExpiryLabel } from './batch-card';
 import { useInventory } from '@/state/inventory';
-import { suppressAuthLock, releaseAuthLock } from '@/state/auth-flow';
-import { createProduct, updateProduct, deleteProduct as deleteProductApi, addRestock as addRestockApi } from '@/services/inventory';
+import { suppressAuthLock, releaseAuthLock, useAuthFlow } from '@/state/auth-flow';
+import { createProduct, updateProduct, deleteProduct as deleteProductApi, deleteBatch as deleteBatchApi, addRestock as addRestockApi } from '@/services/inventory';
 import type { BatchDraft, BatchErrors, InventoryProduct, ProductDraft } from '@/types/inventory';
 import { categoryLabels, earliestExpiry, productBatches, productExpiry, productStock, stockCategory, todayInManila, validDate } from '@/utils/inventory';
 import { batchErrors, buildDraftProduct, clearInventoryStep, createInventoryDraft, detailsErrors, draftQuantity, newBatch, toStockBatches } from '@/utils/inventory-draft';
@@ -30,6 +30,11 @@ export function ProductScreen() {
   const push = usePushOnce();
   const params = useLocalSearchParams<{ id?: string; mode?: string }>();
   const { store, getStore, dispatch, setFeedback } = useInventory();
+  const { owner } = useAuthFlow();
+  // Route roots differ by role — always derive from `owner` so Kahera never
+  // lands on an owner-only route that guards her back to choose-account.
+  const inventoryRoot = owner ? '/owner-inventory' : '/operator-inventory';
+  const productRoot = (owner ? '/owner-inventory/product' : '/operator-inventory/product') as `/owner-inventory/product` | `/operator-inventory/product`;
   const preview = useContentPreview();
   const mode = ['add', 'edit', 'restock', 'delete', 'details'].includes(params.mode ?? '') ? params.mode! : 'details';
   const liveProduct = store.products.find(p => p.id === params.id);
@@ -73,11 +78,11 @@ export function ProductScreen() {
     if (busy.current || picking) return;
     Keyboard.dismiss();
     if (mode === 'add' && step !== 'details') { setStep(step === 'review' ? 'stock' : 'details'); setError(''); return; }
-    navigate(() => router.canGoBack() ? router.back() : router.replace('/owner-inventory'));
+    navigate(() => router.canGoBack() ? router.back() : router.replace(inventoryRoot));
   }
   function finish(message: string) {
     disablePrevention(); setLeaving(true);
-    const action = () => { setFeedback(message); router.dismissTo('/owner-inventory'); };
+    const action = () => { setFeedback(message); router.dismissTo(inventoryRoot); };
     if (confirmation) { pending.current = action; setConfirmation(null); } else action();
   }
   const update = (key: keyof ProductDraft, value: string | undefined) => {
@@ -199,17 +204,29 @@ export function ProductScreen() {
       }
     } else if (mode === 'edit' && product) {
       if (product.id.startsWith('prod-')) {
-        try {
-          await updateProduct(product.id, {
-            name: builtProduct.name,
-            category: builtProduct.category,
-            unitPriceCentavos: builtProduct.unitPriceCentavos,
-            costCentavos: builtProduct.costCentavos,
-            photoUri: builtProduct.photoUri,
-          });
-        } catch {
-          // Offline — keep the local edit.
+        // updateProduct requires owner role — Kahera (operator) skips this call.
+        if (owner) {
+          try {
+            await updateProduct(product.id, {
+              name: builtProduct.name,
+              category: builtProduct.category,
+              unitPriceCentavos: builtProduct.unitPriceCentavos,
+              costCentavos: builtProduct.costCentavos,
+              photoUri: builtProduct.photoUri,
+            });
+          } catch {
+            // Offline — keep the local edit.
+          }
         }
+        // Delete any batches that were removed during this edit.
+        // Compare the original product's batches against the saved draft's batches
+        // and call the backend for each one that was removed.
+        const originalBatchIds = new Set(productBatches(product).map(b => b.id));
+        const remainingBatchIds = new Set((builtProduct.batches ?? []).map(b => b.id));
+        const deletedBatchIds = [...originalBatchIds].filter(id => !remainingBatchIds.has(id));
+        await Promise.allSettled(
+          deletedBatchIds.map(batchId => deleteBatchApi(product.id, batchId))
+        );
       }
     }
     const saved = dispatch({ type: 'saveProduct', product: builtProduct });
@@ -255,12 +272,12 @@ export function ProductScreen() {
     <Button compact variant="text" fullWidth={false} onPress={() => { const batch = newBatch(makeId()); setDraft(d => ({ ...d, batches: [...d.batches, batch] })); setExpandedBatch(batch.id); }}>+ Add Another Batch</Button>
     <View className="flex-row flex-wrap justify-between gap-2 rounded-control bg-[#D9E7F4] p-3"><InvText bold>{mode === 'restock' ? 'Quantity to add' : mode === 'edit' ? 'Total Stock' : 'Total Initial Stock'}</InvText><InvText bold>{total} PCS</InvText></View>
   </>;
-  const footer = !readonly ? mode === 'edit' ? <View className="flex-row gap-3"><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} variant="secondary" disabled={saving || picking} onPress={() => navigate(() => router.canGoBack() ? router.back() : router.replace('/owner-inventory'))}>Cancel</Button></View><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} loading={saving} disabled={picking} onPress={save}>Save Changes</Button></View></View>
+  const footer = !readonly ? mode === 'edit' ? <View className="flex-row gap-3"><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} variant="secondary" disabled={saving || picking} onPress={() => navigate(() => router.canGoBack() ? router.back() : router.replace(inventoryRoot))}>Cancel</Button></View><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} loading={saving} disabled={picking} onPress={save}>Save Changes</Button></View></View>
     : <><Button loading={saving} disabled={picking} onPress={mode === 'restock' || step === 'review' ? save : advance}>{mode === 'restock' ? 'Confirm Restock' : step === 'review' ? 'Confirm & Save' : step === 'stock' ? 'Review Product' : 'Stock & Expiry'}</Button><Button variant="secondary" disabled={saving || picking} onPress={step === 'review' ? () => setStep('details') : clearStep}>{step === 'review' ? 'Edit Details' : 'Clear'}</Button></> : undefined;
   if (mode !== 'add' && preview.loading) return <InventoryFrame title={title} back hideNavigation inlineTitle background>{preview.control}<RecordSkeleton kind={readonly ? 'details' : 'form'} form={mode === 'restock' ? 'restock' : 'product'} deleting={mode === 'delete'} /></InventoryFrame>;
   // Keep the confirmation mounted after our own delete until onHidden completes
   // navigation/feedback. External deletions still show the unavailable state.
-  if (mode !== 'add' && (!liveProduct || preview.empty) && !leaving) return <InventoryFrame title="Product unavailable" back hideNavigation inlineTitle background>{preview.control}<EmptyState title="Product unavailable" description="This product is no longer available. Return to Inventory to choose another product." action="Return to Inventory" onAction={() => { preview.reset(); router.replace('/owner-inventory'); }} /></InventoryFrame>;
+  if (mode !== 'add' && (!liveProduct || preview.empty) && !leaving) return <InventoryFrame title="Product unavailable" back hideNavigation inlineTitle background>{preview.control}<EmptyState title="Product unavailable" description="This product is no longer available. Return to Inventory to choose another product." action="Return to Inventory" onAction={() => { preview.reset(); router.replace(inventoryRoot); }} /></InventoryFrame>;
   const restocks = store.restocks.filter(r => r.productId === product?.id).slice().reverse();
   const reviewProduct = step === 'review' ? buildDraftProduct(id, draft) : null;
   return <InventoryFrame title={title} back inlineTitle hideNavigation background subtitle="Product details for your store." illustration={mode === 'edit' ? inventoryIllustrations.editProduct : mode === 'restock' ? inventoryIllustrations.restock : mode === 'add' && step !== 'review' ? step === 'stock' ? inventoryIllustrations.expiry : inventoryIllustrations.addProduct : undefined} onBack={back} onNavigate={navigate} footer={footer} overlay={<MotionModal visible={!!confirmation} onRequestClose={() => { if (!busy.current) setConfirmation(null); }} onHidden={() => { const action = pending.current; pending.current = null; action?.(); }}>
@@ -276,7 +293,7 @@ export function ProductScreen() {
     {readonly && product ? <>
       <ProductReview product={product} />
       {mode === 'delete' ? <><Button variant="destructiveOutline" onPress={() => setConfirmation({ kind: 'productDelete' })}>Delete Product</Button><Button variant="secondary" onPress={back}>Cancel</Button></> : <>
-        <Button onPress={() => push({ pathname: '/owner-inventory/product', params: { id: product.id, mode: 'edit' } })}>Edit Product</Button><Button variant="secondary" onPress={() => push({ pathname: '/owner-inventory/product', params: { id: product.id, mode: 'restock' } })}>Restock</Button>
+        <Button onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'edit' } })}>Edit Product</Button><Button variant="secondary" onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'restock' } })}>Restock</Button>
         <InvText bold color="#112F6F">Restock history</InvText>
         {!restocks.length ? <InvText>No restocks yet.</InvText> : restocks.map(r => <InvCard key={r.id}><InvText bold>+{r.quantity} PCS · {r.stockDate}</InvText>{r.batches ? r.batches.map(b => <InvText key={b.id}>{b.quantity} PCS | {batchExpiryLabel(b)}</InvText>) : <InvText>Expires {r.expirationDate}</InvText>}<InvText size={11}>Recorded {new Date(r.recordedAt).toLocaleString('en-PH', { timeZone: inventoryRules.timeZone })}</InvText></InvCard>)}
       </>}

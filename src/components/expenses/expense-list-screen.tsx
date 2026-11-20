@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/content-state';
 import { expenseCategories } from '@/data/quick-add';
 import { usePushOnce } from '@/hooks/use-push-once';
+import { useApiExpenses } from '@/hooks/use-expenses';
 import { useQuickAdd } from '@/state/quick-add';
+import { useAuthFlow } from '@/state/auth-flow';
 import type { ExpenseFilter } from '@/types/expenses';
 import { expenseCategoryLabel, expenseRecords, filterExpenses, formatExpenseDate, monthlyExpenses } from '@/utils/expenses';
 import { formatPesos } from '@/utils/dashboard';
@@ -17,13 +19,17 @@ import { todayInManila } from '@/utils/inventory';
 import tokens from '@/constants/design-tokens.json';
 
 export function ExpenseListScreen() {
+  const { owner } = useAuthFlow();
   const { records, expenseFeedback, dismissExpenseFeedback } = useQuickAdd();
+  const { expenses: apiExpenses, refresh: refreshApiExpenses } = useApiExpenses();
+  const confirmedMode = owner?.mode === 'confirmed';
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<ExpenseFilter>('all');
   const [today, setToday] = useState(todayInManila);
   const scroll = useRef<ScrollViewInstance>(null);
   const push = usePushOnce();
-  const allExpenses = expenseRecords(records);
+  // Use real API data for confirmed sessions; fall back to local seed for mock/preview.
+  const allExpenses = confirmedMode ? apiExpenses : expenseRecords(records);
   const expenses = filterExpenses(allExpenses, query, category);
   const newRecord = () => push('/owner-menu/store-expenses/new');
   const feedbackId = expenseFeedback?.recordId;
@@ -31,9 +37,12 @@ export function ExpenseListScreen() {
     setToday(todayInManila());
     // A saved record is immediately visible even when the retained list had active filters.
     if (feedbackId) { setQuery(''); setCategory('all'); scroll.current?.scrollTo({ y: 0, animated: false }); }
+    // Refresh real API data each time screen gains focus (e.g. after recording a new expense).
+    if (confirmedMode) refreshApiExpenses();
     const refresh = setInterval(() => setToday(todayInManila()), 60000);
     return () => clearInterval(refresh);
-  }, [feedbackId]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedbackId, confirmedMode]));
   return <InventoryFrame title="Store expenses" back inlineTitle scrollRef={scroll} hideNavigationWithKeyboard background
     onBack={() => router.canGoBack() ? router.back() : router.replace('/owner-dashboard')}>
     <View style={{ position: 'relative' }}>
