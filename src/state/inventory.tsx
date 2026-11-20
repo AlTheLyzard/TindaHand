@@ -36,6 +36,10 @@ function SessionInventory({ children }: { children: ReactNode }) {
           ? { id: b.id, quantity: b.quantity, noExpiry: true as const, expirationDate: null }
           : { id: b.id, quantity: b.quantity, noExpiry: false as const, expirationDate: b.expirationDate ?? '' }),
       }));
+      // Only replace mock data if the API returned at least one product.
+      // An empty array usually means the backend has no products seeded yet —
+      // keep the mock products visible so the app doesn't look broken offline.
+      if (realProducts.length === 0) return;
       // Merge real products into the store, keeping POS/sales/customer state intact.
       setStore(previous => {
         const next = { ...previous, products: realProducts };

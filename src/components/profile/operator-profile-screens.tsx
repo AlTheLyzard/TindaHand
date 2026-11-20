@@ -28,7 +28,7 @@ import type { OperatorProfileValues, SettingsErrors } from '@/types/settings';
 
 function OperatorRoleBadge() {
   return <View className="rounded-pill bg-[#D1E2F8] px-3 py-1">
-    <Text className="font-poppins-bold text-[10px] leading-[15px] text-brand">Operator</Text>
+    <Text className="font-poppins-bold text-[10px] leading-[15px] text-brand">Kahera</Text>
   </View>;
 }
 

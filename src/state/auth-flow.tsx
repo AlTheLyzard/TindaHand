@@ -15,6 +15,7 @@ export function suppressAuthLock() { _lockSuppressed = true; }
 export function releaseAuthLock()  { _lockSuppressed = false; }
 import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
+import { settingsService } from '@/services/settings';
 import { getKaheraId, getOwnerId, getOwnerName, getRole, getToken } from '@/services/token-storage';
 import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
 import { defaultOperatorPermissions } from '@/utils/operator-access';
@@ -126,6 +127,15 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
               locked: false,
             };
             authenticationService.seedRealOwner(owner);
+            // Seed the Kahera into the local settings store so the profile screen
+            // and drawer can display their name/avatar without a mock setup.
+            settingsService.seedRealCashier({
+              id: kaheraId,
+              ownerId: resolvedId,
+              name: resolvedName,
+              status: 'active',
+              avatarId: 'avatar-0',
+            });
             setDeviceSession(realSession);
             return realSession;
           }
@@ -174,15 +184,21 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void Promise.resolve().then(() => refreshSession());
+    // Grace period before locking: short app switches (notification shade, quick-settings,
+    // system overlays) go inactive for under 2 seconds. Only lock after 2 s in background
+    // so brief switches don't kick the user back to the PIN screen.
+    let lockTimer: ReturnType<typeof setTimeout> | null = null;
     const subscription = AppState.addEventListener('change', state => {
       if (state !== 'active') {
         // Skip the lock while a system overlay (photo picker, camera, etc.) is open.
-        // Those overlays put the app in the background momentarily without the user
-        // actually leaving — locking would kick them back to the role-selection screen.
-        if (!_lockSuppressed) void lock();
-      } else void refreshSession();
+        if (_lockSuppressed) return;
+        lockTimer = setTimeout(() => { lockTimer = null; void lock(); }, 2000);
+      } else {
+        if (lockTimer !== null) { clearTimeout(lockTimer); lockTimer = null; }
+        void refreshSession();
+      }
     });
-    return () => { subscription.remove(); };
+    return () => { subscription.remove(); if (lockTimer !== null) clearTimeout(lockTimer); };
   }, [refreshSession]);
   // SECURITY: Navigation gates only. Backend authorization is required for every
   // read/write. Neither registration completion nor a remembered ID grants access.

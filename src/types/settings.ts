@@ -27,6 +27,8 @@ export interface SettingsService {
   subscribe(listener: () => void): () => void;
   getSnapshot(): SettingsSnapshot;
   cashiers(ownerId: string): readonly Cashier[];
+  /** Seed a real-API Kahera into the local store so profile/drawer can display them without a mock setup. */
+  seedRealCashier(cashier: Cashier): void;
   syncState(ownerId: string): SyncState;
   createCashier(owner: OwnerIdentity, values: CashierValues, stillAuthorized?: () => boolean): Promise<SettingsResult<Cashier>>;
   changeOwnerPin(owner: OwnerIdentity, values: PinValues): Promise<SettingsResult>;

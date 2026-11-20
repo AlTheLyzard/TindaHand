@@ -109,6 +109,13 @@ export function createMockSettingsService(options: Options = {}) {
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     getSnapshot: () => snapshot,
     cashiers: ownerId => records.filter(item => item.ownerId === ownerId),
+    seedRealCashier(cashier: Cashier) {
+      // Only seed if not already present — avoids overwriting a richer mock record.
+      if (!records.some(item => item.id === cashier.id)) {
+        records = [...records, Object.freeze(cashier)];
+        publish();
+      }
+    },
     syncState,
     createCashier(owner, values: CashierValues, stillAuthorized) {
       return operation(owner, 'create', async () => {

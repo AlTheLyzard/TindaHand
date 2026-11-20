@@ -109,7 +109,7 @@ export function OperatorMenuDrawer({ visible, onClose, onPresentationChange, onN
               <IconButton ref={closeButton} accessibilityLabel="Close More Tools" onPress={close} className="min-h-12 min-w-12 items-center justify-center" icon={() => <MenuIcon name="close" />} />
             </View>
             <Pressable accessibilityRole={canProfile ? 'button' : undefined}
-              accessibilityLabel={`Profile: ${name}, ${session?.operatorId ?? ''}, Operator`}
+              accessibilityLabel={`Profile: ${name}, ${session?.operatorId ?? ''}, Kahera`}
               accessibilityHint={canProfile ? 'Opens Profile' : undefined} disabled={!canProfile}
               onPress={() => navigate(() => router.navigate('/operator-profile' as never))}
               className="mb-6 flex-row items-start gap-3 rounded-card bg-[#F0F8FF] p-4">
@@ -118,7 +118,7 @@ export function OperatorMenuDrawer({ visible, onClose, onPresentationChange, onN
                 <Text className="font-poppins-bold text-[18px] leading-[27px] text-brand">{name}</Text>
                 <View className="flex-row items-center justify-between gap-2">
                   <Text className="min-w-0 flex-1 font-poppins text-[12px] leading-[18px] text-text-secondary">{session?.operatorId}</Text>
-                  <View className="shrink-0 rounded-control bg-brand px-2 py-1"><Text className="font-poppins-bold text-[12px] leading-[18px] text-white">Operator</Text></View>
+                  <View className="shrink-0 rounded-control bg-brand px-2 py-1"><Text className="font-poppins-bold text-[12px] leading-[18px] text-white">Kahera</Text></View>
                 </View>
               </View>
             </Pressable>
