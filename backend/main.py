@@ -1,4 +1,6 @@
 import logging
+import time
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -8,10 +10,25 @@ import models   # import so SQLAlchemy sees all models before create_all
 
 logging.basicConfig(level=logging.DEBUG)
 
-# Create all tables on startup (safe to run repeatedly — skips existing tables)
-Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Retry create_all so Railway's internal DNS has time to resolve
+    for attempt in range(10):
+        try:
+            Base.metadata.create_all(bind=engine)
+            logging.info("Database tables ready.")
+            break
+        except Exception as e:
+            logging.warning(f"DB not ready (attempt {attempt + 1}/10): {e}")
+            time.sleep(3)
+    else:
+        logging.error("Could not connect to database after 10 attempts.")
+    yield
+
 
 app = FastAPI(
+    lifespan=lifespan,
     title="TindaHand API",
     description="POS and inventory management for sari-sari stores",
     version="1.0.0",
