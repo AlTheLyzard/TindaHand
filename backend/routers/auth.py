@@ -440,9 +440,14 @@ def _send_recovery_email(to_email: str, owner_name: str, token: str):
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        body = resp.read()
-        logging.info(f"Resend response {resp.status}: {body[:200]}")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read()
+            logging.info(f"Resend response {resp.status}: {body[:200]}")
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace")
+        logging.error(f"Resend HTTP {e.code}: {err_body}")
+        raise
 
 
 @router.post("/forgot-pin")
