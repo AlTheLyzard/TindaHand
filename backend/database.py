@@ -10,7 +10,13 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 # Example .env value:
 # DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/tindahand
 
-engine = create_engine(DATABASE_URL)
+# Railway provides postgresql:// URLs; force psycopg2 driver so SQLAlchemy
+# doesn't try to use the psycopg v3 dialect (which isn't installed).
+_db_url = DATABASE_URL
+if _db_url and _db_url.startswith("postgresql://"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+engine = create_engine(_db_url)
 
 # Each request gets its own session — sessions are NOT shared between requests
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
