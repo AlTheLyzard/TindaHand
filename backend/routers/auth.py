@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
 from typing import Optional
-import secrets, os, logging, urllib.request, urllib.error, json
+import secrets, os, logging, json
+import urllib.request, urllib.error
 
 from database import get_db
 from models import MayAri, Kahera, PinRecoveryToken
@@ -437,6 +438,7 @@ def _send_recovery_email(to_email: str, owner_name: str, token: str):
         headers={
             "Authorization": f"Bearer {RESEND_API_KEY}",
             "Content-Type":  "application/json",
+            "User-Agent":    "TindaHand/1.0",
         },
         method="POST",
     )
