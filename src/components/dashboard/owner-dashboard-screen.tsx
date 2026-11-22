@@ -171,7 +171,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
         </MotionContent>
       </View>
     </ScrollView>
-    <DashboardNavigation onHome={() => scroll.current?.scrollTo({ y: 0, animated: true })} onPos={() => router.navigate('/owner-pos')} onUnavailable={unavailable} />
+    <DashboardNavigation onHome={() => { scroll.current?.scrollTo({ y: 0, animated: true }); refreshDashboard(); }} onPos={() => router.navigate('/owner-pos')} onUnavailable={unavailable} />
     <DashboardQuickAdd onSelect={action => { preview.reset(); setQuickKind(action === 'dashboard.quick.customerDebt' ? 'customerDebt' : action === 'dashboard.quick.storeDebt' ? 'storeDebt' : 'expense'); }} />
     {quickKind && <QuickAddModal initialKind={quickKind} onClose={() => setQuickKind(null)} />}
     {cashToastExpiresAt !== null && <RegistrationToast expiresAt={cashToastExpiresAt} onDismiss={dismissCashToast} title="Amount Saved!" message="Cash added successfully." />}
