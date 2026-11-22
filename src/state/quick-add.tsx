@@ -55,7 +55,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
         if (!owner) throw new Error('An owner session is required.');
         const result = await createReceivable({
           name: draft.name.trim(),
-          customerId: draft.customerId || undefined,
+          customerId: undefined, // local mock IDs (e.g. "demo-customer-*") are not valid backend IDs
           amountCentavos: quickAddTotal(draft),
           borrowing: draft.borrowing,
           dueDate: draft.dueDate || undefined,
