@@ -448,6 +448,7 @@ class DashboardSummary(BaseModel):
     totalSalesCentavos: int          # all-time, used for Money In
     totalReceivablesCentavos: int    # sum of unpaid + partial customer debts
     totalPayablesCentavos: int       # sum of unpaid store debts
+    totalMoneyOutCentavos: int       # expenses + store debt payments + customer debts extended
     topProducts: List[TopProduct]    # top-5 by revenue, via Max-Heap
 
 

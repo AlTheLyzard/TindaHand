@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from auth import get_current_user, require_role
-from models import Sale, SaleLine, CustomerDebt, StoreDebt, StoreDebtPayment, CashMovement, Asset
+from models import Sale, SaleLine, CustomerDebt, StoreDebt, StoreDebtPayment, CashMovement, Asset, Expense
 from schemas import (
     DashboardSummary, TopProduct,
     CashMovementOut, CashMovementCreate,
@@ -192,6 +192,31 @@ def dashboard_summary(
     # Base cash: initial Cash on Hand asset value + movements + sales
     base_cash = (cash_asset.value_centavos if cash_asset else 0) + cash_added + cash_sales
 
+    # ── Money Out ──────────────────────────────────────────────────────────────
+    # 1. Expenses — all operating costs recorded by the owner
+    all_expenses = db.query(Expense).filter(Expense.owner_id == owner_id).all()
+    total_expenses_centavos = sum(e.amount_centavos for e in all_expenses)
+
+    # 2. Store debt payments — cash actually paid out to suppliers
+    all_store_debt_payments = db.query(StoreDebtPayment).filter(
+        StoreDebtPayment.owner_id == owner_id
+    ).all()
+    total_store_debt_payments_centavos = sum(p.amount_centavos for p in all_store_debt_payments)
+
+    # 3. Customer utang (AR) — value extended on credit to customers
+    #    Use original_amount_centavos: the full debt at the moment it was created,
+    #    regardless of how much has been paid back.
+    all_customer_debts = db.query(CustomerDebt).filter(
+        CustomerDebt.owner_id == owner_id
+    ).all()
+    total_customer_debts_centavos = sum(d.original_amount_centavos for d in all_customer_debts)
+
+    total_money_out_centavos = (
+        total_expenses_centavos
+        + total_store_debt_payments_centavos
+        + total_customer_debts_centavos
+    )
+
     # Top products by revenue (Max-Heap Top-K)
     all_lines = []
     for sale in all_sales:
@@ -206,6 +231,7 @@ def dashboard_summary(
         totalSalesCentavos=all_time_sales_centavos,
         totalReceivablesCentavos=receivables_centavos,
         totalPayablesCentavos=payables_centavos,
+        totalMoneyOutCentavos=total_money_out_centavos,
         topProducts=top_products,
     )
 

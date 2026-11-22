@@ -106,7 +106,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     cashCentavos: apiSummary.cashBalanceCentavos,
     // Money In = manual cash additions + all sales revenue
     moneyIn: (apiMoneyIn ?? 0) + apiSummary.totalSalesCentavos,
-    moneyOut: apiMoneyOut ?? localSummary.moneyOut,
+    moneyOut: apiSummary.totalMoneyOutCentavos,
     // Sales totals per period — all three now come from the backend
     totalSalesCentavos: period === 'daily'
       ? apiSummary.totalSalesTodayCentavos
