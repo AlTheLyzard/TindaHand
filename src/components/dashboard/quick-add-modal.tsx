@@ -6,7 +6,7 @@ import { MotionContent, MotionLayout, MotionRegion } from '@/components/ui/motio
 import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, Platform, Text, View, useWindowDimensions } from 'react-native';
+import { Keyboard, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,8 @@ import { ConfirmationContent } from '@/components/ui/confirmation-content';
 import { ExpenseCategoryField } from '@/components/expenses/expense-category-field';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useQuickAdd } from '@/state/quick-add';
+import { useExpenseClassifier } from '@/hooks/use-expense-classifier';
+import { expenseCategoryLabel } from '@/utils/expenses';
 import type { QuickAddDraft, QuickAddKind, QuickAddRecord } from '@/types/quick-add';
 import { emptyQuickAddDraft, hasQuickAddChanges, quickAddErrors, quickAddTotal } from '@/utils/quick-add';
 import { todayInManila } from '@/utils/inventory';
@@ -82,6 +84,23 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
   useEffect(() => {
     if (Platform.OS === 'web' && form.current) (form.current as unknown as { inert: boolean }).inert = !!saved || !!confirmation || datePickerOpen || saving;
   }, [saved, confirmation, datePickerOpen, picker, saving]);
+  // Classifier — watches "Transaction details" and suggests a category for expenses.
+  const { suggestion: categorySuggestion } = useExpenseClassifier(expense ? draft.details : '');
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+  const showSuggestion =
+    expense &&
+    !suggestionDismissed &&
+    !!categorySuggestion &&
+    !draft.category &&
+    !saving &&
+    !saved;
+
+  function applySuggestion() {
+    if (!categorySuggestion) return;
+    update({ category: categorySuggestion.category });
+    setSuggestionDismissed(true);
+  }
+
   const errors = draft.kind === 'customerDebt' ? customerDebtErrors(draft, store.products) : quickAddErrors(draft);
   const error = (field: keyof QuickAddDraft) => submitted ? errors[field] : undefined;
   const update = (patch: Partial<QuickAddDraft>) => { setDraft(previous => ({ ...previous, ...patch })); setFailure(''); };
@@ -107,6 +126,7 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
   function reset(kind = draft.kind) {
     const next = emptyQuickAddDraft(kind, todayInManila());
     setDraft(next); setBaseline(next); setSubmitted(false); setFailure(''); setCategoryOpen(false); setDetailsOpen(false);
+    setSuggestionDismissed(false);
   }
   async function submit() {
     if (busy.current || !open || saved || confirmation || datePickerOpen || picker || browsing) return;
@@ -174,7 +194,27 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
                     </View>
                   </View>}
                   {draft.kind === 'storeDebt' ? <CreditorNameField floatingSuggestions creditorId={draft.creditorId} onMatch={selected => update({ name: selected.name, creditorId: selected.id })} inputRef={nameInput} value={draft.name} onChange={name => update({ name, creditorId: undefined })} error={error('name')} onSelect={() => { Keyboard.dismiss(); setPicker('creditor'); }} onSubmitEditing={() => amountInput.current?.focus()} /> : customer && <CustomerNameField floatingSuggestions onMatch={selected => update({ name: selected.name, customerId: selected.id })} inputRef={nameInput} value={draft.name} customerId={draft.customerId} onChange={name => update({ name, customerId: undefined })} error={error('name')} onSelect={() => { Keyboard.dismiss(); setPicker('customer'); }} onNext={() => (draft.borrowing === 'product' ? dueInput : amountInput).current?.focus()} />}
-                  {expense && <ExpenseCategoryField value={draft.category} onChange={category => update({ category })} error={error('category')} open={categoryOpen} onOpenChange={setCategoryOpen} />}
+                  {expense && <>
+                    <ExpenseCategoryField value={draft.category} onChange={category => { update({ category }); setSuggestionDismissed(true); }} error={error('category')} open={categoryOpen} onOpenChange={setCategoryOpen} />
+                    {showSuggestion && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -8, gap: 6 }}>
+                        <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.textSecondary }}>Suggested:</Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Apply suggested category: ${expenseCategoryLabel(categorySuggestion!.category)}`}
+                          onPress={applySuggestion}
+                          style={({ pressed }) => ({ backgroundColor: tokens.color.accentContainer, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, opacity: pressed ? 0.7 : 1 })}
+                        >
+                          <Text style={{ fontFamily: tokens.typography.weights.medium, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.accentBase }}>
+                            {expenseCategoryLabel(categorySuggestion!.category)} ✓
+                          </Text>
+                        </Pressable>
+                        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss suggestion" onPress={() => setSuggestionDismissed(true)} hitSlop={8}>
+                          <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.textSecondary }}>✕</Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </>}
                   {customer && draft.borrowing === 'product' ? <CreditProductSelector selection={draft.items} onChange={changeItems} onBrowse={() => { Keyboard.dismiss(); setBrowsing(true); }} error={error('items')}
                     onRemove={id => confirm('Remove Item?', `Remove ${draft.items[id].itemName} from this debt?`, 'Remove', () => setDraft(previous => ({ ...previous, items: removeSelectedProduct(previous.items, id) })))} /> :
                     <QuickAddField ref={amountInput} label={expense ? 'Amount' : 'Amount borrowed'} money large={!customer} value={draft.amount} onChangeText={amount => update({ amount })} placeholder="0.00" keyboardType="decimal-pad" inputMode="decimal" error={error('amount')} returnKeyType={expense ? 'done' : 'next'} onSubmitEditing={() => expense ? Keyboard.dismiss() : dueInput.current?.focus()} />}
