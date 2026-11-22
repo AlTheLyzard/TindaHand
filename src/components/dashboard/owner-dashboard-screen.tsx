@@ -197,7 +197,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     </ScrollView>
     <DashboardNavigation onHome={() => { scroll.current?.scrollTo({ y: 0, animated: true }); refreshDashboard(); }} onPos={() => router.navigate('/owner-pos')} onUnavailable={unavailable} />
     <DashboardQuickAdd onSelect={action => { preview.reset(); setQuickKind(action === 'dashboard.quick.customerDebt' ? 'customerDebt' : action === 'dashboard.quick.storeDebt' ? 'storeDebt' : 'expense'); }} />
-    {quickKind && <QuickAddModal initialKind={quickKind} onClose={() => setQuickKind(null)} />}
+    {quickKind && <QuickAddModal initialKind={quickKind} onClose={() => { setQuickKind(null); refreshDashboard(); }} />}
     {cashToastExpiresAt !== null && <RegistrationToast expiresAt={cashToastExpiresAt} onDismiss={dismissCashToast} title="Amount Saved!" message="Cash added successfully." />}
     {cashOpen && <AddCashModal onClose={() => setCashOpen(false)} onSaved={() => { setCashOpen(false); setCashToastExpiresAt(Date.now() + 15000); refreshDashboard(); }} />}
     <Modal visible={!!notice} onRequestClose={() => setNotice(null)}>
