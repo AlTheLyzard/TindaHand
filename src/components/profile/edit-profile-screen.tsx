@@ -66,12 +66,7 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
     if (errors.email) { emailInput.current?.focus(); return; }
     if (dirty && !requestLock.current) {
       Keyboard.dismiss();
-      if (!MOCK_AUTH_ENABLED) {
-        // Real session: skip PIN verification, go straight to save confirmation dialog.
-        void save();
-      } else {
-        setDialog('save');
-      }
+      setDialog('save');
     }
   }
   function applyAvatar(avatarId: AvatarId) {
@@ -149,7 +144,16 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
       {!!failure && <ProfileError message={failure} />}
       <View className="min-h-8 flex-1" /><View className="gap-3 pt-6"><Button disabled={!dirty || busy} onPress={confirmSave}>Save Changes</Button><Button variant="secondary" onPress={() => requestExit()}>Cancel</Button></View>
     </>}
-    <PosDialog visible={dialog === 'save'} title="Save Changes?" message="Are you sure you want to save these changes to this profile?" confirmLabel="Save Changes" onClose={() => setDialog(null)} onConfirm={() => { setDialog(null); clearPin(); setFailure(''); dispatch({ type: 'verify' }); }} />
+    <PosDialog visible={dialog === 'save'} title="Save Changes?" message="Are you sure you want to save these changes to this profile?" confirmLabel="Save Changes" onClose={() => setDialog(null)} onConfirm={() => {
+      setDialog(null); clearPin(); setFailure('');
+      if (MOCK_AUTH_ENABLED) {
+        // Mock mode: proceed to Verify Identity (PIN) screen.
+        dispatch({ type: 'verify' });
+      } else {
+        // Real session: backend uses JWT — no PIN needed. Save directly.
+        void save();
+      }
+    }} />
     <PosDialog visible={dialog === 'discard'} title="Discard Changes?" message="Your unsaved profile changes will be discarded." confirmLabel="Discard Changes" cancelLabel="Keep Editing" destructive onClose={() => setDialog(null)} onConfirm={() => { setDialog(null); clearPin(); dispatch({ type: 'discard' }); setLeaving(true); disablePrevention(); pendingExit.current(); }} />
   </ProfileFrame>;
 }
