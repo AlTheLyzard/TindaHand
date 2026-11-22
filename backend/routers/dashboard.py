@@ -175,13 +175,11 @@ def dashboard_summary(
         )
         .first()
     )
-    # Cash inflows from cash tenders in sales, minus cash change given
-    cash_sales = sum(
-        sum(t.received_centavos for t in s.tenders if t.method == "cash")
-        - max(0, sum(t.received_centavos for t in s.tenders if t.method == "cash")
-              - (s.total_centavos - sum(t.received_centavos for t in s.tenders if t.method == "gcash")))
-        for s in all_sales
-    )
+    # Total revenue received from sales (all payment methods: cash, GCash, split).
+    # = total amount paid to the store, regardless of tender method.
+    # For a fully paid sale: total_centavos - 0 = full price.
+    # For a partial payment: total_centavos - remaining_centavos = amount actually received.
+    cash_sales = sum(s.total_centavos - s.remaining_centavos for s in all_sales)
     # Manual cash movements (additions)
     cash_movements = db.query(CashMovement).filter(CashMovement.owner_id == owner_id).all()
     cash_added = sum(m.amount_centavos for m in cash_movements)
