@@ -10,7 +10,7 @@ import { summarizeQuickAdd, quickAddTotal } from '@/utils/quick-add';
 import { payableAsQuickAdd } from '@/utils/payables';
 import type { PayablesLedger, PayablePayment } from '@/types/payables';
 import type { ReceivablePayment } from '@/types/receivables';
-import { createReceivablesService } from '@/services/receivables';
+import { createReceivablesService, createReceivablePayment } from '@/services/receivables';
 
 type ExpenseFeedback = { recordId: string; expiresAt: number } | null;
 type TransactionLedger = { records: readonly QuickAddRecord[]; receivablePayments: readonly ReceivablePayment[]; payables: PayablesLedger };
@@ -98,6 +98,20 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
     return payment;
   }
   async function confirmReceivablePayment(token: string, debtId: string, amount: string) {
+    if (!MOCK_AUTH_ENABLED && owner?.mode === 'confirmed') {
+      if (!owner) throw new Error('An owner session is required.');
+      const amountCentavos = Math.round(parseFloat(amount) * 100);
+      const result = await createReceivablePayment({ debtId: parseInt(debtId, 10), amountCentavos });
+      const payment: ReceivablePayment = {
+        id: String(result.id),
+        ownerId: owner.id,
+        debtId: String(result.debtId),
+        amountCentavos: result.amountCentavos,
+        occurredAt: result.occurredAt,
+      };
+      setReceivableFeedback({ ownerId: owner.id, message: 'Payment recorded. Debt balance updated.' });
+      return payment;
+    }
     const payment = receivables.confirmPayment(owner, token, debtId, amount);
     setReceivableFeedback({ ownerId: payment.ownerId, message: 'Payment recorded. Debt balance updated.' });
     return payment;

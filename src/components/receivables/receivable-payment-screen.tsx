@@ -11,6 +11,8 @@ import { KeyboardAwareScrollView as ScrollView } from '@/components/ui/keyboard-
 import { MotionModal } from '@/components/ui/motion-modal';
 import { SuccessContent } from '@/components/ui/success-content';
 import { useQuickAdd } from '@/state/quick-add';
+import { useAuthFlow } from '@/state/auth-flow';
+import { useApiReceivables } from '@/hooks/use-receivables';
 import { useReceivableDraft } from '@/state/receivable-draft';
 import { localCalendarDate, receivableBalance, receivablePaymentError } from '@/utils/receivables';
 import { parsePaymentAmount } from '@/utils/pos-payment';
@@ -25,9 +27,16 @@ type PendingPaymentCommand = { debtId: string; amount: string; outstanding: numb
 
 export function ReceivablePaymentScreen() {
   const { debtId } = useLocalSearchParams<{ debtId?: string }>();
-  const { records, receivablePayments, confirmReceivablePayment } = useQuickAdd();
+  const { records, receivablePayments: localPayments, confirmReceivablePayment } = useQuickAdd();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { debts: apiDebts, payments: apiPayments, refresh: refreshReceivables } = useApiReceivables(confirmedMode ? owner?.id : undefined);
+  const receivablePayments = confirmedMode ? apiPayments : localPayments;
   const { setQuery } = useReceivableDraft();
-  const debt = records.find(record => record.kind === 'customerDebt' && record.id === debtId);
+  // For confirmed owners, find the debt from the API-fetched list; fall back to local records.
+  const debt = confirmedMode
+    ? apiDebts.find(record => record.kind === 'customerDebt' && record.id === debtId)
+    : records.find(record => record.kind === 'customerDebt' && record.id === debtId);
   const [amount, setAmount] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -82,6 +91,7 @@ export function ReceivablePaymentScreen() {
       const payment = await confirmReceivablePayment(token, command.debtId, command.amount);
       setSavedPayment({ id: payment.id, amountCentavos: payment.amountCentavos, remainingCentavos: Math.max(0, command.outstanding - payment.amountCentavos) });
       setQuery('');
+      if (confirmedMode) refreshReceivables();
     } catch (reason) {
       setFailure(reason instanceof Error ? reason.message : 'Could not record payment. Please try again.');
     } finally {
