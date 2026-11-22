@@ -5,6 +5,7 @@ import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { useTranslation } from '@/i18n/use-translation';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -59,6 +60,13 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     refreshDashboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner.mode]);
+
+  // Re-fetch every time the dashboard comes back into focus (e.g. after a POS sale)
+  useFocusEffect(
+    useCallback(() => {
+      refreshDashboard();
+    }, [refreshDashboard])
+  );
 
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
