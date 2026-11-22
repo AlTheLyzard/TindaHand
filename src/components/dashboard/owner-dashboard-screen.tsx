@@ -24,6 +24,8 @@ import { growthPreview } from '@/data/growth-preview';
 import { getLocaleFormats, type NavigationLabelKey } from '@/i18n';
 import type { CashMovement, DashboardSummary } from '@/services/dashboard';
 import { getCashMovements, getDashboardData, getDashboardSummary } from '@/services/dashboard';
+import { getTransactions } from '@/services/transactions';
+import type { TransactionRecord } from '@/types/transactions';
 import { useCashRegister } from '@/state/cash-register';
 import { useInventory } from '@/state/inventory';
 import { useNavigationHeight } from '@/state/navigation-motion';
@@ -43,15 +45,17 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   // ── Real backend dashboard data ──────────────────────────────────────────
   const [apiSummary, setApiSummary] = useState<DashboardSummary | null>(null);
   const [apiMovements, setApiMovements] = useState<CashMovement[] | null>(null);
+  const [apiActivity, setApiActivity] = useState<TransactionRecord[] | null>(null);
   const [apiLoading, setApiLoading] = useState(owner.mode === 'confirmed');
 
   const refreshDashboard = useCallback(() => {
     if (owner.mode !== 'confirmed') return;
     setApiLoading(true);
-    Promise.allSettled([getDashboardSummary(), getCashMovements()])
-      .then(([summaryResult, movementsResult]) => {
+    Promise.allSettled([getDashboardSummary(), getCashMovements(), getTransactions({ })])
+      .then(([summaryResult, movementsResult, activityResult]) => {
         if (summaryResult.status === 'fulfilled') setApiSummary(summaryResult.value);
         if (movementsResult.status === 'fulfilled') setApiMovements(movementsResult.value);
+        if (activityResult.status === 'fulfilled') setApiActivity(activityResult.value);
         setApiLoading(false);
       });
   }, [owner.mode]);
@@ -166,7 +170,26 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
             <BestSellersCard summary={summary} loading={isLoading} onBrowse={() => { preview.reset(); router.navigate('/owner-pos'); }} />
           </FocusRise>
           <FocusRise index={4} testID="dashboard-card-activity">
-            <RecentActivityCard activity={[...quickActivity, ...data.activity]} loading={isLoading} onViewAll={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'transaction-history' } })} />
+            <RecentActivityCard
+              activity={
+                apiActivity && owner.mode === 'confirmed'
+                  ? apiActivity.slice(0, 20).map((t): DashboardActivity => ({
+                      id: t.id,
+                      kind: t.type === 'sale' ? 'sale'
+                          : t.type === 'customerPayment' ? 'payment'
+                          : t.type === 'expense' ? 'expense'
+                          : t.type === 'supplierPayment' ? 'storeDebt'
+                          : 'payment',
+                      direction: t.direction,
+                      label: t.description,
+                      occurredAt: t.occurredAt,
+                      amountCentavos: t.amountCentavos,
+                    }))
+                  : [...quickActivity, ...data.activity]
+              }
+              loading={isLoading}
+              onViewAll={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'transaction-history' } })}
+            />
           </FocusRise>
         </MotionContent>
       </View>

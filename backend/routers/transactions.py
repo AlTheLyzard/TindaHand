@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from auth import get_current_user
-from models import Sale, CustomerDebt, DebtPayment, Expense
+from models import Sale, CustomerDebt, DebtPayment, Expense, StoreDebt, StoreDebtPayment
 from schemas import TransactionOut
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -49,10 +49,12 @@ def list_transactions(
 ):
     owner_id = current_user["db_id"]
 
-    sales    = db.query(Sale).filter(Sale.owner_id == owner_id).all()
-    debts    = db.query(CustomerDebt).filter(CustomerDebt.owner_id == owner_id).all()
-    payments = db.query(DebtPayment).filter(DebtPayment.owner_id == owner_id).all()
-    expenses = db.query(Expense).filter(Expense.owner_id == owner_id).all()
+    sales             = db.query(Sale).filter(Sale.owner_id == owner_id).all()
+    debts             = db.query(CustomerDebt).filter(CustomerDebt.owner_id == owner_id).all()
+    payments          = db.query(DebtPayment).filter(DebtPayment.owner_id == owner_id).all()
+    expenses          = db.query(Expense).filter(Expense.owner_id == owner_id).all()
+    store_debts       = db.query(StoreDebt).filter(StoreDebt.owner_id == owner_id).all()
+    store_debt_payments = db.query(StoreDebtPayment).filter(StoreDebtPayment.owner_id == owner_id).all()
 
     rows: List[TransactionOut] = []
 
@@ -122,6 +124,25 @@ def list_transactions(
             paymentMethod=None,
             amountCentavos=expense.amount_centavos,
             direction="out",
+        ))
+
+    # 4. Store debt payments (money out to suppliers)
+    store_debt_map = {sd.id: sd for sd in store_debts}
+    for sdp in store_debt_payments:
+        sd = store_debt_map.get(sdp.debt_id)
+        rows.append(TransactionOut(
+            id=f"storeDebtPayment:{sdp.id}",
+            sourceId=sdp.id,
+            ownerId=f"TH-MA-{owner_id:04d}",
+            transactionNumber=sdp.id,
+            type="supplierPayment",
+            occurredAt=sdp.occurred_at.isoformat(),
+            description=f"Store Debt Payment — {sd.name if sd else 'Supplier'}",
+            partyName=sd.name if sd else None,
+            paymentMethod=None,
+            amountCentavos=sdp.amount_centavos,
+            direction="out",
+            debtId=sdp.debt_id,
         ))
 
     # Filter by type

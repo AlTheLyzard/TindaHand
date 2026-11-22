@@ -397,7 +397,7 @@ class QuickAddCreate(BaseModel):
 # TRANSACTIONS (read-only log)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-TransactionType = Literal["sale", "customerPayment", "expense"]
+TransactionType = Literal["sale", "customerPayment", "expense", "storeDebtPayment", "supplierPayment"]
 TransactionDirection = Literal["in", "out", "neutral"]
 
 class TransactionOut(BaseModel):
