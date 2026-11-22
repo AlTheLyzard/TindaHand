@@ -32,14 +32,18 @@ export function useOwnerProfile() {
       getOwnerProfile()
         .then(data => {
           if (!active) return;
-          setRealProfile({
+          const profile: OwnerProfile = {
             ownerId: owner.id,
             name: data.name,
             avatarId: (data.avatarId as AvatarId | null) ?? null,
             storeName: data.storeName ?? '',
             email: data.email ?? '',
             pendingEmail: null,
-          });
+          };
+          setRealProfile(profile);
+          // Sync into the shared snapshot so the drawer/header always show
+          // the latest avatarId and name without requiring a full re-login.
+          authenticationService.profile.syncFromApi(profile);
           setResult({ key, error: '' });
         })
         .catch(() => {

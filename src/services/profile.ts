@@ -111,6 +111,17 @@ export function createMockProfileService(options: {
       const result = avatars.initializeStore(owner.id, { id: owner.id, avatarId: DEFAULT_OWNER_AVATAR_ID });
       if (result.ok) put({ ownerId: owner.id, name: owner.name, email: email.trim().toLowerCase(), storeName: demo ? demoProfile.storeName : '', avatarId: result.value.get(owner.id)!, pendingEmail: null });
     },
+    /**
+     * Sync the shared profile snapshot from real API data (confirmed sessions).
+     * Call this after fetching GET /settings/profile or after a successful save,
+     * so the drawer and header always reflect the latest avatarId and name.
+     */
+    syncFromApi(profile: OwnerProfile) {
+      // Always overwrite — real API data is the source of truth.
+      put(profile);
+      // Keep the avatar store in sync too so avatar-conflict checks stay accurate.
+      avatars.initializeStore(profile.ownerId, { id: profile.ownerId, avatarId: profile.avatarId ?? DEFAULT_OWNER_AVATAR_ID });
+    },
     /** Test/development failures; never rendered as normal product controls. */
     failNext(kind: Operation) { if (enabled) failure = kind; },
   });
