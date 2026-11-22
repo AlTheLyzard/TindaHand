@@ -77,12 +77,34 @@ def create_debt(
     owner_id = current_user["db_id"]
     occurred_at = datetime.fromisoformat(body.occurredAt.replace("Z", "+00:00"))
 
+    # Find or create a Customer record so the name appears in the customer picker
+    # on future debts and links multiple debts to the same person.
+    customer_name = body.name.strip()
+    customer_id = body.customerId
+    if not customer_id:
+        existing = (
+            db.query(Customer)
+            .filter(Customer.owner_id == owner_id, Customer.name == customer_name)
+            .first()
+        )
+        if existing:
+            customer_id = existing.id
+        else:
+            new_customer = Customer(
+                id=f"cust-{uuid.uuid4().hex[:10]}",
+                owner_id=owner_id,
+                name=customer_name,
+            )
+            db.add(new_customer)
+            db.flush()
+            customer_id = new_customer.id
+
     debt = CustomerDebt(
         id=f"debt-{uuid.uuid4().hex[:10]}",
         owner_id=owner_id,
-        customer_id=body.customerId,
+        customer_id=customer_id,
         sale_id=None,
-        name=body.name.strip(),
+        name=customer_name,
         original_amount_centavos=body.amountCentavos,
         amount_centavos=body.amountCentavos,
         borrowing=body.borrowing,
