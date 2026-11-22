@@ -30,7 +30,7 @@ export function ReceivablePaymentScreen() {
   const { records, receivablePayments: localPayments, confirmReceivablePayment } = useQuickAdd();
   const { owner } = useAuthFlow();
   const confirmedMode = owner?.mode === 'confirmed';
-  const { debts: apiDebts, payments: apiPayments, refresh: refreshReceivables } = useApiReceivables(confirmedMode ? owner?.id : undefined);
+  const { debts: apiDebts, payments: apiPayments, loading: apiLoading, refresh: refreshReceivables } = useApiReceivables(confirmedMode ? owner?.id : undefined);
   const receivablePayments = confirmedMode ? apiPayments : localPayments;
   const { setQuery } = useReceivableDraft();
   // For confirmed owners, find the debt from the API-fetched list; fall back to local records.
@@ -137,8 +137,11 @@ export function ReceivablePaymentScreen() {
     </MotionModal>
   </>;
 
+  const stillLoading = confirmedMode && apiLoading && !debt;
+
   return <InventoryFrame title="Record Payment" back inlineTitle onBack={() => back()} onNavigate={action => { if (!busy.current) action(); }} overlay={overlay}>
-    {!debt || !balance || outstanding === 0 ? <ContentState title={debt ? 'This debt is fully paid' : 'Debt not available'} description={debt ? 'You can review this debt in Paid records.' : 'Return to Account Balances and choose an available debt.'} action="Back to Account Balances" onAction={() => back(debt ? 'paid' : 'unpaid')} /> : <View className="gap-6" pointerEvents={saving ? 'none' : 'auto'}>
+    {stillLoading ? <ContentState title="Loading debt details…" description="Please wait a moment." /> :
+    !debt || !balance || outstanding === 0 ? <ContentState title={debt ? 'This debt is fully paid' : 'Debt not available'} description={debt ? 'You can review this debt in Paid records.' : 'Return to Account Balances and choose an existing unpaid debt.'} action="Back to Account Balances" onAction={() => back(debt ? 'paid' : 'unpaid')} /> : <View className="gap-6" pointerEvents={saving ? 'none' : 'auto'}>
       <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">{debtDescription}</Text>
       <View className="gap-5 rounded-control border border-accent bg-brand p-5">
         <View className="flex-row flex-wrap justify-between gap-2"><Text className="min-w-0 flex-shrink type-micro-financial-rate text-white">{debt.name} · Total Debt</Text><Text className=" type-list-financial text-white">{formatPesos(balance.originalCentavos)}</Text></View>
@@ -167,4 +170,5 @@ export function ReceivablePaymentScreen() {
       </View>
     </View>}
   </InventoryFrame>;
+
 }
