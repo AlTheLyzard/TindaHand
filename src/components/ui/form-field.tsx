@@ -18,6 +18,7 @@ type FormFieldProps = TextInputProps & {
   pin?: boolean;
   pinIndicators?: boolean;
   pinVisibilityToggle?: boolean;
+  pinLengthIndicator?: boolean;
   errorVariant?: 'default' | 'registration';
   prefix?: string;
   money?: boolean;
@@ -28,9 +29,11 @@ type FormFieldProps = TextInputProps & {
   leadingContent?: ReactNode;
   /** Shared vertical space to keep a primary action below this field above the keyboard. */
   keyboardScrollAfter?: number;
+  /** Decorative or interactive content aligned to the trailing edge inside the input border. */
+  trailingAccessory?: ReactNode;
 };
 
-export function FormField({ label, error, help, password, passwordIndicators = false, pin, pinIndicators = false, pinVisibilityToggle = false, prefix, money = prefix === '\u20b1', errorVariant = 'default', ref, required = true, requiredIndicator: _requiredIndicator, leadingContent, keyboardScrollAfter = 0, ...props }: FormFieldProps) {
+export function FormField({ label, error, help, password, passwordIndicators = false, pin, pinIndicators = false, pinVisibilityToggle = false, pinLengthIndicator = true, prefix, money = prefix === '\u20b1', errorVariant: _errorVariant = 'default', ref, required = true, requiredIndicator: _requiredIndicator, leadingContent, keyboardScrollAfter = 0, trailingAccessory, ...props }: FormFieldProps) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const [visible, setVisible] = useState(false);
@@ -46,12 +49,12 @@ export function FormField({ label, error, help, password, passwordIndicators = f
   return (
     <KeyboardField scrollAfter={keyboardScrollAfter}>
       {leadingContent}
-      <FieldLabel label={label} required={required} style={{ marginBottom: 4, fontFamily: 'Poppins_700Bold' }} />
-      <View style={[styles.field, styles.shadow,
-        { borderColor: error ? '#B42318' : focused ? '#245399' : '#BCD3EE' },
-        error && errorVariant === 'registration' ? { backgroundColor: '#F1EAF1', borderColor: '#C96F74' } : undefined]}>
-        {prefix && <Text accessible={false} className="pl-3 font-poppins-bold text-[12px] text-text-secondary">{prefix}</Text>}
-        <View style={styles.inputContainer}>
+      <FieldLabel label={label} required={required} style={{ marginBottom: 4 }} />
+      <View style={[styles.field, props.multiline && styles.multilineField,
+        { height: props.multiline ? undefined : tokens.size.touchTarget, minHeight: props.multiline ? tokens.size.touchTarget : undefined,
+          alignItems: props.multiline ? 'stretch' : 'center', borderColor: error ? tokens.color.errorBase : focused ? tokens.color.brightBlue : tokens.color.borderOutline }]}>
+        {prefix && <Text accessible={false} className="pl-3 type-label-nav text-text-secondary">{prefix}</Text>}
+        <View style={[styles.inputContainer, props.multiline && styles.multilineInputContainer]}>
           <Input
             {...props}
             ref={input}
@@ -67,7 +70,7 @@ export function FormField({ label, error, help, password, passwordIndicators = f
             autoCorrect={false}
             spellCheck={false}
             secureTextEntry={maskState.secureTextEntry}
-            placeholderTextColor={props.placeholderTextColor ?? `${tokens.color.textPrimary}99`}
+            placeholderTextColor={props.placeholderTextColor ?? tokens.color.textPlaceholder}
             placeholder={hidePlaceholder ? undefined : props.placeholder}
             caretHidden={maskState.caretHidden}
             selectionColor={maskState.selectionColor}
@@ -76,20 +79,21 @@ export function FormField({ label, error, help, password, passwordIndicators = f
               setFocused(false);
               props.onBlur?.(event);
             }}
-            className={`min-w-0 flex-1 ${prefix ? 'pl-1 pr-5' : 'px-5'} font-poppins-bold text-[12px] web:focus:outline-none`}
-            style={[styles.input, props.style, maskState.textColor && { color: maskState.textColor }]}
+            className={`min-w-0 flex-1 ${prefix ? `pl-1 ${trailingAccessory ? 'pr-2' : 'pr-5'}` : trailingAccessory ? 'pl-5 pr-2' : 'px-5'} type-body-primary web:focus:outline-none`}
+            style={[styles.input, props.multiline && styles.multilineInput, props.style, maskState.textColor && { color: maskState.textColor }]}
           />
           {showMaskIndicators && (
             // Keep the native secure input for editing and accessibility. The overlay
-            // reuses the PIN dot size; password spacing follows the 12-point text advance.
+            // reuses the PIN dot size; password spacing follows the body text advance.
             <View pointerEvents="none" accessible={false} aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
-              style={[styles.pinIndicators, showPasswordIndicators && { gap: Math.max(0, 12 * fontScale - 8) }]}>
+              style={[styles.pinIndicators, showPasswordIndicators && { gap: Math.max(0, tokens.typography.bodyPrimary.fontSize * fontScale - 8) }]}>
               {Array.from({ length: showPinIndicators ? props.maxLength ?? 4 : Array.from(props.value ?? '').length }, (_, index) => (
                 <View key={index} style={[styles.pinIndicator, index < (props.value?.length ?? 0) && styles.pinIndicatorFilled]} />
               ))}
             </View>
           )}
         </View>
+        {trailingAccessory && <View style={styles.trailingAccessory}>{trailingAccessory}</View>}
         {(password || (pin && pinVisibilityToggle)) && (
           <IconButton
             // Keep browser pointer presses from moving focus to the button.
@@ -109,19 +113,17 @@ export function FormField({ label, error, help, password, passwordIndicators = f
             accessibilityLabel={t(visible ? 'fields.hide' : 'fields.show', { label: label.toLowerCase() })}
             icon={({ color, size }) => <VisibilityIcon visible={visible} color={color} size={size} />} />
         )}
-        {pin && !pinVisibilityToggle && (
-          <Text accessible={false} className="pr-5 font-poppins-bold text-[12px] text-text-secondary">{t('fields.pinLength')}</Text>
+        {pin && !pinVisibilityToggle && pinLengthIndicator && (
+          <Text accessible={false} className="pr-5 type-label-nav text-text-secondary">{t('fields.pinLength')}</Text>
         )}
       </View>
       {help && !error && (
-        <Text className="mt-2 font-poppins text-[10px]" style={{ color: `${tokens.color.textPrimary}BF`, lineHeight: 15 * fontScale }}>
+        <Text className="mt-2 type-helper text-text-secondary" style={{ lineHeight: tokens.typography.helper.lineHeight * fontScale }}>
           {help}
         </Text>
       )}
       {error && (
-        <Text accessibilityRole="alert" accessibilityLiveRegion="polite" className={errorVariant === 'registration'
-          ? 'mt-2 font-poppins text-[10px] text-[#B42318]'
-          : 'mt-2 font-poppins text-[12px] text-[#B42318]'} style={{ lineHeight: (errorVariant === 'registration' ? 15 : 18) * fontScale }}>
+        <Text accessibilityRole="alert" accessibilityLiveRegion="polite" className="mt-2 type-helper text-error-base" style={{ lineHeight: tokens.typography.helper.lineHeight * fontScale }}>
           {error}
         </Text>
       )}
@@ -140,11 +142,17 @@ const styles = StyleSheet.create({
   },
   input: {
     color: tokens.color.textPrimary,
+    fontFamily: tokens.typography.weights.regular,
+    fontSize: tokens.typography.bodyPrimary.fontSize,
     height: tokens.size.touchTarget,
     paddingVertical: 0,
     textAlignVertical: 'center',
   },
   inputContainer: { flex: 1, minWidth: 0, height: '100%', justifyContent: 'center', position: 'relative' },
+  trailingAccessory: { height: '100%', justifyContent: 'center', paddingRight: tokens.spacing.two },
+  multilineField: { paddingVertical: tokens.spacing.two },
+  multilineInputContainer: { height: undefined, justifyContent: 'flex-start' },
+  multilineInput: { height: undefined, minHeight: 132, paddingVertical: tokens.spacing.two, textAlignVertical: 'top' },
   pinIndicators: {
     position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
     flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.two,
@@ -152,8 +160,7 @@ const styles = StyleSheet.create({
   },
   pinIndicator: {
     width: 8, height: 8, borderRadius: tokens.radius.pill,
-    backgroundColor: `${tokens.color.textPrimary}99`,
+    backgroundColor: tokens.color.textPlaceholder,
   },
-  pinIndicatorFilled: { backgroundColor: tokens.color.textPrimary },
-  shadow: { boxShadow: '0 3px 3px rgba(115, 153, 204, 0.45)' },
+  pinIndicatorFilled: { backgroundColor: tokens.color.darkNavy },
 });

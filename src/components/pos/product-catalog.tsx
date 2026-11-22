@@ -1,14 +1,13 @@
-import { KeyboardAwareScrollView as ScrollView, KeyboardInput as TextInput } from '@/components/ui/keyboard-aware-scroll-view';
+import { KeyboardAwareScrollView as ScrollView } from '@/components/ui/keyboard-aware-scroll-view';
+import { SearchBar } from '@/components/ui/search-bar';
 import { Button } from '@/components/ui/button';
 import { MotionContent, MotionRegion } from '@/components/ui/motion-content';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
-import { Keyboard, Text, View, useWindowDimensions, type ScrollViewInstance } from 'react-native';
+import { Keyboard, Text, View, type ScrollViewInstance } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
-import { DashboardAction } from '@/components/dashboard/dashboard-ui';
 import { AlphabetIndex, alphabetIndexWidth } from './alphabet-index';
 import { PosChip } from './pos-chip';
-import { PosIcon } from './pos-icon';
 import { ProductTile } from './product-tile';
 import { usePosMetrics } from './pos-metrics';
 import { posCategories } from '@/data/pos';
@@ -43,8 +42,6 @@ export function ProductCatalog({ products, selection, onAdd, onOpenInventory, pr
   const contentHeight = useRef(0);
   const indexSeek = useRef<{ letter: string | null; offset: number; arrived: boolean } | null>(null);
   const reduceMotion = useMotionReduced();
-  const { fontScale } = useWindowDimensions();
-  const searchHeight = Math.max(48, Math.ceil(fontScale * 18) + 16);
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const [category, setCategory] = useState<ProductCategory | null>(null);
@@ -102,17 +99,12 @@ export function ProductCatalog({ products, selection, onAdd, onOpenInventory, pr
         }} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingLeft: metrics.gutter, paddingBottom: 12 }}>
           {control ? <View style={{ marginRight: alphabetIndexWidth }}>{control}</View> : null}
-          <View className="relative z-20" style={{ marginRight: alphabetIndexWidth }}>
-          <View className="flex-row items-center rounded-control border border-[#D9E7F4] bg-white px-3" style={{ minHeight: searchHeight + 2, boxShadow: '0px 2px 3px #ADC9EE' }}>
-            <View accessible={false} style={{ width: 15, height: 15, borderWidth: 2, borderColor: '#4A607A', borderRadius: 8, marginRight: 10 }}><View style={{ position: 'absolute', width: 7, height: 2, backgroundColor: '#4A607A', right: -5, bottom: -3, transform: [{ rotate: '45deg' }] }} /></View>
-            <TextInput accessibilityLabel={t('pos.search')} placeholder={t('pos.searchPlaceholder')} value={query} onChangeText={changeQuery} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-              autoCorrect={false} autoCapitalize="none" returnKeyType="search" onSubmitEditing={Keyboard.dismiss} placeholderTextColor="#4A607A" style={{ height: searchHeight, paddingVertical: 8 }} className="min-w-0 flex-1 font-poppins text-[12px] leading-[18px] text-brand web:focus:outline-none" />
-            <View className="w-12 items-center justify-center" style={{ height: searchHeight }}>{!!query && <DashboardAction label={t('pos.clearSearch')} onPress={() => changeQuery('')}><PosIcon name="close" size={20} color="#245399" /></DashboardAction>}</View>
-          </View>
-          {suggestions.length > 0 && <MotionRegion className="absolute left-0 right-0 z-30 rounded-control border border-[#D9E7F4] bg-white" style={{ top: searchHeight + 6, boxShadow: '0 3px 6px #112F6F30' }}>
-            {suggestions.map(product => <Pressable key={product.id} accessibilityRole="button" onPress={() => { changeQuery(product.name); setFocused(false); Keyboard.dismiss(); }} className="min-h-12 justify-center px-3"><Text className="font-poppins text-[12px] text-brand">{product.name}</Text></Pressable>)}
-          </MotionRegion>}
-          </View>
+          <SearchBar containerStyle={{ marginRight: alphabetIndexWidth }} label={t('pos.search')} placeholder={t('pos.searchPlaceholder')}
+            value={query} onChangeText={changeQuery} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+            onSubmitEditing={Keyboard.dismiss} onClear={() => changeQuery('')} clearLabel={t('pos.clearSearch')}
+            results={suggestions.length > 0 ? <MotionRegion>
+              {suggestions.map(product => <Pressable key={product.id} accessibilityRole="button" onPress={() => { changeQuery(product.name); setFocused(false); Keyboard.dismiss(); }} className="min-h-12 justify-center px-3"><Text className="type-micro-caption text-brand">{product.name}</Text></Pressable>)}
+            </MotionRegion> : undefined} />
           <ScrollView ref={categoriesScroll} horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" decelerationRate="fast" snapToOffsets={categorySnaps} contentContainerStyle={{ gap: 8, paddingHorizontal: categoryEdgePadding, paddingVertical: 8, alignItems: 'center' }} style={{ flexGrow: 0, marginLeft: -metrics.gutter, overflow: 'visible' }}
             onContentSizeChange={() => setCategorySnaps(Object.values(categoryOffsets.current).map(value => Math.max(0, value - categoryEdgePadding)).sort((a, b) => a - b))}>
             {([null, ...posCategories] as const).map(value => <View key={value ?? 'all'} style={{ flexShrink: 0 }} onLayout={event => {
@@ -122,9 +114,9 @@ export function ProductCatalog({ products, selection, onAdd, onOpenInventory, pr
             }}><PosChip selected={category === value} onPress={() => { resetPosition(); setCategory(value); categoriesScroll.current?.scrollTo({ x: Math.max(0, (categoryOffsets.current[value ?? 'all'] ?? categoryEdgePadding) - categoryEdgePadding), animated: !reduceMotion }); }} label={value ? t(`pos.category.${value}`) : t('pos.all')} /></View>)}
           </ScrollView>
           <View className="relative mb-5 mt-3 flex-row items-center justify-between gap-2" style={{ marginRight: alphabetIndexWidth }} onLayout={event => { gridStart.value = event.nativeEvent.layout.y; }}>
-            <Text accessibilityRole="header" className="font-poppins-bold text-[16px] text-[#102342]">{t('pos.products')}</Text>
+            <Text accessibilityRole="header" className=" type-list-financial text-text-primary">{t('pos.products')}</Text>
             {(!!query || !!category) && <View className="absolute -top-3 right-20"><Button variant="text" fullWidth={false} compact accessibilityLabel={t('pos.reset')} onPress={reset}>{t('pos.resetShort')}</Button></View>}
-            <Text accessibilityLiveRegion="polite" className="font-poppins-bold text-[10px] text-text-secondary">{preview.loading ? 'Loading products' : t(visible.length === 1 ? 'pos.productCountOne' : 'pos.productCount', { count: visible.length })}</Text>
+            <Text accessibilityLiveRegion="polite" className=" type-helper text-text-secondary">{preview.loading ? 'Loading products' : t(visible.length === 1 ? 'pos.productCountOne' : 'pos.productCount', { count: visible.length })}</Text>
           </View>
           <View className="flex-row" style={{ marginRight: alphabetIndexWidth }} onLayout={event => { gridOffset.current = event.nativeEvent.layout.y; updateActiveLetter(); }}>
             <View className="flex-1">
@@ -132,7 +124,7 @@ export function ProductCatalog({ products, selection, onAdd, onOpenInventory, pr
                 title={!products.length ? 'No products yet' : preview.mode === 'search' || (preview.mode !== 'filtered' && query.trim()) ? 'No products match your search' : 'No products in this category'}
                 description={!products.length ? 'Add a product in Inventory before starting an order.' : 'Try another name or reset search and category.'}
                 action={!products.length ? onOpenInventory ? 'Open Inventory' : undefined : 'Reset search and category'} onAction={() => { if (products.length) reset(); else onOpenInventory?.(); }} /> : letters.map((initial, index) => <ProductSection key={initial} letter={initial} last={index === letters.length - 1} onMeasure={recordSectionOffset}>
-                <Text accessibilityRole="header" className="mb-2 font-poppins-bold text-[12px] text-[#102342]">{initial}</Text>
+                <Text accessibilityRole="header" className="mb-2 type-label-nav text-text-primary">{initial}</Text>
                 <View className="flex-row flex-wrap gap-y-4" style={{ marginHorizontal: -metrics.columnGap / 2 }}>
                   {visible.filter(product => product.name.charAt(0).toUpperCase() === initial).map(product => <View key={product.id} style={{ width: '50%', paddingHorizontal: metrics.columnGap / 2 }}>
                     <ProductTile product={product} quantity={selection[product.id]?.quantity ?? 0} onAdd={onAdd} />

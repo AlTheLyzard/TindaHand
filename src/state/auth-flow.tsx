@@ -153,7 +153,7 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
               ownerId: resolvedId,
               name: resolvedName,
               status: 'active',
-              avatarId: 'avatar-0',
+              avatarId: 'avatar-01',
             });
             setDeviceSession(realSession);
             return realSession;

@@ -26,17 +26,17 @@ export function CashierListScreen({ pinManagement = false }: { pinManagement?: b
   if (!owner) return null;
   return <SettingsFrame title={pinManagement ? 'Kahera PIN Management' : 'User Management'} parent={pinManagement ? `${settingsRoot}/security` : settingsRoot}>
     <SettingsDescription>{pinManagement ? 'Select a Kahera to reset their access PIN.' : "Manage the people who have access to your store's TindaHand account."}</SettingsDescription>
-    {!pinManagement && <View className="mb-4 gap-3 rounded-control bg-[#D1E1F5] p-4">
-      <Text className="font-poppins-bold text-[12px] leading-[18px] text-brand">Registered Kahera</Text>
-      <Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">{cashiers.length} {cashiers.length === 1 ? 'Kahera' : 'Kahera'}</Text>
+    {!pinManagement && <View className="mb-4 gap-3 rounded-control bg-accent-soft p-4">
+      <Text className=" type-label-nav leading-[18px] text-brand">Registered Kahera</Text>
+      <Text className=" type-micro-caption leading-[18px] text-text-secondary">{cashiers.length} {cashiers.length === 1 ? 'Kahera' : 'Kahera'}</Text>
       <Button onPress={() => router.navigate(`${settingsRoot}/add-cashier`)}>Add Kahera</Button>
     </View>}
     {cashiers.length === 0 ? <EmptyState title="No Kahera yet" description="Add a Kahera to this store to manage their access PIN." icon="profile" action="Add Kahera" onAction={() => router.navigate(`${settingsRoot}/add-cashier`)} />
-      : <View className="gap-3">{cashiers.map(cashier => pinManagement ? <View key={cashier.id} className="rounded-control border border-[#B0C8E3] bg-white p-4">
+      : <View className="gap-3">{cashiers.map(cashier => pinManagement ? <View key={cashier.id} className="rounded-control border border-outline bg-white p-4">
         <Pressable accessibilityRole="button" accessibilityLabel={`Select ${cashier.name}, ${cashier.id}, ${cashier.status === 'active' ? 'Active' : 'Inactive'}`} accessibilityState={{ expanded: selected === cashier.id }} onPress={() => setSelected(cashier.id)} className="min-h-12 justify-center">
           <CashierIdentity cashier={cashier} />
         </Pressable>
-        {selected === cashier.id && <View className="mt-4 border-t border-[#ADC9EE] pt-4"><Button onPress={() => router.navigate({ pathname: '/owner-menu/settings/reset-cashier-pin', params: { cashierId: cashier.id } })}>Reset Kahera PIN</Button></View>}
+        {selected === cashier.id && <View className="mt-4 border-t border-outline pt-4"><Button onPress={() => router.navigate({ pathname: '/owner-menu/settings/reset-cashier-pin', params: { cashierId: cashier.id } })}>Reset Kahera PIN</Button></View>}
       </View> : <SettingsCard key={cashier.id}><CashierIdentity cashier={cashier} /></SettingsCard>)}</View>}
   </SettingsFrame>;
 }
@@ -64,7 +64,7 @@ export function ChangePinScreen({ cashier = false }: { cashier?: boolean }) {
                 .then(() => ({ ok: true as const, value: undefined }))
                 .catch(() => ({ ok: false as const, message: 'PIN change failed. Check your current PIN and try again.' }))}
         onSuccess={() => { setSuccess(selected ? `PIN reset for ${selected.name} (${selected.id}).` : 'Your May-Ari PIN has been changed.'); setExpiresAt(Date.now() + 15000); }} />
-      {MOCK_AUTH_ENABLED && <Text className="mt-2 font-poppins text-[11px] leading-4 text-text-secondary">Demo only. PIN changes are held in memory for this app session.</Text>}
+      {MOCK_AUTH_ENABLED && <Text className="mt-2 type-micro-caption leading-4 text-text-secondary">Demo only. PIN changes are held in memory for this app session.</Text>}
     </>}
   </SettingsFrame>;
 }
@@ -101,14 +101,14 @@ export function CashierCreatedScreen() {
   return <SettingsFrame title="User Management" parent={`${settingsRoot}/users`}>
     {!cashier ? <EmptyState title="Account details unavailable" description="The Kahera may belong to another store, or this demo session has ended." action="Back to User Management" onAction={() => router.dismissTo(`${settingsRoot}/users`)} /> : <>
       <RegistrationToast expiresAt={expiresAt} onDismiss={dismiss} title="Account created" message={`${cashier.name} has been added to your store.`} />
-      <View className="mb-6 mt-5 gap-4"><SuccessMark animate eventKey={cashier.id} /><Text accessibilityRole="header" className="font-poppins-bold text-[30px] leading-[42px] text-brand">Kahera Account Created Successfully!</Text></View>
+      <View className="mb-6 mt-5 gap-4"><SuccessMark animate eventKey={cashier.id} /><Text accessibilityRole="header" className=" type-large-metric leading-[42px] text-brand">Kahera Account Created Successfully!</Text></View>
       <SettingsCard>
         <CashierIdentity cashier={cashier} />
-        <View className="my-4 border-t border-[#ADC9EE]" />
-        <Text className="font-poppins text-[14px] leading-[21px] text-text-secondary">Associated May-Ari / Store ID</Text>
-        <Text className="mt-2 font-poppins-bold text-[18px] leading-[27px] text-brand">{owner.id}</Text>
-        <View className="my-4 border-t border-[#ADC9EE]" />
-        <Text className="font-poppins text-[14px] leading-[22px] text-[#0C1B3C]">For Kahera login, use this Store / May-Ari ID, and the assigned four-digit Kahera PIN.</Text>
+        <View className="my-4 border-t border-outline" />
+        <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">Associated May-Ari / Store ID</Text>
+        <Text className="mt-2 type-h3-heading leading-[27px] text-brand">{owner.id}</Text>
+        <View className="my-4 border-t border-outline" />
+        <Text className=" type-micro-financial-rate leading-[22px] text-text-primary">For Kahera login, use this Store / May-Ari ID, and the assigned four-digit Kahera PIN.</Text>
       </SettingsCard>
       {MOCK_AUTH_ENABLED && <SettingsNotice>Demo account only. These details are not saved after the app reloads.</SettingsNotice>}
       <View className="min-h-6 flex-1" /><View className="gap-4 pt-4">

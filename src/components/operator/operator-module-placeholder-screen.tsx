@@ -12,6 +12,7 @@ import { useTranslation } from '@/i18n/use-translation';
 import { useAuthFlow } from '@/state/auth-flow';
 import { useNavigationHeight } from '@/state/navigation-motion';
 import { posHref } from '@/components/pos/pos-frame';
+import tokens from '@/constants/design-tokens.json';
 
 export function OperatorModulePlaceholderScreen({ title, description, showSignOut = false, activeAction }: {
   title: string; description: string; showSignOut?: boolean; activeAction?: 'settings';
@@ -31,16 +32,16 @@ export function OperatorModulePlaceholderScreen({ title, description, showSignOu
 
   return <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-canvas">
     <OperatorHeader activeAction={activeAction} />
-    <View className="w-full max-w-[460px] flex-1 self-center px-5 pt-7" style={{ paddingBottom: navigationHeight + insets.bottom + 16 }}>
-      <Text accessibilityRole="header" className="font-poppins-bold text-[26px] text-brand" style={{ lineHeight: 36 * fontScale }}>{title}</Text>
-      <Text className="mt-3 font-poppins text-[14px] text-text-secondary" style={{ lineHeight: 22 * fontScale }}>{description}</Text>
+    <View className="w-full max-w-[460px] flex-1 self-center px-5" style={{ paddingTop: tokens.spacing.headerTitleGap, paddingBottom: navigationHeight + insets.bottom + 16 }}>
+      <Text accessibilityRole="header" className=" type-large-metric text-brand" style={{ lineHeight: 36 * fontScale }}>{title}</Text>
+      <Text className="mt-3 type-micro-financial-rate text-text-secondary" style={{ lineHeight: 22 * fontScale }}>{description}</Text>
       {showSignOut && <View className="mt-auto pt-8"><Button variant="secondary" onPress={signOut}>Sign Out</Button></View>}
     </View>
     <DashboardNavigation onHome={() => router.navigate(posHref('/operator-pos'))} onPos={() => router.navigate(posHref('/operator-pos'))} onUnavailable={setNotice} />
     <Modal visible={!!notice} onRequestClose={() => setNotice(null)}>
       <View className="flex-1 items-center justify-center px-6"><View accessibilityViewIsModal className="w-full max-w-[412px] gap-4 rounded-card bg-white p-6">
-        <Text accessibilityRole="header" className="font-poppins-bold text-[18px] text-brand">{t('dashboard.comingSoon')}</Text>
-        <Text className="font-poppins text-[14px] text-text-secondary">{notice ? t('dashboard.unavailable', { feature: t(notice) }) : ''}</Text>
+        <Text accessibilityRole="header" className=" type-h3-heading text-brand">{t('dashboard.comingSoon')}</Text>
+        <Text className=" type-micro-financial-rate text-text-secondary">{notice ? t('dashboard.unavailable', { feature: t(notice) }) : ''}</Text>
         <Button onPress={() => setNotice(null)}>{t('common.close')}</Button>
       </View></View>
     </Modal>

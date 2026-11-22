@@ -5,7 +5,8 @@ import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { useTranslation } from '@/i18n/use-translation';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, Text, View, useWindowDimensions, StyleSheet } from 'react-native';
+import { Image as BackgroundImage } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BestSellersCard, CashCard, RecentActivityCard, SalesCard, StockCard } from '@/components/dashboard/dashboard-cards';
@@ -124,30 +125,32 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   function unavailable(feature: NavigationLabelKey) {
     setNotice(feature);
   }
-  return <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: tokens.color.appBackground }}>
+  return <View style={{ flex: 1, backgroundColor: tokens.color.appBackground }}>
+    <BackgroundImage source={require('@/assets/images/auth/background.png')} contentFit="fill" style={StyleSheet.absoluteFill} accessible={false} />
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
     <MainHeader />
     <ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: navigationHeight + insets.bottom + tokens.spacing.three + 56 + tokens.spacing.three }}>
-      <View className="w-full max-w-[460px] self-center pt-4" style={{ paddingHorizontal: width < 360 ? 16 : 24 }}>
-        <Text accessibilityRole="header" className="font-poppins-bold text-[22px] leading-[33px] text-[#28549A]">{t('dashboard.greeting', { name: owner.name.trim().split(/\s+/)[0] })}</Text>
-        <View className="mt-0.5 flex-row flex-wrap gap-2">
-          <Text className="rounded-pill bg-[#D1E2F8] px-2 py-1 font-poppins text-[10px] leading-[15px] text-[#102342]">{t('roles.owner')}</Text>
-          <Text className="rounded-pill bg-[#D1E2F8] px-2 py-1 font-poppins text-[10px] leading-[15px] text-[#102342]">{t('dashboard.identity', { id: owner.id, date: today })}</Text>
+      <View className="w-full max-w-[460px] self-center" style={{ paddingHorizontal: width < 360 ? 16 : 24, paddingTop: tokens.spacing.headerTitleGap }}>
+        <Text accessibilityRole="header" className="type-h1-display text-brand">{t('navigation.dashboard')}</Text>
+        <View className="mt-2 flex-row flex-wrap gap-2">
+          <Text className="rounded-pill bg-accent-soft px-2 py-1 type-micro-caption text-text-primary">{t('roles.owner')}</Text>
+          <Text className="rounded-pill bg-accent-soft px-2 py-1 type-micro-caption text-text-primary">{t('dashboard.identity', { id: owner.id, date: today })}</Text>
         </View>
-        {owner.mode !== 'confirmed' && <Text accessibilityRole="alert" className="mb-4 mt-3 font-poppins text-[10px] leading-[15px] text-text-secondary">{owner.mode === 'mock' ? t('auth.mock.session') : owner.mode === 'preview' ? t('dashboard.preview') : ''}{t('dashboard.demoDisclosure', { date: new Date(getDashboardData().asOf).toLocaleDateString(getLocaleFormats().date, dateOptions) })}</Text>}
+        {owner.mode !== 'confirmed' && <Text accessibilityRole="alert" className="mb-4 mt-3 type-helper leading-[15px] text-text-secondary">{owner.mode === 'mock' ? t('auth.mock.session') : owner.mode === 'preview' ? t('dashboard.preview') : ''}{t('dashboard.demoDisclosure', { date: new Date(getDashboardData().asOf).toLocaleDateString(getLocaleFormats().date, dateOptions) })}</Text>}
         {onLogout && owner.mode !== 'confirmed' && <View className="mb-4"><Button variant="secondary" onPress={onLogout}>{t('auth.mock.logout')}</Button></View>}
-        <MotionContent changeKey={preview.mode} className="gap-card-gap">
+        <MotionContent changeKey={preview.mode} className="gap-card-gap" style={{ marginTop: tokens.spacing.four }}>
           {preview.control}
           <FocusRise index={0} testID="dashboard-card-cash">
             <CashCard summary={summary} loading={isLoading} onCashAction={() => { preview.reset(); dismissCashToast(); setCashOpen(true); }} />
           </FocusRise>
           <FocusRise index={1} testID="dashboard-card-sales">
-            <SalesCard summary={summary} period={period} onPeriod={setPeriod} growthMetrics={growthMetrics} loading={isLoading} empty={summary.saleCount === 0 && summary.totalSalesCentavos === 0} />
+            <SalesCard summary={summary} period={period} onPeriod={setPeriod} growthMetrics={growthMetrics} loading={isLoading} />
           </FocusRise>
           <FocusRise index={2} testID="dashboard-card-stock">
             <StockCard summary={{ ...summary, outOfStock: stock.out, lowStock: stock.low + stock.critical }} loading={isLoading} empty={preview.empty || !products.length} onInventory={() => { preview.reset(); router.navigate('/owner-inventory'); }} onSelect={status => router.navigate({ pathname: '/owner-inventory', params: { status } })} />
           </FocusRise>
           <FocusRise index={3} testID="dashboard-card-best-sellers">
-            <BestSellersCard summary={summary} products={products} loading={isLoading} onBrowse={() => { preview.reset(); router.navigate('/owner-pos'); }} />
+            <BestSellersCard summary={summary} loading={isLoading} onBrowse={() => { preview.reset(); router.navigate('/owner-pos'); }} />
           </FocusRise>
           <FocusRise index={4} testID="dashboard-card-activity">
             <RecentActivityCard activity={[...quickActivity, ...data.activity]} loading={isLoading} onViewAll={() => router.navigate({ pathname: '/owner-menu/[tool]', params: { tool: 'transaction-history' } })} />
@@ -163,12 +166,13 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     <Modal visible={!!notice} onRequestClose={() => setNotice(null)}>
       <View className="flex-1 items-center justify-center px-6">
         <View accessibilityViewIsModal className="w-full max-w-[412px] gap-4 rounded-card bg-white p-6">
-          <Text accessibilityRole="header" className="font-poppins-bold text-[18px] text-brand">{t('dashboard.comingSoon')}</Text>
-          <Text accessibilityRole="alert" className="font-poppins text-[14px] leading-[21px] text-text-secondary">{notice?.startsWith('dashboard.quick.') ? t('dashboard.quick.unavailable', { feature: t(notice) })
+          <Text accessibilityRole="header" className=" type-h3-heading text-brand">{t('dashboard.comingSoon')}</Text>
+          <Text accessibilityRole="alert" className=" type-micro-financial-rate leading-[21px] text-text-secondary">{notice?.startsWith('dashboard.quick.') ? t('dashboard.quick.unavailable', { feature: t(notice) })
             : notice ? t('dashboard.unavailable', { feature: t(notice) }) : ''}</Text>
           <Button onPress={() => setNotice(null)}>{t('common.close')}</Button>
         </View>
       </View>
     </Modal>
-  </SafeAreaView>;
+    </SafeAreaView>
+  </View>;
 }

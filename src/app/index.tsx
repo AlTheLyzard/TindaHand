@@ -20,10 +20,6 @@ export default function WelcomeScreen() {
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}>
         <View className="w-full max-w-[480px] flex-1 self-center px-5 pb-4 pt-12" style={{ minHeight: 660 }}>
-          <Text className="max-w-[340px] self-center text-center font-poppins text-[16px] leading-6 text-action">
-            Manage inventory, track sales, and grow your business with ease.
-          </Text>
-
           <View className="flex-1 items-center justify-center py-10">
             <Image
               source={require('@/assets/images/brand/tindahand-mark.png')}
@@ -34,10 +30,10 @@ export default function WelcomeScreen() {
             />
             <Text
               accessibilityRole="header"
-              className="mt-7 text-center font-poppins-bold text-[32px] leading-[44px] text-brand">
+              className="mt-7 text-center type-h1-display leading-[44px] text-brand">
               TindaHand
             </Text>
-            <Text className="mt-1 text-center font-poppins-bold text-[16px] leading-6 text-brand">
+            <Text className="mt-1 text-center type-list-financial leading-6 text-brand">
               Your sari-sari store, made easier.
             </Text>
           </View>
@@ -46,7 +42,7 @@ export default function WelcomeScreen() {
             <Button
               onPress={handleGetStarted}
               accessibilityHint="Opens the Create May-Ari Account form.">
-              Get Started
+              Get started
             </Button>
             <Button
               variant="secondary"
@@ -56,9 +52,6 @@ export default function WelcomeScreen() {
               I have an account
             </Button>
           </View>
-          <Text className="mt-6 text-center font-poppins text-[12px] leading-[18px] text-text-secondary">
-            TindaHand - Para sa iyong tindahan.
-          </Text>
         </View>
       </ScrollView>
     </AuthBackground>

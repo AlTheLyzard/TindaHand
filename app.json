@@ -38,7 +38,7 @@
         "expo-image-picker",
         {
           "photosPermission": "Choose a product photo for your inventory.",
-          "cameraPermission": false,
+          "cameraPermission": "Allow TindaHand to use your camera to capture a GCash payment reference.",
           "microphonePermission": false
         }
       ],

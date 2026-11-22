@@ -18,10 +18,10 @@ export function useContentPreview(states: readonly PreviewState[] = basicStates)
   const [open, setOpen] = useState(false);
   const mode = __DEV__ ? selected : 'ready';
   return { mode, loading: mode === 'loading', empty: mode === 'empty', reset: () => setSelected('ready'),
-    control: __DEV__ ? <View className="my-2 rounded-control border border-[#B0C8E3] bg-white px-3">
-      <Pressable accessibilityRole="button" accessibilityLabel="Preview content state" accessibilityState={{ expanded: open }} onPress={() => setOpen(value => !value)} className="min-h-12 justify-center"><Text className="font-poppins text-[10px] text-text-secondary">Development state preview · {labels[mode]} {open ? '−' : '+'}</Text></Pressable>
+    control: __DEV__ ? <View className="my-2 rounded-control border border-outline bg-white px-3">
+      <Pressable accessibilityRole="button" accessibilityLabel="Preview content state" accessibilityState={{ expanded: open }} onPress={() => setOpen(value => !value)} className="min-h-12 justify-center"><Text className=" type-helper text-text-secondary">Development state preview · {labels[mode]} {open ? '−' : '+'}</Text></Pressable>
       {open && <View className="flex-row flex-wrap gap-x-3">{states.map(state => <Pressable key={state} accessibilityRole="button" accessibilityState={{ selected: mode === state }} onPress={() => { setSelected(state); setOpen(false); }} className="min-h-12 justify-center">
-        <Text className={`font-poppins text-[11px] ${mode === state ? 'font-poppins-bold text-action' : 'text-text-secondary'}`}>{labels[state]}</Text>
+        <Text className={`type-label-nav ${mode === state ? 'text-accent' : 'text-text-secondary'}`}>{labels[state]}</Text>
       </Pressable>)}</View>}
     </View> : null };
 }
@@ -30,9 +30,9 @@ export function EmptyState({ title, description, icon = 'inventory', action, onA
   title: string; description: string; icon?: ComponentProps<typeof PosIcon>['name']; action?: string; onAction?: () => void;
 }) {
   return <MotionRegion className="gap-3 rounded-card bg-white p-5">
-    <View accessible={false} className="h-10 w-10 items-center justify-center rounded-pill bg-[#D9E7F4]"><PosIcon name={icon} color="#245399" /></View>
-    <Text accessibilityRole="header" className="font-poppins-bold text-[18px] text-brand">{title}</Text>
-    <Text accessibilityLiveRegion="polite" className="font-poppins text-[14px] leading-[21px] text-text-secondary">{description}</Text>
+    <View accessible={false} className="h-10 w-10 items-center justify-center rounded-pill bg-ice-container"><PosIcon name={icon} color={tokens.color.royalBlue} /></View>
+    <Text accessibilityRole="header" className=" type-h3-heading text-brand">{title}</Text>
+    <Text accessibilityLiveRegion="polite" className=" type-micro-financial-rate leading-[21px] text-text-secondary">{description}</Text>
     {action && onAction && <Button onPress={onAction}>{action}</Button>}
   </MotionRegion>;
 }
@@ -73,6 +73,6 @@ export function LoadingSlot({ loading, children }: { loading: boolean; children:
   return <MotionContent changeKey={loading}>
     <View pointerEvents={loading ? 'none' : 'auto'} aria-hidden={loading} accessibilityElementsHidden={loading}
       importantForAccessibility={loading ? 'no-hide-descendants' : 'auto'} style={{ opacity: loading ? 0 : 1 }}>{children}</View>
-    {loading && <View pointerEvents="none" style={{ position: 'absolute', inset: 0, justifyContent: 'center' }}><SkeletonBar height={14} width="80%" color="#B0C8E3" /></View>}
+    {loading && <View pointerEvents="none" style={{ position: 'absolute', inset: 0, justifyContent: 'center' }}><SkeletonBar height={14} width="80%" color={tokens.color.borderOutline} /></View>}
   </MotionContent>;
 }

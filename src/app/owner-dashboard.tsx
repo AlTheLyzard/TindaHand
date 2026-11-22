@@ -48,7 +48,7 @@ export default function OwnerDashboardRoute() {
   const owner = mockOwner ?? (serverOwner === 'loading' ? null : serverOwner);
   const isLoading = restoring || (!mockOwner && serverOwner === 'loading');
 
-  if (isLoading) return <View className="flex-1 items-center justify-center bg-canvas"><Text className="font-poppins text-[14px] text-brand">Restoring your session…</Text></View>;
+  if (isLoading) return <View className="flex-1 items-center justify-center bg-canvas"><Text className=" type-micro-financial-rate text-brand">Restoring your session…</Text></View>;
   // If the session is locked (background timer or cold restart with persisted lock),
   // redirect to the PIN screen instead of showing the dashboard.
   if (deviceSession?.locked) return <Redirect href={{ pathname: '/login', params: { role: 'owner' } }} />;

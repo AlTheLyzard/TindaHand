@@ -4,12 +4,12 @@ import type { RegistrationErrors, RegistrationFormValues } from '@/types/auth';
 export const PASSWORD_HELP_KEY = 'validation.passwordHelp' as const;
 
 export function validateEmail(value: string) {
-  return !value?.trim() ? 'Enter your email address.' : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? undefined : 'Enter a valid email address.';
+  return !value?.trim() ? 'Enter your email address.' : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? undefined : 'Please enter a valid email address.';
 }
 
 export function validateRegistration(values: RegistrationFormValues): RegistrationErrors {
   const errors: RegistrationErrors = {};
-  if (!values.name.trim()) errors.name = t('validation.requiredFields');
+  if (!values.name.trim()) errors.name = 'Please enter your name.';
   const emailError = validateEmail(values.email);
   if (emailError) errors.email = emailError;
   if (!values.password) {
@@ -26,7 +26,7 @@ export function validateRegistration(values: RegistrationFormValues): Registrati
   if (!values.confirmPassword) {
     errors.confirmPassword = t('validation.confirmPasswordRequired');
   } else if (values.password !== values.confirmPassword) {
-    errors.confirmPassword = t('validation.passwordMismatch');
+    errors.confirmPassword = 'Password do not match. Please enter the correct password.';
   }
   if (!values.pin) {
     errors.pin = t('validation.pinRequired');
@@ -38,7 +38,7 @@ export function validateRegistration(values: RegistrationFormValues): Registrati
   } else if (!/^[0-9]{4}$/.test(values.confirmPin)) {
     errors.confirmPin = t('validation.confirmPinFormat');
   } else if (values.pin !== values.confirmPin) {
-    errors.confirmPin = t('validation.pinMismatch');
+    errors.confirmPin = 'PIN do not match. Please enter correct PIN.';
   }
   return errors;
 }

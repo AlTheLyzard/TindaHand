@@ -117,7 +117,7 @@ export function ResizableSheet({ title, subtitle, children, footer, onClose, dis
     <Animated.View testID={`${testID}-card`} accessibilityViewIsModal onAccessibilityEscape={onClose}
       style={[{ width: '100%', maxWidth: fullWidth ? undefined : 460, maxHeight: '100%', minHeight: 0, alignSelf: 'center', overflow: 'hidden', borderTopLeftRadius: 24, borderTopRightRadius: 24,
         paddingLeft: Math.max(tokens.spacing.three, fullWidth ? insets.left : 0), paddingRight: Math.max(tokens.spacing.three, fullWidth ? insets.right : 0),
-        backgroundColor: tokens.color.navigationSurface, boxShadow: '0 -4px 20px rgba(16,35,66,0.12)' }, surface]}>
+        backgroundColor: tokens.color.navigationSurface }, surface]}>
       <View testID={`${testID}-header`} onLayout={event => setHeaderHeight(event.nativeEvent.layout.height)} style={{ flexShrink: 0, paddingBottom: 4 }}>
         <GestureDetector gesture={pan} touchAction="none"><Animated.View testID={`${testID}-handle`} accessible accessibilityRole="adjustable" accessibilityLabel={`Resize ${title} sheet`}
           accessibilityHint="Drag up to expand, down to compact, or farther down to close."
@@ -132,14 +132,14 @@ export function ResizableSheet({ title, subtitle, children, footer, onClose, dis
               height.set(reduced ? heights[next] : withTiming(heights[next], { duration: motion.transition, easing: motion.ease, reduceMotion: ReduceMotion.Never }));
             }
           }} style={{ height: 48, width: 112, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', touchAction: 'none' }}>
-          <View pointerEvents="none" style={{ width: 36, height: 4, borderRadius: tokens.radius.pill, backgroundColor: '#DDE2E8' }} />
+          <View pointerEvents="none" style={{ width: 36, height: 4, borderRadius: tokens.radius.pill, backgroundColor: tokens.color.surfaceSubtle }} />
         </Animated.View></GestureDetector>
         <View style={{ paddingRight: 40 }}>
-          <Text accessibilityRole="header" style={{ fontFamily: 'Poppins_700Bold', fontSize: 22, lineHeight: 33, color: tokens.color.textPrimary }}>{title}</Text>
+          <Text accessibilityRole="header" style={{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 33, color: tokens.color.textPrimary }}>{title}</Text>
           <IconButton accessibilityLabel={testID === 'quick-add' ? 'Close Quick Add' : `Close ${title}`} disabled={disabled} onPress={onClose}
             style={{ position: 'absolute', right: -8, top: -8 }} icon={({ color }) => <PosIcon name="close" size={24} color={color} />} />
         </View>
-        {!!subtitle && (alwaysShowSubtitle || !short) && <Text className="mt-1 font-poppins text-[12px] leading-[18px] text-text-secondary">{subtitle}</Text>}
+        {!!subtitle && (alwaysShowSubtitle || !short) && <Text className="mt-1 type-micro-caption leading-[18px] text-text-secondary">{subtitle}</Text>}
       </View>
       <ScrollView ref={body} scrollEnabled={!resizing} keyboardScrollEnabled={!resizing && !disabled} testID={`${testID}-body`} style={{ flex: 1, minHeight: 0 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: 8, paddingBottom: bodyBottom }}>

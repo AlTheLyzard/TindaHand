@@ -23,7 +23,7 @@ export function AssetClassificationField({ label, value, onChange, error }: {
   label: string; value: AssetClassification | ''; onChange: (value: AssetClassification) => void; error?: string;
 }) {
   return <View style={{ gap: tokens.spacing.two }}>
-    <FieldLabel label={label} style={{ fontFamily: 'Poppins_700Bold', color: tokens.button.primary.default }} />
+    <FieldLabel label={label} style={{ fontFamily: tokens.typography.weights.bold, color: tokens.button.primary.default }} />
     <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ gap: tokens.spacing.three }}>
       {(Object.keys(assetLabels) as AssetClassification[]).map(key => {
         const selected = key === value, current = key === 'current';
@@ -31,13 +31,13 @@ export function AssetClassificationField({ label, value, onChange, error }: {
           accessibilityLabel={assetLabels[key]} accessibilityHint={descriptions[key]} accessibilityState={{ checked: selected }} aria-checked={selected}
           onPress={() => { Keyboard.dismiss(); onChange(key); }}
           style={{ minHeight: 100, flexDirection: 'row', alignItems: 'center', gap: 20, padding: tokens.spacing.three,
-            borderWidth: 1, borderColor: error ? '#D32F2F' : tokens.color.borderOutline, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard }}>
+            borderWidth: 1, borderColor: error ? tokens.color.errorBase : tokens.color.borderOutline, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard }}>
           <Image source={assetClassificationIllustrations[key]} accessible={false} contentFit="contain" style={{ width: 26, height: 26, flexShrink: 0 }} />
           <View style={{ flex: 1, minWidth: 0, gap: 4, paddingRight: 20 }}>
-            <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 14, lineHeight: 21, color: tokens.button.primary.default }}>{assetLabels[key]}</Text>
-            <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18, color: tokens.color.textSecondary }}>{descriptions[key]}</Text>
-            <View style={{ alignSelf: 'flex-start', borderWidth: 1, borderColor: current ? '#36843B' : '#2F6CC9', borderRadius: tokens.radius.pill, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: current ? '#E7F3E8' : tokens.color.surfaceSubtle, boxShadow: '0 2px 3px #00000030' }}>
-              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 9, lineHeight: 14, color: current ? tokens.color.successBase : tokens.button.primary.default }}>{current ? 'Current Asset' : 'Non-Current Asset'}</Text>
+            <Text style={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.microFinancialRate.fontSize, lineHeight: 21, color: tokens.button.primary.default }}>{assetLabels[key]}</Text>
+            <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microCaption.fontSize, lineHeight: 18, color: tokens.color.textSecondary }}>{descriptions[key]}</Text>
+            <View style={{ alignSelf: 'flex-start', borderWidth: 1, borderColor: current ? tokens.color.successBase : tokens.color.brightBlue, borderRadius: tokens.radius.pill, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: current ? tokens.color.successTint : tokens.color.surfaceSubtle }}>
+              <Text style={{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.helper.fontSize, lineHeight: 14, color: current ? tokens.color.successBase : tokens.button.primary.default }}>{current ? 'Current Asset' : 'Non-Current Asset'}</Text>
             </View>
           </View>
           <View accessible={false} style={{ position: 'absolute', right: 16, top: 16, width: 20, height: 20, borderWidth: 2, borderColor: tokens.button.primary.default, borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center' }}>
@@ -46,6 +46,6 @@ export function AssetClassificationField({ label, value, onChange, error }: {
         </MotionPressable>;
       })}
     </View>
-    {!!error && <MotionRegion><Text accessibilityRole="alert" style={{ fontFamily: 'Poppins_400Regular', fontSize: 10, color: tokens.color.errorBase }}>{error}</Text></MotionRegion>}
+    {!!error && <MotionRegion><Text accessibilityRole="alert" style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, color: tokens.color.errorBase }}>{error}</Text></MotionRegion>}
   </View>;
 }

@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { KeyboardInput as TextInput, KeyboardField } from '@/components/ui/keyboard-aware-scroll-view';
 import { useRef, useState } from 'react';
 import { Keyboard, Text, View, type TextInputInstance } from 'react-native';
@@ -36,26 +37,26 @@ export function ReportFilters({ draft, single, pending, busy, onDraft, onApply, 
     else { const range = selectCalendarRange(draft, date); onDraft({ preset: 'custom', ...range }); setField(range.to ? 'from' : 'to'); }
   }
   return <View className="gap-3">
-    <View className="flex-row items-center gap-2"><PosIcon name="calendar" size={18} /><Text className="font-poppins text-[14px] text-brand">{t(single ? 'financial.filterDate' : 'financial.filterRange')}</Text></View>
+    <View className="flex-row items-center gap-2"><PosIcon name="calendar" size={18} /><Text className=" type-micro-financial-rate text-brand">{t(single ? 'financial.filterDate' : 'financial.filterRange')}</Text></View>
     <View className="flex-row gap-x-2">{presets.map(preset => <PosChip key={preset} compact stretch label={t(`financial.${preset}`)} selected={draft.preset === preset} onPress={() => choosePreset(preset)} />)}</View>
     <KeyboardField className="gap-3"><View className="flex-row gap-3">{(single ? ['to'] as const : ['from', 'to'] as const).map(target => {
       const invalid = target === 'from' ? !validCalendarDate(draft.from) : !validCalendarDate(draft.to) || (validCalendarDate(draft.from) && draft.to < draft.from);
       return <View key={target} className="min-w-0 flex-1 gap-1">
-        <Text className="font-poppins-semibold text-[11px] text-brand">{t(single ? 'financial.asOf' : `financial.${target}`)}</Text>
+        <Text className=" type-label-nav text-brand">{t(single ? 'financial.asOf' : `financial.${target}`)}</Text>
         <TextInput accessibilityLabel={t(single ? 'financial.asOf' : `financial.${target}`)} accessibilityHint={invalid ? error ?? undefined : 'YYYY-MM-DD. Select a date using the calendar or enter it.'}
           ref={target === 'to' ? toInput : undefined}
           value={focused === target || !validCalendarDate(draft[target]) ? draft[target] : formatCalendarDate(draft[target])}
           onFocus={() => { setFocused(target); setField(target); choosePreset('custom'); if (validCalendarDate(draft[target])) setMonth(draft[target].slice(0, 7)); }} onBlur={() => setFocused(null)}
           onChangeText={value => update(value, target)} autoCorrect={false} autoCapitalize="none" inputMode="text" returnKeyType={target === 'from' ? 'next' : 'done'} maxLength={10} selectTextOnFocus
           onSubmitEditing={() => { if (target === 'from') toInput.current?.focus(); else Keyboard.dismiss(); }}
-          className="min-h-12 rounded-control border bg-white px-3 py-3 font-poppins-semibold text-[11px] text-[#0C1B3C]"
-          style={{ borderColor: invalid ? '#D32F2F' : field === target && draft.preset === 'custom' ? '#2F6CC9' : '#B0C8E3', backgroundColor: invalid ? '#FFF7F8' : '#FFFFFF', boxShadow: '0 1px 3px #B0C8E3' }} />
+          className="min-h-12 rounded-control border bg-white px-3 py-3 type-label-nav text-text-primary"
+          style={{ borderColor: invalid ? tokens.color.errorBase : field === target && draft.preset === 'custom' ? tokens.color.brightBlue : tokens.color.borderOutline, backgroundColor: invalid ? tokens.color.errorTint : tokens.color.surfaceCard }} />
       </View>;
     })}</View>
-    {error && <View className="flex-row items-start gap-2 rounded-control bg-[#FFEBEE] p-3"><PosIcon name="alert" size={18} color="#B4232C" /><Text accessibilityRole="alert" className="flex-1 font-poppins text-[11px] text-[#B4232C]">{error}</Text></View>}
+    {error && <View className="flex-row items-start gap-2 rounded-control bg-error-tint p-3"><PosIcon name="alert" size={18} color={tokens.color.errorBase} /><Text accessibilityRole="alert" className="flex-1 type-micro-caption text-error-base">{error}</Text></View>}
     </KeyboardField>
     {draft.preset === 'custom' && <ReportCalendar selection={draft} single={single} month={month} onMonth={setMonth} onSelect={select} />}
-    <Text accessibilityLiveRegion="polite" className="font-poppins text-[10px] leading-4 text-text-secondary">{t(pending ? 'financial.pending' : single ? 'financial.singleHint' : 'financial.dateHint')}</Text>
+    <Text accessibilityLiveRegion="polite" className=" type-helper leading-4 text-text-secondary">{t(pending ? 'financial.pending' : single ? 'financial.singleHint' : 'financial.dateHint')}</Text>
     <View className="flex-row gap-3"><Button style={{ flex: 1 }} fullWidth={false} variant="secondary" disabled={busy} onPress={() => { Keyboard.dismiss(); setFocused(null); onReset(); }}>{t('financial.reset')}</Button><Button style={{ flex: 2 }} fullWidth={false} disabled={!!error || busy} onPress={() => { Keyboard.dismiss(); setFocused(null); onApply(); }}>{t('financial.apply')}</Button></View>
   </View>;
 }

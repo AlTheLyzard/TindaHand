@@ -13,8 +13,10 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 
 const InventoryContext = createContext<{ store: InventoryStore; getStore: () => InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void; refetchProducts: () => Promise<void> } | null>(null);
 
+type ApiProductBatch = { id: string; quantity: number; noExpiry: boolean; expirationDate: string | null };
+
 /** Map API product shape to the local InventoryProduct type. */
-function mapApiProduct(p: ReturnType<typeof Object.assign> & { id: string; name: string; category: string; unitPriceCentavos: number; costCentavos: number; stock: number; expirationDate: string | null; photoUri: string | null; batches?: { id: string; quantity: number; noExpiry: boolean; expirationDate: string | null }[] | null }): InventoryProduct {
+function mapApiProduct(p: ReturnType<typeof Object.assign> & { id: string; name: string; category: string; unitPriceCentavos: number; costCentavos: number; stock: number; expirationDate: string | null; photoUri: string | null; batches?: ApiProductBatch[] | null }): InventoryProduct {
   return {
     id: p.id,
     name: p.name,
@@ -24,7 +26,7 @@ function mapApiProduct(p: ReturnType<typeof Object.assign> & { id: string; name:
     stock: p.stock,
     expirationDate: p.expirationDate ?? '',
     photoUri: p.photoUri ?? undefined,
-    batches: p.batches?.map(b => b.noExpiry
+    batches: p.batches?.map((b: ApiProductBatch) => b.noExpiry
       ? { id: b.id, quantity: b.quantity, noExpiry: true as const, expirationDate: null }
       : { id: b.id, quantity: b.quantity, noExpiry: false as const, expirationDate: b.expirationDate ?? '' }),
   };

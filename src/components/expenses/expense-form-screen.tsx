@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { router, useFocusEffect, usePreventRemove } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Keyboard, ScrollView, Text, View, type ScrollViewInstance, type TextInputInstance, type ViewInstance } from 'react-native';
@@ -100,7 +101,7 @@ export function ExpenseFormScreen() {
           onCancel={() => setConfirmation(null)} onConfirm={confirm} />}
       </ScrollView></SafeAreaView>
     </MotionModal>}>
-    <Text className="font-poppins text-[14px] leading-[21px] text-text-secondary">Record and track your store&apos;s expenses.</Text>
+    <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">Record and track your store&apos;s expenses.</Text>
     <View onLayout={event => { formTop.current = event.nativeEvent.layout.y; }} pointerEvents={saving || leaving ? 'none' : 'auto'} style={{ gap: 24 }}>
       <View onLayout={event => { positions.current.category = event.nativeEvent.layout.y; }} style={{ zIndex: categoryOpen ? 20 : 0 }}>
         <ExpenseCategoryField triggerRef={categoryInput} value={draft.category} onChange={category => update({ category })} error={error('category')} open={categoryOpen} onOpenChange={setCategoryOpen} />
@@ -108,11 +109,11 @@ export function ExpenseFormScreen() {
       <View onLayout={event => { positions.current.amount = event.nativeEvent.layout.y; }}>
         <QuickAddField ref={amountInput} label="Amount" money large value={draft.amount} onChangeText={amount => update({ amount })} error={error('amount')} placeholder="0.00" inputMode="decimal" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => detailsInput.current?.focus()} />
       </View>
-      <InvField inputRef={detailsInput} label="Other details" value={draft.details} onChangeText={details => update({ details })} placeholder="e.g. Bayad sa kuryente ngayong buwan" multiline maxLength={200} fieldFooter={<Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 10, lineHeight: 15, color: '#6F8094' }}>{draft.details.length}/200</Text>} style={{ minHeight: 150, textAlign: 'left', textAlignVertical: 'top', paddingLeft: 16, paddingTop: 12, paddingRight: 64, paddingBottom: 32 }} returnKeyType="default" />
+      <InvField inputRef={detailsInput} label="Other details" value={draft.details} onChangeText={details => update({ details })} placeholder="e.g. Bayad sa kuryente ngayong buwan" multiline maxLength={200} fieldFooter={<Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.textPlaceholder }}>{draft.details.length}/200</Text>} style={{ minHeight: 150, textAlign: 'left', textAlignVertical: 'top', paddingLeft: 16, paddingTop: 12, paddingRight: 64, paddingBottom: 32 }} returnKeyType="default" />
       <View onLayout={event => { positions.current.expenseDate = event.nativeEvent.layout.y; }}>
         <InvDateField compact inputRef={dateInput} label="Expense date" value={draft.expenseDate} onChange={expenseDate => update({ expenseDate })} error={error('expenseDate')} />
       </View>
-      {!!failure && <MotionRegion><Text accessibilityRole="alert" className="font-poppins text-[12px] text-[#972020]">{failure}</Text></MotionRegion>}
+      {!!failure && <MotionRegion><Text accessibilityRole="alert" className=" type-micro-caption text-error-base">{failure}</Text></MotionRegion>}
       <View className="mt-6 gap-4">
         <Button loading={saving} disabled={leaving} onPress={() => void submit()}>New Record</Button>
         <Button variant="secondary" disabled={saving || leaving} onPress={() => {

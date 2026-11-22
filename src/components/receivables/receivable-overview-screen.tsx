@@ -42,7 +42,7 @@ export function ReceivableOverviewScreen({ pendingOnly = false }: { pendingOnly?
   // Refresh real API data each time screen gains focus (e.g. after recording a new debt).
   useEffect(() => { if (confirmedMode) refreshReceivables(); }, [confirmedMode, refreshReceivables]);
   const lists = receivableLists(receivableRecords, receivablePayments, query, today);
-  const groups = paid ? [{ title: '', category: null, rows: lists.paid, color: colors.green, surface: '#FFFFFF' }] : pendingOnly ? [{ title: 'Pending', category: 'pending', rows: lists.pending, color: colors.blue, surface: colors.pendingGroup }] : [
+  const groups = paid ? [{ title: '', category: null, rows: lists.paid, color: colors.green, surface: tokens.color.surfaceCard }] : pendingOnly ? [{ title: 'Pending', category: 'pending', rows: lists.pending, color: colors.blue, surface: colors.pendingGroup }] : [
     { title: 'Overdue', category: 'overdue', rows: lists.overdue, color: colors.red, surface: colors.overdueGroup },
     { title: 'Pending', category: 'pending', rows: lists.pending, color: colors.blue, surface: colors.pendingGroup },
     { title: 'Remaining Balance', category: 'remaining', rows: lists.partial, color: colors.orange, surface: colors.partialGroup },
@@ -52,7 +52,7 @@ export function ReceivableOverviewScreen({ pendingOnly = false }: { pendingOnly?
   const arrivalGroups = debtId ? groups.slice().sort((a, b) => Number(b.rows.some(row => row.debt.id === debtId)) - Number(a.rows.some(row => row.debt.id === debtId))) : groups;
   function back() { router.dismissTo({ pathname: receivablesRoot, params: { section: 'receivable', status: 'unpaid' } }); }
   return <InventoryFrame scrollRef={scroll} title={pendingOnly ? 'Pending debt' : 'Account Balances'} back inlineTitle onBack={pendingOnly ? back : undefined}>
-    {pendingOnly ? <Text className="font-poppins text-[14px] text-text-secondary">Keep track of customers with pending debt.</Text> : <SegmentedSelector tone="subtle"
+    {pendingOnly ? <Text className=" type-micro-financial-rate text-text-secondary">Keep track of customers with pending debt.</Text> : <SegmentedSelector tone="subtle"
       options={[{ label: 'Receivable', value: 'receivable' }, { label: 'Payable', value: 'payable' }]}
       value="receivable" onChange={section => { router.setParams({ section, status: 'unpaid' }); }} />}
     {!pendingOnly && !paid && <>
@@ -63,7 +63,7 @@ export function ReceivableOverviewScreen({ pendingOnly = false }: { pendingOnly?
     {!pendingOnly && <View accessibilityRole="tablist" className="flex-row px-4">
       {['Unpaid', 'Paid'].map(label => {
         const selected = paid === (label === 'Paid');
-        return <Pressable key={label} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => { router.setParams({ status: label.toLowerCase() }); }} className="min-h-12 flex-1 items-center justify-center border-b px-3 py-3" style={{ borderColor: selected ? tokens.color.accentBase : '#102342', borderBottomWidth: selected ? 3 : 1 }}><Text className="font-poppins-bold text-[14px]" style={{ color: selected ? tokens.color.accentBase : '#102342' }}>{label}</Text></Pressable>;
+        return <Pressable key={label} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => { router.setParams({ status: label.toLowerCase() }); }} className="min-h-12 flex-1 items-center justify-center border-b px-3 py-3" style={{ borderColor: selected ? tokens.color.accentBase : tokens.color.textPrimary, borderBottomWidth: selected ? 3 : 1 }}><Text className=" type-button-cta" style={{ color: selected ? tokens.color.accentBase : tokens.color.textPrimary }}>{label}</Text></Pressable>;
       })}
     </View>}
     <View className="py-3"><CustomerSearch value={query} onChange={setQuery} /></View>
@@ -71,8 +71,8 @@ export function ReceivableOverviewScreen({ pendingOnly = false }: { pendingOnly?
       {noRows ? <ContentState title={query.trim() ? 'No matching debts' : paid ? 'No paid debts yet' : pendingOnly ? 'No pending debts' : 'No unpaid debts'} description={query.trim() ? 'Try another customer name or clear your search.' : paid ? 'Fully settled debts will appear here.' : 'Record a customer debt to track what is owed to your store.'} /> : <View className="gap-5">
         {arrivalGroups.filter(group => group.rows.length).map(group => <View key={group.title} className={paid ? 'gap-3' : 'gap-3 rounded-surface p-3'} style={{ backgroundColor: paid ? undefined : group.surface }}>
           {!!group.title && <View className="flex-row flex-wrap items-center gap-2">
-            <Text accessibilityRole="header" className="font-poppins-semibold text-[14px]" style={{ color: group.color }}>{group.title}</Text>
-            <View className="min-h-5 min-w-5 items-center justify-center rounded-pill px-1" style={{ backgroundColor: group.color }}><Text className="font-poppins text-[10px] text-white">{group.rows.length}</Text></View>
+            <Text accessibilityRole="header" className=" type-micro-financial-rate" style={{ color: group.color }}>{group.title}</Text>
+            <View className="min-h-5 min-w-5 items-center justify-center rounded-pill px-1" style={{ backgroundColor: group.color }}><Text className=" type-helper text-white">{group.rows.length}</Text></View>
             {!pendingOnly && !paid && group.category && <Button variant="text" compact fullWidth={false} accessibilityLabel={`View all ${group.title.toLowerCase()} debts`} onPress={() => push({ pathname: `${receivablesRoot}/category-transactions`, params: { section: 'receivable', category: group.category } } as unknown as Href)} style={{ marginLeft: 'auto' }}>View all</Button>}
           </View>}
           {(!paid && !pendingOnly ? group.rows.slice().sort((a, b) => Number(b.debt.id === debtId) - Number(a.debt.id === debtId)).slice(0, 2) : group.rows).map(row => <ReceivableCard key={row.debt.id} row={row} today={today}

@@ -14,7 +14,7 @@ export function PaymentAmountField({ label, value, onChange, error, inputRef, on
     <FormField money ref={inputRef} label={label} requiredIndicator="asterisk" prefix="₱" value={value} onChangeText={onChange} placeholder="0.00" onBlur={onBlur}
       keyboardType="decimal-pad" inputMode="decimal" returnKeyType={onNext ? 'next' : 'done'}
       onSubmitEditing={onNext ?? Keyboard.dismiss} error={error} />
-    <Text className="mt-2 font-poppins-bold text-[12px] text-text-secondary">Quick Amounts</Text>
+    <Text className="mt-2 type-label-nav text-text-secondary">Quick Amounts</Text>
     <View className="flex-row gap-1">
       {paymentQuickAmountsCentavos.map(amount => <PosChip key={amount} appearance="quickAmount" stretch label={`₱${amount / 100}`}
         accessibilityLabel={`Set ${label} to ${formatPesos(amount)}`} selected={parsePaymentAmount(value) === amount}

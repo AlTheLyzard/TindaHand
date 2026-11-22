@@ -58,9 +58,9 @@ function ReceivableCategoryTransactions({ category }: { category: Category }) {
 
   return <InventoryFrame title={`${categoryTitle[category]} Debts`} back inlineTitle onBack={back}>
     <View className="flex-row flex-wrap items-center justify-between gap-2">
-      <Text accessibilityRole="header" className="font-poppins-semibold text-[16px]" style={{ color }}>{categoryTitle[category]}</Text>
+      <Text accessibilityRole="header" className=" type-body-primary" style={{ color }}>{categoryTitle[category]}</Text>
       <View className="min-h-6 min-w-6 items-center justify-center rounded-pill px-2" style={{ backgroundColor: color }}>
-        <Text className="font-poppins text-[11px] text-white">{rows.length}</Text>
+        <Text className=" type-micro-caption text-white">{rows.length}</Text>
       </View>
     </View>
     <View className="py-3"><CustomerSearch value={query} onChange={setQuery} /></View>
@@ -89,9 +89,9 @@ function PayableCategoryTransactions({ category }: { category: Category }) {
 
   return <InventoryFrame title={`${categoryTitle[category]} Debts`} back inlineTitle onBack={back}>
     <View className="flex-row flex-wrap items-center justify-between gap-2">
-      <Text accessibilityRole="header" className="font-poppins-semibold text-[16px]" style={{ color }}>{categoryTitle[category]}</Text>
+      <Text accessibilityRole="header" className=" type-body-primary" style={{ color }}>{categoryTitle[category]}</Text>
       <View className="min-h-6 min-w-6 items-center justify-center rounded-pill px-2" style={{ backgroundColor: color }}>
-        <Text className="font-poppins text-[11px] text-white">{rows.length}</Text>
+        <Text className=" type-micro-caption text-white">{rows.length}</Text>
       </View>
     </View>
     <View className="py-3"><CreditorSearch value={query} onChange={setQuery} /></View>

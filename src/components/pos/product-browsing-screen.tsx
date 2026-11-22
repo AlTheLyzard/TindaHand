@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -35,13 +36,13 @@ export function ProductBrowsingScreen({ owner, basePath = '/owner-pos' }: { owne
     <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ProductCatalog ref={catalog} products={preview.empty ? [] : products} selection={selection} onAdd={add} preview={preview}
         control={__DEV__ && previewControl === 'controls' ? preview.control : null} onOpenInventory={() => { preview.reset(); router.navigate(basePath === '/owner-pos' ? '/owner-inventory' : '/operator-inventory'); }} />
-      <View testID="pos-cart-sheet" className="w-full justify-center rounded-t-[14px] border border-[#ADC9EE] bg-white py-3" style={{ minHeight: metrics.sheetHeight }}>
+      <View testID="pos-cart-sheet" className="w-full justify-center rounded-t-[14px] border border-outline bg-white py-3" style={{ minHeight: metrics.sheetHeight }}>
         <View className="w-full max-w-[460px] self-center" style={{ paddingHorizontal: metrics.sheetPadding }}>
           <View className="flex-row items-center justify-between gap-3">
-            <View className="flex-1" accessibilityLiveRegion="polite"><Text className="font-poppins text-[10px] leading-[14px] text-text-secondary">{summary.quantity} {summary.quantity === 1 ? 'Item' : 'Items'} | Total:</Text><Text testID="pos-cart-total" className="font-poppins-bold text-[24px] leading-[45px] text-brand">{formatPesos(summary.totalCentavos)}</Text></View>
+            <View className="flex-1" accessibilityLiveRegion="polite"><Text className=" type-helper leading-[14px] text-text-secondary">{summary.quantity} {summary.quantity === 1 ? 'Item' : 'Items'} | Total:</Text><Text testID="pos-cart-total" className=" type-h2-section leading-[45px] text-brand">{formatPesos(summary.totalCentavos)}</Text></View>
             <Pressable testID="pos-view-cart" accessibilityRole="button" accessibilityLabel={`${t('pos.viewCart')} →`} onPress={() => { Keyboard.dismiss(); push(posHref(basePath, 'cart')); }} className="min-h-12 min-w-12 flex-row items-center justify-center gap-2 py-2 pl-3">
-              <Text testID="pos-view-cart-label" className="font-poppins-bold text-[14px] leading-[21px] text-[#245399]">{t('pos.viewCart')}</Text>
-              <View testID="pos-view-cart-arrow" accessible={false} style={{ transform: [{ rotate: '180deg' }] }}><PosIcon name="back" size={20} color="#245399" /></View>
+              <Text testID="pos-view-cart-label" className=" type-button-cta leading-[21px] text-action">{t('pos.viewCart')}</Text>
+              <View testID="pos-view-cart-arrow" accessible={false} style={{ transform: [{ rotate: '180deg' }] }}><PosIcon name="back" size={20} color={tokens.color.royalBlue} /></View>
             </Pressable>
           </View>
         </View>

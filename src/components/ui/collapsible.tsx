@@ -1,8 +1,8 @@
 import { ButtonSurface } from '@/components/ui/button';
-import { SymbolView } from 'expo-symbols';
 import { PropsWithChildren, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { MotionRegion } from '@/components/ui/motion-content';
+import { PosIcon } from '@/components/pos/pos-icon';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -19,13 +19,7 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
         style={[styles.heading, { minHeight: 48 }]}
         onPress={() => setIsOpen((value) => !value)}>
         <ThemedView type="backgroundElement" style={styles.button}>
-          <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-            size={14}
-            weight="bold"
-            tintColor={theme.text}
-            style={{ transform: [{ rotate: isOpen ? '-90deg' : '90deg' }] }}
-          />
+          <PosIcon name={isOpen ? 'chevronUp' : 'chevronDown'} size={14} color={theme.text} />
         </ThemedView>
 
         <ThemedText type="small">{title}</ThemedText>

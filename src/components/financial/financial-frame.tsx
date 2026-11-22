@@ -2,7 +2,7 @@ import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoi
 import { router, useFocusEffect } from 'expo-router';
 import { Image as BackgroundImage } from 'expo-image';
 import { useCallback, type ReactNode } from 'react';
-import { BackHandler, Image, Platform, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { BackHandler, Image, Platform, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
 import { MainHeader } from '@/components/dashboard/main-header';
@@ -18,7 +18,6 @@ export function FinancialFrame({ title, landing = false, children, refreshing = 
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const back = useCallback(() => router.dismissTo(landing ? '/owner-dashboard' : financialRoot), [landing]);
   useFocusEffect(useCallback(() => {
     const listener = BackHandler.addEventListener('hardwareBackPress', () => { back(); return true; });
@@ -34,10 +33,10 @@ export function FinancialFrame({ title, landing = false, children, refreshing = 
     <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
       refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined}
       contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + (landing ? tokens.navigation.height + 24 : 24) }}>
-      <View className="w-full max-w-[460px] flex-1 self-center px-6 pt-6">
+      <View className="w-full max-w-[460px] flex-1 self-center px-6" style={{ paddingTop: tokens.spacing.headerTitleGap }}>
         <View className="mb-5 flex-row items-center gap-1">
           <BackButton accessibilityLabel={t('common.back')} onPress={back} />
-          <Text accessibilityRole="header" className="min-w-0 flex-1 font-poppins-bold text-brand" style={{ fontSize: landing ? width < 360 ? 20 : 26 : 22, lineHeight: landing ? 38 : 32 }}>{title}</Text>
+          <Text accessibilityRole="header" className={`min-w-0 flex-1 ${landing ? 'type-h1-display' : 'type-h2-section'} text-brand`}>{title}</Text>
           {!landing && onRefresh && <IconButton accessibilityLabel={t('financial.refresh')} disabled={refreshing} onPress={onRefresh} icon={({ color }) => <PosIcon name="history" size={20} color={color} />} />}
         </View>
         {children}

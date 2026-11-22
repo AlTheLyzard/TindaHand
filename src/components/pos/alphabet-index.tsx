@@ -84,7 +84,7 @@ export function AlphabetIndex({ letters, active, onPick, gridStart, viewportHeig
       seek(false);
     });
   }
-  return <Animated.View testID="alphabet-index" style={[{ position: 'absolute', right: 0, width: alphabetIndexWidth, overflow: 'visible', justifyContent: 'flex-start', zIndex: 20, elevation: 20 }, position]}>
+  return <Animated.View testID="alphabet-index" style={[{ position: 'absolute', right: 0, width: alphabetIndexWidth, overflow: 'visible', justifyContent: 'flex-start', zIndex: 20 }, position]}>
     <View ref={track} testID="alphabet-index-track" collapsable={false}
       style={{ flex: 1, maxHeight: entries.length * 18, width: alphabetIndexWidth, touchAction: 'none' }}
       onStartShouldSetResponderCapture={() => true} onMoveShouldSetResponderCapture={() => true}
@@ -97,7 +97,7 @@ export function AlphabetIndex({ letters, active, onPick, gridStart, viewportHeig
         accessibilityState={{ disabled: !enabled(letter), selected: enabled(letter) && (interacting ? highlighted : active) === letter }}
         onPress={() => { setHighlighted(letter); emphasis.set(1); onPick(letter, false); finish(); }}
         style={{ flex: 1, minHeight: 0, maxHeight: 18, width: alphabetIndexWidth, alignItems: 'center', justifyContent: 'center' }}>
-        <Text maxFontSizeMultiplier={1} style={{ fontFamily: 'Poppins_400Regular', fontSize: 8, lineHeight: 9, color: tokens.color.textSecondary, opacity: enabled(letter) ? 1 : 0.35 }}>{letter}</Text>
+        <Text maxFontSizeMultiplier={1} style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: 9, color: tokens.color.textSecondary, opacity: enabled(letter) ? 1 : 0.35 }}>{letter}</Text>
         <IndexIndicator letter={letter} selected={enabled(letter) && (interacting ? highlighted : active) === letter}
           focused={enabled(letter) && highlighted === letter} emphasis={emphasis} />
       </Pressable>)}
@@ -114,10 +114,10 @@ function IndexIndicator({ letter, selected, focused, emphasis }: { letter: strin
   }));
   return <View testID={`alphabet-index-indicator-${letter}`} pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}>
     <Animated.View style={[{ position: 'absolute', top: '50%', left: 11, marginTop: -9, width: 22, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.accentContainer }, restAppearance]}>
-      <Text maxFontSizeMultiplier={1} style={{ fontFamily: 'Poppins_700Bold', fontSize: 8, lineHeight: 9, color: '#245399' }}>{letter}</Text>
+      <Text maxFontSizeMultiplier={1} style={{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.statusBadge.fontSize, lineHeight: 9, color: tokens.color.royalBlue }}>{letter}</Text>
     </Animated.View>
-    <Animated.View style={[{ position: 'absolute', top: '50%', right: alphabetIndexWidth, marginTop: -18, width: 42, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.accentBase, boxShadow: '0px 3px 8px #112F6F45', zIndex: 2, elevation: 2 }, popOutAppearance]}>
-      <Text maxFontSizeMultiplier={1} style={{ fontFamily: 'Poppins_700Bold', fontSize: 16, lineHeight: 20, color: tokens.color.surfaceCard }}>{letter}</Text>
+    <Animated.View style={[{ position: 'absolute', top: '50%', right: alphabetIndexWidth, marginTop: -18, width: 42, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.accentBase, zIndex: 2 }, popOutAppearance]}>
+      <Text maxFontSizeMultiplier={1} style={{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.listFinancial.fontSize, lineHeight: 20, color: tokens.color.surfaceCard }}>{letter}</Text>
     </Animated.View>
   </View>;
 }

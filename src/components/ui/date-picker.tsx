@@ -25,11 +25,11 @@ export function DateCalendar({ selection, mode, month, onMonth, onSelect, minDat
   return <View testID="date-calendar" style={{ borderWidth: 1, borderColor: tokens.color.borderOutline, borderRadius: tokens.radius.surface, backgroundColor: tokens.color.surfaceCard, padding: 8, gap: 8 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <IconButton accessibilityLabel="Previous month" disabled={previous === month} onPress={() => onMonth(previous)} icon={({ color }) => <View style={{ transform: [{ rotate: '180deg' }] }}><PosIcon name="chevronRight" size={20} color={color} /></View>} />
-      <Text accessibilityRole="header" style={{ flex: 1, textAlign: 'center', fontFamily: 'Poppins_700Bold', fontSize: 18, color: tokens.color.textPrimary }}>{title}</Text>
+      <Text accessibilityRole="header" style={{ flex: 1, textAlign: 'center', fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.h3Heading.fontSize, color: tokens.color.textPrimary }}>{title}</Text>
       <IconButton accessibilityLabel="Next month" disabled={next === month} onPress={() => onMonth(next)} icon={({ color }) => <PosIcon name="chevronRight" size={20} color={color} />} />
     </View>
     <View style={{ flexDirection: 'row' }}>{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => <Text key={day}
-      style={{ width: `${100 / 7}%`, textAlign: 'center', fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: tokens.color.textSecondary }}>{day}</Text>)}</View>
+      style={{ width: `${100 / 7}%`, textAlign: 'center', fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, color: tokens.color.textSecondary }}>{day}</Text>)}</View>
     <View onLayout={event => setGridWidth(event.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{calendarDays(month).map(date => {
       const disabled = !validCalendarDate(date) || date < minDate || date > maxDate;
       const endpoint = date === selection.from || date === selection.to;
@@ -38,16 +38,16 @@ export function DateCalendar({ selection, mode, month, onMonth, onSelect, minDat
         onPress={() => onSelect(date)} style={{ width: `${100 / 7}%`, minHeight: 48, marginVertical: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: between ? tokens.color.accentContainer : 'transparent' }}>
         <View testID={endpoint ? 'calendar-selected-day' : undefined} style={{ width: daySize, height: daySize, borderRadius: daySize / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: endpoint ? tokens.button.primary.default : 'transparent', borderWidth: date === today && !endpoint && !between ? 1 : 0, borderColor: tokens.color.accentBase }}>
           <Text adjustsFontSizeToFit numberOfLines={1} style={{ width: daySize, height: daySize, lineHeight: daySize, textAlign: 'center', textAlignVertical: 'center', includeFontPadding: false,
-            fontFamily: 'Poppins_600SemiBold', fontSize: 18, color: endpoint ? '#FFFFFF' : disabled ? '#A1AEC0' : date.startsWith(month) ? tokens.color.textPrimary : '#607B9E' }}>{Number(date.slice(-2))}</Text>
+            fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.h3Heading.fontSize, color: endpoint ? tokens.color.surfaceCard : disabled ? tokens.color.textDisabled : date.startsWith(month) ? tokens.color.textPrimary : tokens.color.textPlaceholder }}>{Number(date.slice(-2))}</Text>
         </View>
       </MotionPressable>;
     })}</View>
     <View style={{ padding: 4, gap: 8 }}>
-      <Text accessibilityLiveRegion="polite" style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: tokens.button.primary.default }}>
+      <Text accessibilityLiveRegion="polite" style={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, color: tokens.button.primary.default }}>
         {mode === 'single' ? `Selected: ${selection.from ? formatCalendarDate(selection.from) : 'Choose a date'}`
           : `From: ${selection.from ? formatCalendarDate(selection.from) : '—'} → To: ${selection.to ? formatCalendarDate(selection.to) : '—'}${count ? ` · ${count} ${count === 1 ? 'day' : 'days'}` : ''}`}
       </Text>
-      <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18, color: tokens.color.textSecondary }}>
+      <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microCaption.fontSize, lineHeight: 18, color: tokens.color.textSecondary }}>
         {helperText ?? (mode === 'range' ? 'Choose a start and end date. Both dates are included.' : 'Choose one date, then tap Confirm Date.')}
       </Text>
     </View>

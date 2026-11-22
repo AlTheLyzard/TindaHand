@@ -1,4 +1,5 @@
-import { KeyboardInput as TextInput, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
+import { KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
+import { SearchBar } from '@/components/ui/search-bar';
 import { router } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { FlatList, Keyboard, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -9,7 +10,7 @@ import { OperatorHeader } from '@/components/operator/operator-header';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { PosChip } from '@/components/pos/pos-chip';
 import { PosIcon } from '@/components/pos/pos-icon';
-import { Button, IconButton } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { BackButton } from '@/components/ui/back-button';
 import { Skeleton, SkeletonBar } from '@/components/ui/content-state';
 import tokens from '@/constants/design-tokens.json';
@@ -31,7 +32,7 @@ function TransactionRow({ record }: { record: TransactionRecord }) {
   const metadata = transactionMetadata(record);
   const partial = record.saleTotalCentavos !== undefined && (record.outstandingCentavos ?? 0) > 0;
   const details = partial ? ` Sale total ${transactionAmount({ amountCentavos: record.saleTotalCentavos!, direction: 'neutral' })}. Received ${amount}. Outstanding ${transactionAmount({ amountCentavos: record.outstandingCentavos!, direction: 'neutral' })}.` : '';
-  const amountText = <Text testID="transaction-amount" style={[styles.amount, { color: record.direction === 'in' ? '#1D5D21' : record.direction === 'out' ? '#972020' : tokens.color.textSecondary }]}>{amount.replace(/ /g, '\u00a0')}</Text>;
+  const amountText = <Text testID="transaction-amount" style={[styles.amount, { color: record.direction === 'in' ? tokens.color.successBase : record.direction === 'out' ? tokens.color.errorBase : tokens.color.textSecondary }]}>{amount.replace(/ /g, '\u00a0')}</Text>;
   return <View testID="transaction-row" accessible accessibilityLabel={`${title}. ${metadata}. ${amount}.${details}`}
     style={[styles.row, { flexDirection: stacked ? 'column' : 'row', alignItems: stacked ? 'stretch' : 'center' }]}>
     <View style={{ flex: stacked ? undefined : 1, minWidth: 0, gap: 2 }}>
@@ -54,11 +55,10 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
   const [category, setCategory] = useState<TransactionCategory>('all');
   const [filters, setFilters] = useState<TransactionFilters>(emptyTransactionFilters);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [focused, setFocused] = useState(false);
   const list = useRef<FlatList<TransactionRecord>>(null);
   const insets = useSafeAreaInsets();
   const navigationHeight = useNavigationHeight();
-  const { width, fontScale } = useWindowDimensions();
+  const { fontScale } = useWindowDimensions();
   const categories = operator ? operatorTransactionCategories : transactionCategories;
   const filtered = useMemo(() => filterTransactions(rows, query, category, filters), [rows, query, category, filters]);
   const hasFilters = !!filters.from || !!filters.to || filters.paymentMethod !== 'all';
@@ -72,10 +72,6 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
   // - Expected Response: { items: TransactionRecord[]; total: number }
   // - UI State to Wire: Calculate page count from server total and handle page loading/errors
   const pageRows = filtered.slice(pageIndex * transactionPageSize, (pageIndex + 1) * transactionPageSize);
-  const safeWidth = Math.max(1, width - insets.left - insets.right);
-  const titleWidth = Math.max(1, Math.min(safeWidth, 460) - 48 - tokens.size.touchTarget - 4);
-  const titleFontSize = Math.min(32, Math.max(8, titleWidth * 0.095));
-  const searchHeight = Math.max(tokens.size.touchTarget, Math.ceil(fontScale * 18) + 24);
   const moveToTop = () => list.current?.scrollToOffset({ offset: 0, animated: false });
   const reset = () => { Keyboard.dismiss(); setQuery(''); setCategory('all'); setFilters(emptyTransactionFilters()); moveToTop(); };
   const goToPage = (index: number) => {
@@ -94,20 +90,13 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
           <View style={styles.controls}>
           <View style={styles.heading}>
             <BackButton accessibilityLabel="Go back" onPress={back} />
-            <Text accessibilityRole="header" numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.3}
-              style={[styles.title, { fontSize: titleFontSize, lineHeight: titleFontSize * 1.375 }]}>Transaction History</Text>
+              <Text accessibilityRole="header" className="type-h1-display text-brand" style={{ lineHeight: tokens.typography.h1Display.lineHeight * fontScale }}>Transaction History</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={[styles.search, { minHeight: searchHeight + 2, borderColor: focused ? tokens.color.accentBase : tokens.color.borderOutline }]}>
-              <PosIcon name="search" size={20} color="#5A7394" />
-              <TextInput accessibilityLabel="Search transactions" accessibilityHint="Search by transaction number, customer, payee, or description."
-                value={query} onChangeText={value => { setQuery(value); moveToTop(); }} placeholder="Search transactions..." placeholderTextColor={tokens.color.textSecondary}
-                underlineColorAndroid="transparent" selectionColor={tokens.color.accentBase} autoCorrect={false} spellCheck={false} autoCapitalize="none"
-                returnKeyType="search" onSubmitEditing={Keyboard.dismiss} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-                style={[styles.searchInput, { height: searchHeight }]} />
-              {!!query && <IconButton accessibilityLabel="Clear transaction search" onPress={() => { setQuery(''); moveToTop(); }}
-                icon={({ color }) => <PosIcon name="close" size={18} color={color} />} />}
-            </View>
+            <SearchBar containerStyle={{ flex: 1 }} label="Search transactions" accessibilityHint="Search by transaction number, customer, payee, or description."
+              value={query} onChangeText={value => { setQuery(value); moveToTop(); }} placeholder="Search transactions..."
+              selectionColor={tokens.color.brightBlue} onSubmitEditing={Keyboard.dismiss}
+              onClear={() => { setQuery(''); moveToTop(); }} clearLabel="Clear transaction search" />
             <Button compact variant="text" fullWidth={false} accessibilityLabel={hasFilters ? 'Filter transactions, filters applied' : 'Filter transactions'}
               accessibilityState={{ expanded: filterOpen, selected: hasFilters }} onPress={() => { Keyboard.dismiss(); setFilterOpen(true); }}
               iconPosition="trailing" icon={props => <PosIcon name="filter" {...props} />}>Filter</Button>
@@ -143,17 +132,14 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
 }
 
 const styles = StyleSheet.create({
-  controls: { width: '100%', maxWidth: 460, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 12, gap: 8, backgroundColor: tokens.color.appBackground },
+  controls: { width: '100%', maxWidth: 460, alignSelf: 'center', paddingHorizontal: 24, paddingTop: tokens.spacing.headerTitleGap, gap: 8, backgroundColor: tokens.color.appBackground },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
-  title: { flex: 1, minWidth: 0, fontFamily: 'Poppins_700Bold', color: '#112F6F' },
-  search: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderWidth: 1, borderRadius: tokens.radius.control, backgroundColor: tokens.color.surfaceCard, boxShadow: 'inset 0 2px 3px #D9E7F4' },
-  searchInput: { flex: 1, minWidth: 0, paddingVertical: 8, textAlignVertical: 'center', fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18, color: tokens.color.textPrimary },
   row: { minHeight: 72, paddingHorizontal: 16, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard },
-  rowTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, lineHeight: 18, color: tokens.color.textPrimary },
-  metadata: { fontFamily: 'Poppins_400Regular', fontSize: 10, lineHeight: 15, color: '#5A7394' },
-  amount: { flexShrink: 0, fontFamily: 'Poppins_700Bold', fontSize: 16, lineHeight: 24 },
+  rowTitle: { fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: 18, color: tokens.color.textPrimary },
+  metadata: { fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.textPlaceholder },
+  amount: { flexShrink: 0, fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.listFinancial.fontSize, lineHeight: 24 },
   empty: { padding: 20, marginTop: 20, gap: 16, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard },
-  emptyTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 22, lineHeight: 33, color: tokens.color.textPrimary },
-  emptyCopy: { fontFamily: 'Poppins_400Regular', fontSize: 14, lineHeight: 21, color: tokens.color.textSecondary },
+  emptyTitle: { fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 33, color: tokens.color.textPrimary },
+  emptyCopy: { fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microFinancialRate.fontSize, lineHeight: 21, color: tokens.color.textSecondary },
   pagination: { width: '100%', paddingTop: 4, paddingBottom: 8 },
 });

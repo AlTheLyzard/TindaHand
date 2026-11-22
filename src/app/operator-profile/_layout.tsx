@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { useEffect, type ReactNode } from 'react';
 import { Redirect, Stack } from 'expo-router';
 import { Text, View } from 'react-native';
@@ -18,7 +19,7 @@ function ClearStaleDraft({ children }: { children: ReactNode }) {
 export default function OperatorProfileLayout() {
   const motion = useStackMotion();
   const { deviceSession, restoring } = useAuthFlow();
-  if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className="font-poppins text-[14px] text-brand">Restoring your session…</Text></View>;
+  if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className=" type-micro-financial-rate text-brand">Restoring your session…</Text></View>;
   if (!deviceSession || deviceSession.role !== 'operator' || !hasCapability(deviceSession, 'profile')) return <Redirect href="/choose-account" />;
-  return <OperatorProfileDraftProvider><ClearStaleDraft><Stack screenOptions={{ ...motion, headerShown: false, contentStyle: { backgroundColor: '#F0F8FF' } }} /></ClearStaleDraft></OperatorProfileDraftProvider>;
+  return <OperatorProfileDraftProvider><ClearStaleDraft><Stack screenOptions={{ ...motion, headerShown: false, contentStyle: { backgroundColor: tokens.color.appBackground } }} /></ClearStaleDraft></OperatorProfileDraftProvider>;
 }

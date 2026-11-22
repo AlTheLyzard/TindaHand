@@ -16,22 +16,22 @@ export function AccountCreatedScreen({ completion, onContinue }: { completion: R
   const { setCompletion } = useAuthFlow();
   const dismissToast = useCallback(() => setCompletion((current) => current ? { ...current, toastExpiresAt: null } : null), [setCompletion]);
   return (
-    <RegistrationResultLayout step={1}
+    <RegistrationResultLayout step={2}
       notice={<>
-        {completion.mode === 'preview' && <Text accessibilityRole="alert" className="mt-4 font-poppins text-[12px] leading-[18px] text-text-secondary">{t('auth.confirmation.preview')}</Text>}
+        {completion.mode === 'preview' && <Text accessibilityRole="alert" className="mt-4 type-micro-caption leading-[18px] text-text-secondary">{t('auth.confirmation.preview')}</Text>}
         <RegistrationToast expiresAt={completion.toastExpiresAt} onDismiss={dismissToast} />
       </>}
       footer={<>
-        <Text className="mb-3 text-center font-poppins-bold text-[12px] leading-[18px] text-brand">{t('auth.confirmation.reminder')}</Text>
+        <Text className="mb-3 text-center type-label-nav leading-[18px] text-brand">{t('auth.confirmation.reminder')}</Text>
         <Button onPress={() => leave(onContinue)}>{t('common.continue')}</Button>
       </>}>
-      <View className="mx-1 px-7 py-8" style={{ boxShadow: 'inset 0 0 16px rgba(115,153,204,0.14)' }}>
+      <View className="mx-1 px-7 py-8">
         <SuccessMark animate eventKey={completion.id} />
-        <Text accessibilityRole="header" className="mt-6 font-poppins-bold text-[30px] leading-[44px] text-brand">{t('auth.confirmation.title')}</Text>
-        <Text className="font-poppins text-[10px] leading-[15px] text-text-secondary">{t('auth.confirmation.subtitle')}</Text>
-        <View className="mt-6 rounded-[10px] bg-white px-6 py-5" style={{ boxShadow: '0 4px 3px rgba(0,0,0,0.28)' }}>
-          <Text className="font-poppins-bold text-[12px] leading-[18px] text-text-secondary">{t('roles.owner')}</Text>
-          <Text className="font-poppins-bold text-[20px] leading-[30px] text-[#102342]">{completion.name}</Text>
+        <Text accessibilityRole="header" className="mt-6 type-large-metric leading-[44px] text-brand">{t('auth.confirmation.title')}</Text>
+        <Text className=" type-helper leading-[15px] text-text-secondary">{t('auth.confirmation.subtitle')}</Text>
+        <View className="mt-6 rounded-[10px] border border-outline bg-white px-6 py-5">
+          <Text className=" type-label-nav leading-[18px] text-text-secondary">{t('roles.owner')}</Text>
+          <Text className=" type-title-accent leading-[30px] text-text-primary">{completion.name}</Text>
         </View>
       </View>
     </RegistrationResultLayout>

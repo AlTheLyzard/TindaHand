@@ -1,3 +1,5 @@
+import tokens from '@/constants/design-tokens.json';
+import { SuccessMark } from '@/components/auth/success-mark';
 import { RegistrationToast } from "@/components/auth/registration-toast";
 import { PosDialog } from "@/components/pos/pos-dialog";
 import { PosIcon } from "@/components/pos/pos-icon";
@@ -58,10 +60,8 @@ export function OperatorListScreen() {
   if (!owner) return null;
   const storeName = profiles.get(owner.id)?.storeName;
   return (
-    <ProfileFrame title="Manage Kahera" subtitle="Control access to your store">
-      <ProfileNotice title="May-Ari access only">
-        Manage accounts linked to {storeName || "your store"}.
-      </ProfileNotice>
+    <ProfileFrame title="Manage Operators" subtitle="Control access to your store"
+      footer={<Button onPress={() => router.push(`${operatorsRoot}/new`)}>Add Operator</Button>}>
       <View className="mt-4 gap-3">
         {operators.length ? (
           operators.map((operator) => (
@@ -79,30 +79,31 @@ export function OperatorListScreen() {
                     Permissions and PIN management
                   </ProfileText>
                 </View>
-                <PosIcon name="chevronRight" size={20} color="#245399" />
+                <PosIcon name="chevronRight" size={20} color={tokens.color.royalBlue} />
               </Pressable>
             </SettingsCard>
           ))
         ) : (
           <SettingsCard>
-            <ProfileAvatar size={64} />
-            <Text
-              accessibilityRole="header"
-              className="mb-3 mt-4 font-poppins-bold text-[22px] leading-[32px] text-brand"
-            >
-              No Kahera yet
-            </Text>
-            <ProfileText>
-              Add a Kahera to help with daily store operations.
-            </ProfileText>
+            <View className="py-4">
+              <ProfileAvatar size={72} />
+              <Text
+                accessibilityRole="header"
+                className="mb-3 mt-4 type-title-accent leading-[32px] text-brand"
+              >
+                No operators yet
+              </Text>
+              <ProfileText>
+                Add an operator to help with daily store operations.
+              </ProfileText>
+            </View>
           </SettingsCard>
         )}
       </View>
-      <View className="min-h-8 flex-1" />
-      <View className="pt-6">
-        <Button onPress={() => router.push(`${operatorsRoot}/new`)}>
-          Add Kahera
-        </Button>
+      <View className="mt-4">
+        <ProfileNotice title="May-Ari access only">
+          Manage accounts linked to {storeName || "your store"}.
+        </ProfileNotice>
       </View>
     </ProfileFrame>
   );
@@ -122,7 +123,7 @@ export function OperatorDetailsScreen() {
       <ProfileFrame title="View Account">
         <ProfileError message="This Kahera is unavailable or does not belong to your store." />
         <Button onPress={() => router.dismissTo(operatorsRoot)}>
-          Back to Manage Kahera
+          Back to Manage Operators
         </Button>
       </ProfileFrame>
     );
@@ -260,8 +261,8 @@ function OperatorDetails({
       }
       setFeedback(
         inactive
-          ? "Kahera reactivated with saved permissions."
-          : "Kahera deactivated. Stored permissions and transaction history are preserved.",
+          ? "Operator reactivated with saved permissions."
+          : "Operator deactivated. Stored permissions and transaction history are preserved.",
       );
     } catch {
       if (active.current)
@@ -272,12 +273,22 @@ function OperatorDetails({
     }
   }
   return (
-    <ProfileFrame title="View Account" busy={statusBusy}>
+    <ProfileFrame title="View Account" busy={statusBusy} footer={<>
+      {!!statusError && <ProfileError message={statusError} retry={() => setConfirm(true)} />}
+      <Button
+        variant={inactive ? "primary" : "destructive"}
+        disabled={saving}
+        loading={statusBusy}
+        onPress={() => setConfirm(true)}
+      >
+        {inactive ? "Reactivate Account" : "Deactivate Account"}
+      </Button>
+    </>}>
       {created && (
         <RegistrationToast
           expiresAt={toast}
           onDismiss={dismissToast}
-          title="Kahera created"
+          title="Operator created"
           message={`${operator.name} can log in with the May-Ari ID and assigned PIN.`}
         />
       )}
@@ -289,18 +300,12 @@ function OperatorDetails({
         )}
         <OperatorIdentity operator={operator} />
         <View className="mt-4 gap-1">
-          <ProfileText small bold>
-            Linked May-Ari ID
-          </ProfileText>
+          <ProfileText small bold>Linked Owner ID</ProfileText>
           <ProfileText>{operator.ownerId}</ProfileText>
         </View>
       </SettingsCard>
-      <View className="my-4">
-        <ProfileNotice title="Store operations">
-          Changes apply only to this Kahera account.
-        </ProfileNotice>
-      </View>
-      <SettingsCard>
+      <View className="mt-4">
+        <SettingsCard>
         {permissionGroups.map((group, index) => {
           const checked =
             !inactive &&
@@ -310,7 +315,7 @@ function OperatorDetails({
           return (
             <View
               key={group.id}
-              className={`min-h-[70px] flex-row items-center gap-3 py-3 ${index ? "border-t border-[#ADC9EE]" : ""}`}
+              className={`min-h-[70px] flex-row items-center gap-3 py-3 ${index ? "border-t border-outline" : ""}`}
             >
               <View className="min-w-0 flex-1">
                 <ProfileText bold>{group.title}</ProfileText>
@@ -342,10 +347,10 @@ function OperatorDetails({
                     borderRadius: 11,
                     padding: 2,
                     backgroundColor: inactive
-                      ? "#CAD3DF"
+                      ? tokens.color.surfaceSubtle
                       : checked
-                        ? "#245399"
-                        : "#CAD3DF",
+                        ? tokens.color.royalBlue
+                        : tokens.color.surfaceSubtle,
                     justifyContent: "center",
                     alignItems: checked ? "flex-end" : "flex-start",
                   }}
@@ -355,7 +360,7 @@ function OperatorDetails({
                       width: 18,
                       height: 18,
                       borderRadius: 9,
-                      backgroundColor: inactive ? "#A3AFBF" : "#FFFFFF",
+                      backgroundColor: inactive ? tokens.color.textDisabled : tokens.color.surfaceCard,
                     }}
                   />
                 </View>
@@ -363,11 +368,12 @@ function OperatorDetails({
             </View>
           );
         })}
-      </SettingsCard>
+        </SettingsCard>
+      </View>
       {!!feedback && (
         <Text
           accessibilityLiveRegion="polite"
-          className="mt-2 font-poppins text-[12px] leading-[18px] text-[#28733A]"
+          className="mt-2 type-micro-caption leading-[18px] text-success-base"
         >
           {feedback}
         </Text>
@@ -411,27 +417,15 @@ function OperatorDetails({
           Set / Reset Kahera PIN
         </Button>
       </View>
-      <View className="min-h-5 flex-1" />
-      {!!statusError && (
-        <ProfileError message={statusError} retry={() => setConfirm(true)} />
-      )}
-      <Button
-        variant={inactive ? "primary" : "destructive"}
-        disabled={saving}
-        loading={statusBusy}
-        onPress={() => setConfirm(true)}
-      >
-        {inactive ? "Reactivate Account" : "Deactivate Account"}
-      </Button>
       <PosDialog
         visible={confirm}
         title={
-          inactive ? "Reactivate Kahera Account?" : "Deactivate Kahera Account?"
+          inactive ? "Reactivate this Account?" : "Deactivate this Account?"
         }
         message={
           inactive
-            ? `Restore ${operator.name}'s access to TindaHand with their saved permissions?`
-            : `Deactivate ${operator.name}'s Kahera account? They will lose access to TindaHand. Transaction history and saved permissions will be preserved.`
+            ? `Are you sure you want to reactivate this operator's account?`
+            : "Are you sure you want to deactivate this operator's account? They will lose access to TindaHand."
         }
         confirmLabel={inactive ? "Reactivate Account" : "Deactivate"}
         cancelLabel={inactive ? "Cancel" : "Keep Active"}
@@ -448,8 +442,8 @@ export function AddOperatorScreen() {
   if (!owner) return null;
   return (
     <ProfileFrame
-      title="Add Kahera"
-      subtitle="Add a Kahera to help you manage your store."
+      title="Add Operator"
+      subtitle="Add an operator to help you manage your store."
       onBack={() => router.dismissTo(operatorsRoot)}
     >
       <ProfileNotice title="Linked May-Ari ID">

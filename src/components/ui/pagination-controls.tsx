@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { Button } from '@/components/ui/button';
 import { Text, View } from 'react-native';
 
@@ -13,7 +14,7 @@ export function PaginationControls({ pageIndex, pageCount, itemName, onPageChang
       <Button compact fullWidth={false} variant="text" interactionBackgroundColor="transparent" disabled={pageIndex === 0}
         accessibilityLabel={`Previous ${itemName} page`} onPress={() => onPageChange(Math.max(0, pageIndex - 1))}>Previous</Button>
     </View>
-    <Text accessibilityLiveRegion="polite" style={{ flex: 1, minWidth: 0, textAlign: 'center', fontFamily: 'Poppins_700Bold', fontSize: 11, lineHeight: 16, color: '#245399' }}>Page {pageIndex + 1} of {pageCount}</Text>
+    <Text accessibilityLiveRegion="polite" style={{ flex: 1, minWidth: 0, textAlign: 'center', fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: 16, color: tokens.color.royalBlue }}>Page {pageIndex + 1} of {pageCount}</Text>
     <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-end' }}>
       <Button compact fullWidth={false} variant="text" interactionBackgroundColor="transparent" disabled={pageIndex >= pageCount - 1}
         accessibilityLabel={`Next ${itemName} page`} onPress={() => onPageChange(Math.min(pageCount - 1, pageIndex + 1))}>Next</Button>

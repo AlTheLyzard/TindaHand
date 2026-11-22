@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { Modal, StyleSheet, useWindowDimensions, type ModalProps } from 'react-native';
 import { memo, type ReactNode } from 'react';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
@@ -18,7 +19,7 @@ export const RetainedContent = memo(function RetainedContent({ children }: { vis
 
 /** A single clock coordinates the backdrop and surface on both entrance and exit. */
 export function MotionModal({ visible = true, children, onShow, onDismiss, onHidden, sheet = false,
-  backdropColor = 'rgba(0,0,0,0.30)', transitionDuration, ...props }: Props) {
+  backdropColor = tokens.overlay.scrim, transitionDuration, ...props }: Props) {
   const parentVisible = usePresentationVisible();
   const window = useWindowDimensions();
   const transition = useOverlayTransition(visible, onHidden, transitionDuration);

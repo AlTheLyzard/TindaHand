@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -25,7 +26,7 @@ export function GrowthSparkline({ points }: Pick<GrowthMetrics, 'points'>) {
       const dy = point.y - previous.y;
       const length = Math.hypot(dx, dy);
       return <View key={`${validPoints[index].timestamp}-${index}`} style={{
-        position: 'absolute', backgroundColor: '#21642C', opacity: 0.16, height: 2, width: length,
+        position: 'absolute', backgroundColor: tokens.color.successBase, opacity: 0.16, height: 2, width: length,
         left: (point.x + previous.x - length) / 2, top: (point.y + previous.y) / 2 - 1,
         transform: [{ rotate: `${Math.atan2(dy, dx)}rad` }],
       }} />;

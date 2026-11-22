@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { ConfirmationActions } from '@/components/ui/confirmation-actions';
 import { IconButton } from '@/components/ui/button';
 import { MotionModal as Modal } from '@/components/ui/motion-modal';
@@ -15,20 +16,20 @@ export function PosDialog({ visible, title, message, children, confirmLabel, can
 }) {
   const { t } = useTranslation();
   const close = useRef<ViewInstance>(null);
-  return <Modal backdropColor="rgba(16,35,48,0.36)" visible={visible} onRequestClose={onClose} onHidden={onHidden} onShow={() => {
+  return <Modal backdropColor={tokens.overlay.navyLight} visible={visible} onRequestClose={onClose} onHidden={onHidden} onShow={() => {
     if (!close.current) return;
     if (Platform.OS === 'web') close.current.focus();
     else AccessibilityInfo.sendAccessibilityEvent(close.current, 'focus');
   }}>
     <SafeAreaView className="flex-1 justify-center">
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 16 }}>
-        <View accessibilityViewIsModal onAccessibilityEscape={onClose} className="w-full max-w-[340px] self-center rounded-control bg-white p-4" style={{ boxShadow: '0 3px 6px #00000040' }}>
-          <View className="mb-3 flex-row items-center gap-2 border-b border-[#4A607A] pb-3 pr-6 pt-1">
-            <View accessible={false} style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 14, backgroundColor: destructive ? '#E9A7A7' : '#ADC9EE', alignItems: 'center', justifyContent: 'center' }}>{destructive ? <PosIcon name="alert" size={26} color="#B4232C" /> : <Text className="h-6 w-6 rounded-full border-2 border-brand text-center font-poppins-bold text-[14px] leading-[21px] text-brand">i</Text>}</View>
-            <Text accessibilityRole="header" className="flex-1 font-poppins-bold text-[16px]" style={{ color: destructive ? '#B4232C' : '#112F6F' }}>{title}</Text>
-            <IconButton ref={close} disabled={busy} accessibilityLabel={t('common.close')} onPress={onClose} className="absolute -right-2 -top-2" icon={() => <PosIcon name="close" size={18} color="#102342" />} />
+        <View accessibilityViewIsModal onAccessibilityEscape={onClose} className="w-full max-w-[340px] self-center rounded-control bg-white p-4">
+          <View className="mb-3 flex-row items-center gap-2 border-b border-text-secondary pb-3 pr-6 pt-1">
+            <View accessible={false} style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 14, backgroundColor: destructive ? tokens.color.errorSoft : tokens.color.navigationBorder, alignItems: 'center', justifyContent: 'center' }}>{destructive ? <PosIcon name="alert" size={26} color={tokens.color.errorBase} /> : <PosIcon name="info" size={26} color={tokens.color.darkNavy} />}</View>
+            <Text accessibilityRole="header" className="flex-1 type-list-financial" style={{ color: destructive ? tokens.color.errorBase : tokens.color.darkNavy }}>{title}</Text>
+            <IconButton ref={close} disabled={busy} accessibilityLabel={t('common.close')} onPress={onClose} className="absolute -right-2 -top-2" icon={() => <PosIcon name="close" size={18} color={tokens.color.textPrimary} />} />
           </View>
-          {message && <Text className="mb-4 font-poppins text-[14px] leading-[22px] text-[#102342]">{message}</Text>}
+          {message && <Text className="mb-4 type-micro-financial-rate leading-[22px] text-text-primary">{message}</Text>}
           {children && <View className="mb-4">{children}</View>}
           <ConfirmationActions stacked={actionLayout !== 'row'} destructive={destructive} busy={busy} confirmDisabled={confirmDisabled}
             confirmLabel={confirmLabel} cancelLabel={cancelLabel ?? t('common.cancel')} onCancel={onClose} onConfirm={onConfirm} />

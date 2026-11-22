@@ -1,4 +1,6 @@
+import tokens from '@/constants/design-tokens.json';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
+import { PosIcon } from '@/components/pos/pos-icon';
 import { useTranslation } from '@/i18n/use-translation';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -18,37 +20,16 @@ type Props = {
 };
 
 export function RoleIcon({ owner, color: suppliedColor }: { owner: boolean; color?: string }) {
-  const color = suppliedColor ?? (owner ? '#FFFFFF' : '#101820');
+  const color = suppliedColor ?? (owner ? tokens.color.surfaceCard : tokens.color.textPrimary);
   return (
-    <View accessible={false} importantForAccessibility="no-hide-descendants" style={{ width: 48, height: 48 }}>
-      {owner ? (
-        <View style={[styles.shop, { borderColor: color }]}>
-          <View style={styles.awning}>
-            {[0, 1, 2].map((index) => <View key={index} style={[styles.scallop, { borderColor: color }]} />)}
-          </View>
-          <View style={[styles.door, { borderColor: color }]} />
-        </View>
-      ) : (
-        <>
-          {[0, 1, 2, 3].map((corner) => (
-            <View key={corner} style={[styles.corner, {
-              borderColor: color, top: corner < 2 ? 1 : undefined, bottom: corner >= 2 ? 1 : undefined,
-              left: corner % 2 === 0 ? 1 : undefined, right: corner % 2 === 1 ? 1 : undefined,
-              transform: [{ rotate: `${[0, 90, 270, 180][corner]}deg` }],
-            }]} />
-          ))}
-          <View style={[styles.horizontal, { backgroundColor: color }]} />
-          <View style={[styles.vertical, { backgroundColor: color }]} />
-        </>
-      )}
-    </View>
+    <PosIcon name={owner ? 'store' : 'scan'} size={48} color={color} />
   );
 }
 
 export function AccountRoleCard({ option, selected, onPress, action, account }: Props) {
   const { t } = useTranslation();
   const owner = option.role === 'owner';
-  const color = owner ? '#FFFFFF' : '#102342';
+  const color = owner ? tokens.color.surfaceCard : tokens.color.textPrimary;
   return (
     <Pressable
       accessibilityRole="button"
@@ -61,22 +42,22 @@ export function AccountRoleCard({ option, selected, onPress, action, account }: 
       // Keep styles as data: NativeWind interop merges className into style.
       // A Pressable style callback can be swallowed during that merge.
       style={[styles.card, {
-        backgroundColor: owner ? '#153370' : '#D9E7F5',
-        borderColor: selected ? '#2675DB' : 'transparent',
+        backgroundColor: owner ? tokens.color.darkNavy : tokens.color.iceContainer,
+        borderColor: selected ? tokens.color.brightBlue : 'transparent',
       }]}
       className="web:focus-visible:outline web:focus-visible:outline-2 web:focus-visible:outline-offset-4 web:focus-visible:outline-action">
-      <View className="flex-row items-center gap-6 px-1 pb-4">
+      <View className="flex-row items-center gap-3 px-1 pb-2">
         <RoleIcon owner={owner} />
         <View className="min-w-0 flex-1">
-          <Text style={{ color }} className="font-poppins text-[16px] leading-6">{account?.name ?? t(option.name)}</Text>
-          <Text style={{ color }} className="font-poppins text-[10px] leading-[15px]">{account ? `May-Ari ID: ${account.id}` : t(option.description)}</Text>
+          <Text style={{ color }} className=" type-body-primary leading-6">{account?.name ?? t(option.name)}</Text>
+          <Text style={{ color }} className=" type-helper leading-[15px]">{account ? `May-Ari ID: ${account.id}` : t(option.description)}</Text>
         </View>
       </View>
-      <View style={{ borderTopWidth: 1, borderColor: color }} className="min-h-12 flex-row items-center justify-between gap-3 pt-2">
-        <Text style={{ color }} className="flex-1 font-poppins-bold text-[12px] leading-[18px]">
+      <View style={{ borderTopWidth: 1, borderColor: color }} className="min-h-11 flex-row items-center justify-between gap-3 pt-2">
+        <Text style={{ color }} className="flex-1 type-label-nav leading-[18px]">
           {t(action ?? option.action)}{selected ? t('common.selectedSuffix') : ''}
         </Text>
-        <Text accessible={false} style={{ color }} className="text-[28px] leading-8">›</Text>
+        <PosIcon name="chevronRight" size={18} color={color} />
       </View>
     </Pressable>
   );
@@ -84,15 +65,8 @@ export function AccountRoleCard({ option, selected, onPress, action, account }: 
 
 const styles = StyleSheet.create({
   card: {
-    width: '100%', minHeight: 148, flexShrink: 0, alignSelf: 'stretch',
+    width: '100%', minHeight: 136, flexShrink: 0, alignSelf: 'stretch',
     paddingHorizontal: 22, paddingTop: 28, paddingBottom: 4,
-    borderRadius: 11, borderWidth: 2, boxShadow: '0 4px 3px rgba(0, 0, 0, 0.28)',
+    borderRadius: 11, borderWidth: 2,
   },
-  shop: { width: 46, height: 47, borderWidth: 2.5, borderRadius: 6, alignItems: 'center' },
-  awning: { position: 'absolute', top: 8, left: 0, right: 0, flexDirection: 'row' },
-  scallop: { flex: 1, height: 10, borderWidth: 2.5, borderTopWidth: 0, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
-  door: { position: 'absolute', bottom: 0, width: 17, height: 18, borderWidth: 2.5, borderBottomWidth: 0, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
-  corner: { position: 'absolute', width: 14, height: 14, borderTopWidth: 2.5, borderLeftWidth: 2.5, borderTopLeftRadius: 6 },
-  horizontal: { position: 'absolute', left: 11, top: 22.75, width: 26, height: 2.5 },
-  vertical: { position: 'absolute', left: 22.75, top: 11, width: 2.5, height: 26 },
 });

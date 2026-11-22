@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { Redirect, Stack } from 'expo-router';
 import { Text, View } from 'react-native';
 
@@ -10,10 +11,10 @@ export default function OperatorSettingsLayout() {
   const motion = useStackMotion();
   const { deviceSession, restoring } = useAuthFlow();
   if (restoring) return <View className="flex-1 items-center justify-center bg-canvas">
-    <Text className="font-poppins text-[14px] text-brand">Restoring your session…</Text>
+    <Text className=" type-micro-financial-rate text-brand">Restoring your session…</Text>
   </View>;
   if (!deviceSession || deviceSession.role !== 'operator' || !hasCapability(deviceSession, 'settings')) {
     return <Redirect href="/choose-account" />;
   }
-  return <Stack screenOptions={{ ...motion, headerShown: false, contentStyle: { backgroundColor: '#F0F8FF' } }} />;
+  return <Stack screenOptions={{ ...motion, headerShown: false, contentStyle: { backgroundColor: tokens.color.appBackground } }} />;
 }

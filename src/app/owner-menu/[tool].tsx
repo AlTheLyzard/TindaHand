@@ -8,7 +8,7 @@ export default function OwnerToolRoute() {
   const { owner, restoring } = useAuthFlow();
   const { tool: id } = useLocalSearchParams<{ tool?: string | string[] }>();
   const tool = findOwnerTool(typeof id === 'string' ? id : undefined);
-  if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className="font-poppins text-[14px] text-brand">Restoring your session…</Text></View>;
+  if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className=" type-micro-financial-rate text-brand">Restoring your session…</Text></View>;
   if (!owner) return <Redirect href="/choose-account" />;
   if (!tool) return <Redirect href="/owner-menu" />;
   if (tool.id === 'financial-statements') return <Redirect href="/owner-menu/financial-statements" />;

@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { useLayoutEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
@@ -10,7 +11,7 @@ const joint = successTiming.short / successTiming.draw;
 /** Draw tip-to-joint, then joint-to-tip inside a stationary circle. Presentation
  * and event identity replay the drawing; interruption settles the completed mark. */
 export function SuccessCheck({ size = 52, animate = true, visible = true, eventKey = 0, delay = 0,
-  color = '#28652F', surfaceColor = '#BCD1B7', testID = 'success-check' }: {
+  color = tokens.color.successBase, surfaceColor = tokens.color.successTint, testID = 'success-check' }: {
   size?: number; animate?: boolean; visible?: boolean; eventKey?: string | number; delay?: number;
   color?: string; surfaceColor?: string; testID?: string;
 }) {

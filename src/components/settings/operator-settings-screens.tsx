@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { router } from 'expo-router';
 import { Text, View } from 'react-native';
 
@@ -64,8 +65,8 @@ export function OperatorAppGuideScreen() {
     <View className="gap-4">
       {operatorGuideCards.map(card => <SettingsCard key={card.title}>
         <View className="gap-3">
-          <Text accessibilityRole="header" className="font-poppins-bold text-[16px] leading-6 text-brand">{card.title}</Text>
-          <Text className="font-poppins text-[14px] leading-[22px] text-text-secondary">{card.description}</Text>
+          <Text accessibilityRole="header" className=" type-list-financial leading-6 text-brand">{card.title}</Text>
+          <Text className=" type-micro-financial-rate leading-[22px] text-text-secondary">{card.description}</Text>
         </View>
       </SettingsCard>)}
     </View>
@@ -79,22 +80,22 @@ export function OperatorReplayWalkthroughScreen() {
     <SettingsFrame title="Replay App Walkthrough" parent={operatorSettingsHref}>
       <View className="items-center">
         <ReplayWalkthroughIllustration />
-        <Text accessibilityRole="header" className="mt-2 text-center font-poppins-bold text-[20px] leading-[30px] text-brand">
+        <Text accessibilityRole="header" className="mt-2 text-center type-title-accent leading-[30px] text-brand">
           Take a Quick Tour Again!
         </Text>
-        <Text className="mt-3 text-center font-poppins text-[14px] leading-[22px] text-text-secondary">
+        <Text className="mt-3 text-center type-micro-financial-rate leading-[22px] text-text-secondary">
           Want to get familiar with TindaHand again? Replay the walkthrough to revisit the app&apos;s main features and how they work.
         </Text>
-        <Text className="mt-5 text-center font-poppins text-[12px] leading-[18px] text-text-secondary">
+        <Text className="mt-5 text-center type-micro-caption leading-[18px] text-text-secondary">
           You can exit the walkthrough anytime.
         </Text>
         <Button className="mt-4" onPress={() => setConfirmationOpen(true)}>Start Walkthrough</Button>
       </View>
     </SettingsFrame>
-    <MotionModal visible={confirmationOpen} onRequestClose={close} backdropColor="rgba(16,35,66,0.50)">
+    <MotionModal visible={confirmationOpen} onRequestClose={close} backdropColor={tokens.overlay.navy}>
       <View className="flex-1 justify-center px-6 py-8" onAccessibilityEscape={close}>
-        <ConfirmationContent title="Replay Walkthrough?" titleColor="#112F6F"
-          leadingIcon={<View className="h-8 w-8 items-center justify-center rounded-pill bg-brand"><PosIcon name="history" size={20} color="#FFFFFF" /></View>}
+        <ConfirmationContent title="Replay Walkthrough?" titleColor={tokens.color.darkNavy}
+          leadingIcon={<View className="h-8 w-8 items-center justify-center rounded-pill bg-brand"><PosIcon name="history" size={20} color={tokens.color.surfaceCard} /></View>}
           message="Would you like to go through the TindaHand introduction again?" cancelLabel="Cancel" confirmLabel="Start"
           destructive={false} cancelVariant="secondary" onCancel={close} onConfirm={() => {
             close();
@@ -112,9 +113,9 @@ export function OperatorWalkthroughScreen() {
     router.dismissTo(operatorSettingsHref);
   }
   return <SettingsFrame title={current.title} parent={operatorSettingsHref}>
-    <Text className="mb-5 font-poppins text-[12px] leading-[18px] text-text-secondary">Step {step + 1} of {operatorGuideCards.length}</Text>
+    <Text className="mb-5 type-micro-caption leading-[18px] text-text-secondary">Step {step + 1} of {operatorGuideCards.length}</Text>
     <SettingsCard>
-      <Text className="font-poppins text-[14px] leading-[22px] text-text-secondary">{current.description}</Text>
+      <Text className=" type-micro-financial-rate leading-[22px] text-text-secondary">{current.description}</Text>
     </SettingsCard>
     <View className="mt-6 flex-row gap-3">
       {step > 0 && <Button fullWidth={false} variant="secondary" style={{ flex: 1 }} onPress={() => setStep(index => index - 1)}>Previous</Button>}

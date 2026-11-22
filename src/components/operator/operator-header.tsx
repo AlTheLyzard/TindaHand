@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { router, type Href } from 'expo-router';
 import { MainHeader } from '@/components/dashboard/main-header';
 import { useAuthFlow } from '@/state/auth-flow';
@@ -16,7 +17,7 @@ export function OperatorHeader({ activeAction, onNavigate }: {
   const showSettings = hasCapability(session, 'settings');
 
   return <MainHeader testID="operator-header" showSettings={showSettings} showProfile={showProfile} activeAction={activeAction}
-    interactionBackgroundColor="#D9E7F4" onNavigate={onNavigate}
+    interactionBackgroundColor={tokens.color.iceContainer} onNavigate={onNavigate}
     onSettingsPress={() => router.navigate({ pathname: '/operator-more', params: { section: 'settings' } })}
     onProfilePress={() => router.navigate('/operator-profile' as Href)} />;
 }

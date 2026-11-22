@@ -22,16 +22,16 @@ export function CreditProductSelector({ selection, onChange, onRemove, onBrowse,
   return <View style={{ gap: 8 }}>
     <FieldLabel label="Products taken on credit" required style={quickAddStyles.label} />
     {fullPage && browseButton}
-    {!lines.length && <Text accessibilityRole={error ? 'alert' : undefined} style={[quickAddStyles.note, error ? { color: '#B4232C' } : undefined]}>No products added yet. Search for items taken on credit.</Text>}
+    {!lines.length && <Text accessibilityRole={error ? 'alert' : undefined} style={[quickAddStyles.note, error ? { color: tokens.color.errorBase } : undefined]}>No products added yet. Search for items taken on credit.</Text>}
     {lines.map(line => {
       const product = products.find(item => item.id === line.productId);
-      return <View key={line.productId} className="items-center gap-1 rounded-surface px-3 py-1" style={{ minHeight: 64, flexDirection: fullPage || fontScale > 1.25 ? 'column' : 'row', alignItems: fullPage || fontScale > 1.25 ? 'stretch' : 'center', backgroundColor: fullPage ? '#FFFFFF' : tokens.color.surfaceSubtle, paddingVertical: fullPage ? 16 : 4 }}>
+      return <View key={line.productId} className="items-center gap-1 rounded-surface px-3 py-1" style={{ minHeight: 64, flexDirection: fullPage || fontScale > 1.25 ? 'column' : 'row', alignItems: fullPage || fontScale > 1.25 ? 'stretch' : 'center', backgroundColor: fullPage ? tokens.color.surfaceCard : tokens.color.surfaceSubtle, paddingVertical: fullPage ? 16 : 4 }}>
         <View className="min-w-0 flex-1">
-          <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 12, lineHeight: 18, color: '#102342' }}>{line.itemName}</Text>
-          <Text className="mt-0.5 font-poppins text-[11px] leading-4 text-text-secondary">{formatPesos(line.unitPriceCentavos)} each</Text>
+          <Text style={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: 18, color: tokens.color.textPrimary }}>{line.itemName}</Text>
+          <Text className="mt-0.5 type-micro-caption leading-4 text-text-secondary">{formatPesos(line.unitPriceCentavos)} each</Text>
         </View>
         <View className="flex-row flex-wrap items-center" style={{ flexShrink: 0 }}>
-          <QuantityStepper compact value={line.quantity} valueLabel={`Quantity ${line.quantity}`} valueTextClassName="font-poppins text-[12px] text-[#102342]"
+              <QuantityStepper compact value={line.quantity} valueLabel={`Quantity ${line.quantity}`} valueTextClassName="type-micro-caption text-text-primary"
             decreaseLabel={`Decrease ${line.itemName}`} increaseLabel={`Increase ${line.itemName}`}
             onDecrease={() => {
               if (line.quantity === 1) onRemove(line.productId);
@@ -40,7 +40,7 @@ export function CreditProductSelector({ selection, onChange, onRemove, onBrowse,
             onIncrease={() => { if (product) onChange(previous => selectProduct(previous, product)); }}
             increaseDisabled={!product || line.quantity >= product.stock} />
           <IconButton accessibilityLabel={`Remove ${line.itemName}`} onPress={() => onRemove(line.productId)} className="min-h-12 min-w-12 items-center justify-center" variant="destructiveText" icon={({ color }) => <PosIcon name="trash" size={22} color={color} />} />
-          {fullPage && <Text className="ml-auto font-poppins-bold text-[14px] text-brand">{formatPesos(line.quantity * line.unitPriceCentavos)}</Text>}
+          {fullPage && <Text className="ml-auto type-button-cta text-brand">{formatPesos(line.quantity * line.unitPriceCentavos)}</Text>}
         </View>
       </View>;
     })}

@@ -3,11 +3,46 @@
 @tailwind utilities;
 
 :root {
-  --font-display:
-    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
-    Segoe UI Symbol, Noto Color Emoji;
+  --font-display: Poppins_400Regular, Poppins, ui-sans-serif, system-ui, sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
-  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
+  --font-rounded: Poppins_400Regular, Poppins, ui-sans-serif, system-ui, sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
+  --color-canvas: #F0F8FF;
+  --color-brand: #112F6F;
+  --color-action: #245399;
+  --color-action-hover: #1A3E78;
+  --color-action-pressed: #112F6F;
+  --color-deep-royal-blue: #1A3E78;
+  --color-accent: #2F6CC9;
+  --color-soft-blue: #D1E1F5;
+  --color-surface-card: #FFFFFF;
+  --color-navigation-surface: #FFFFFF;
+  --color-navigation-border: #ADC9EE;
+  --color-main-navigation-surface: #112F6F;
+  --color-main-navigation-border: #1A3E78;
+  --color-ice-container: #D9E7F4;
+  --color-outline: #B0C8E3;
+  --color-muted-sage: #C6D9D2;
+  --color-text-primary: #0C1B3C;
+  --color-text-secondary: #4A607A;
+  --color-text-placeholder: #5A7394;
+  --color-text-disabled: #91AACB;
+  --color-text-inverse: #FFFFFF;
+  --color-error: #972020;
+  --color-error-hover: #7B1717;
+  --color-error-pressed: #5F1010;
+  --color-error-tint: #FFEBEE;
+  --color-success: #1D5D21;
+  --color-success-hover: #174A1A;
+  --color-success-pressed: #103A14;
+  --color-success-tint: #E8F5E9;
+  --color-warning: #F9A825;
+  --color-warning-tint: #FFF8E1;
+  --color-positive: #1D5D21;
+  --color-positive-hover: #174A1A;
+  --color-positive-pressed: #103A14;
+  --color-destructive: #972020;
+  --color-destructive-hover: #7B1717;
+  --color-destructive-pressed: #5F1010;
 }

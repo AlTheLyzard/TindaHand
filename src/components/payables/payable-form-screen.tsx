@@ -154,7 +154,7 @@ export function PayableFormScreen() {
       <InvDateField compact required={false} inputRef={dateInput} label="Due Date (Optional)" value={draft.dueDate} onChange={dueDate => update({ dueDate })} error={error('dueDate')} />
       <InvField inputRef={detailsInput} label="Other Details (Optional)" value={draft.details} onChangeText={details => update({ details })} placeholder="e.g Cash loan used for store supplies" multiline textAlignVertical="top" style={{ minHeight: 160 }} />
       <BalancePanel title="Total Debt" amount={formatPesos(quickAddTotal(draft))} caption="This amount will be recorded as accounts payable." dark />
-      {!!failure && <MotionRegion><Text accessibilityRole="alert" className="font-poppins text-[12px] text-[#972020]">{failure}</Text></MotionRegion>}
+      {!!failure && <MotionRegion><Text accessibilityRole="alert" className=" type-micro-caption text-error-base">{failure}</Text></MotionRegion>}
       <View className="mt-3 flex-row flex-wrap gap-3">
         <View className="min-w-[120px] flex-1"><Button variant="secondary" disabled={saving} onPress={back}>Cancel</Button></View>
         <View className="min-w-[140px] flex-1"><Button loading={saving} disabled={saving || !!savedRecord || (submitted && invalid)} onPress={submit}>Save Debt</Button></View>

@@ -1,7 +1,7 @@
-import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
-import Animated, { interpolateColor, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
+import { PosIcon } from '@/components/pos/pos-icon';
 import tokens from '@/constants/design-tokens.json';
 import type { AccountRole } from '@/types/auth';
 
@@ -12,13 +12,6 @@ export const bottomNavigationItems = [
   { icon: 'menu', label: 'More' },
 ] as const;
 export type NavigationIcon = typeof bottomNavigationItems[number]['icon'];
-
-const icons = {
-  home: { normal: require('@/assets/images/navigation/home.svg'), active: require('@/assets/images/navigation/home-active.svg') },
-  cart: { normal: require('@/assets/images/navigation/cart.svg'), active: require('@/assets/images/navigation/cart-active.svg') },
-  inventory: { normal: require('@/assets/images/navigation/inventory.svg'), active: require('@/assets/images/navigation/inventory-active.svg') },
-  menu: { normal: require('@/assets/images/navigation/menu.svg'), active: require('@/assets/images/navigation/menu-active.svg') },
-};
 
 /** One measured underline shares the icon/label clock, including interrupted transitions. */
 export function BottomNavigation({ role, bottomInset, selectedIndex, selection, centers, menuOpen = false, onPress }: {
@@ -78,9 +71,6 @@ function NavigationItem({ icon, label, index, selectedIndex, selection, menuOpen
 }) {
   const inactiveIcon = useAnimatedStyle(() => ({ opacity: 1 - selection.value[index] }));
   const activeIcon = useAnimatedStyle(() => ({ opacity: selection.value[index] }));
-  const labelStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(selection.value[index], [0, 1], [tokens.color.textSecondary, tokens.color.accentBase]),
-  }));
   return <Pressable accessibilityRole="tab" accessibilityLabel={label}
     accessibilityHint={icon === 'menu' ? 'Opens More Tools' : undefined}
     accessibilityState={icon === 'menu' ? { selected: index === selectedIndex, expanded: menuOpen } : { selected: index === selectedIndex }}
@@ -89,12 +79,12 @@ function NavigationItem({ icon, label, index, selectedIndex, selection, menuOpen
     {({ pressed }) => <View pointerEvents="none" accessible={false} accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants" aria-hidden style={[styles.contents, { opacity: pressed ? 0.65 : 1 }]}>
       {!largeText && <View testID={`navigation-icon-${icon}`} style={styles.icon}>
-        <Animated.View style={[styles.iconLayer, inactiveIcon]}><Image source={icons[icon].normal} tintColor={tokens.color.textSecondary} style={styles.icon} contentFit="contain" accessible={false} /></Animated.View>
-        <Animated.View style={[styles.iconLayer, activeIcon]}><Image source={icons[icon].active} tintColor={tokens.color.accentBase} style={styles.icon} contentFit="contain" accessible={false} /></Animated.View>
+        <Animated.View style={[styles.iconLayer, inactiveIcon]}><PosIcon name={icon} color={tokens.color.textSecondary} size={tokens.size.navigationIcon} /></Animated.View>
+        <Animated.View style={[styles.iconLayer, activeIcon]}><PosIcon name={icon} color={tokens.color.accentBase} size={tokens.size.navigationIcon} active /></Animated.View>
       </View>}
       <Animated.Text testID={`navigation-label-${icon}`} numberOfLines={largeText ? 2 : 1}
         adjustsFontSizeToFit={largeText} minimumFontScale={0.5}
-        style={[styles.label, largeText && styles.largeLabel, labelStyle]}>{label}</Animated.Text>
+        style={[styles.label, largeText && styles.largeLabel, { color: selectedIndex === index ? tokens.color.accentBase : tokens.color.textSecondary }]}>{label}</Animated.Text>
     </View>}
   </Pressable>;
 }
@@ -102,14 +92,14 @@ function NavigationItem({ icon, label, index, selectedIndex, selection, menuOpen
 const styles = StyleSheet.create({
   surface: { backgroundColor: tokens.color.navigationSurface },
   // Overlay the border so it does not add to the 56-unit height.
-  border: { position: 'absolute', top: 0, left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.borderOutline },
+  border: { position: 'absolute', top: 0, left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.navigationBorder },
   // Keep the traveling underline inside the fixed bar during layout changes.
   items: { height: tokens.navigation.height, flexDirection: 'row', overflow: 'hidden' },
   slot: { flex: 1, minWidth: 0, height: tokens.navigation.height, justifyContent: 'flex-start', paddingTop: 5 },
   contents: { alignItems: 'center', gap: tokens.navigation.iconLabelGap },
   icon: { width: tokens.size.navigationIcon, height: tokens.size.navigationIcon },
   iconLayer: { position: 'absolute', top: 0, left: 0 },
-  label: { fontFamily: 'Poppins_600SemiBold', fontSize: tokens.navigation.labelFontSize,
+  label: { fontFamily: tokens.typography.weights.semibold, fontSize: tokens.navigation.labelFontSize,
     lineHeight: tokens.navigation.labelLineHeight, textAlign: 'center', includeFontPadding: false, width: '100%' },
   largeLabel: { paddingHorizontal: 2, height: 44, textAlignVertical: 'center' },
   indicator: { position: 'absolute', left: 0, bottom: tokens.navigation.indicatorBottom,

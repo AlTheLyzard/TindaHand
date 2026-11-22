@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshControl, Text, View } from 'react-native';
@@ -55,7 +56,7 @@ function PayableBalancesScreen({ pendingOnly = false }: { pendingOnly?: boolean 
   }, [confirmedMode]);
   useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
   const refreshControl = <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[payableColors.blue]} tintColor={payableColors.blue} />;
-  const groups = paid ? [{ title: '', category: null, rows: lists.paid, color: payableColors.green, surface: '#FFFFFF' }] : pendingOnly ? [
+  const groups = paid ? [{ title: '', category: null, rows: lists.paid, color: payableColors.green, surface: tokens.color.surfaceCard }] : pendingOnly ? [
     { title: 'Pending', category: 'pending', rows: lists.pending, color: payableColors.blue, surface: payableColors.pendingGroup },
   ] : [
     { title: 'Overdue', category: 'overdue', rows: lists.overdue, color: payableColors.red, surface: payableColors.overdueGroup },
@@ -68,7 +69,7 @@ function PayableBalancesScreen({ pendingOnly = false }: { pendingOnly?: boolean 
   }
 
   return <InventoryFrame title={pendingOnly ? 'Pending debt' : 'Account Balances'} back inlineTitle onBack={pendingOnly ? backToBalances : undefined} refreshControl={refreshControl}>
-    {pendingOnly ? <Text className="font-poppins text-[14px] text-text-secondary">Keep track of suppliers with pending debt.</Text> : <SegmentedSelector tone="subtle" options={[{ label: 'Receivable', value: 'receivable' }, { label: 'Payable', value: 'payable' }]}
+    {pendingOnly ? <Text className=" type-micro-financial-rate text-text-secondary">Keep track of suppliers with pending debt.</Text> : <SegmentedSelector tone="subtle" options={[{ label: 'Receivable', value: 'receivable' }, { label: 'Payable', value: 'payable' }]}
       value={payable ? 'payable' : 'receivable'} onChange={section => { router.setParams({ section, status: 'unpaid' }); }} />}
     <>
       {!pendingOnly && !paid && <>
@@ -79,8 +80,8 @@ function PayableBalancesScreen({ pendingOnly = false }: { pendingOnly?: boolean 
       {!pendingOnly && <View accessibilityRole="tablist" className="flex-row px-4">
         {['Unpaid', 'Paid'].map(label => {
           const selected = paid === (label === 'Paid');
-          return <Pressable key={label} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => { router.setParams({ status: label.toLowerCase() }); }} className="min-h-12 flex-1 items-center justify-center border-b px-3 py-3" style={{ borderColor: selected ? '#2F6CC9' : '#102342', borderBottomWidth: selected ? 3 : 1 }}>
-            <Text className="font-poppins-bold text-[14px]" style={{ color: selected ? '#2F6CC9' : '#102342' }}>{label}</Text>
+          return <Pressable key={label} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => { router.setParams({ status: label.toLowerCase() }); }} className="min-h-12 flex-1 items-center justify-center border-b px-3 py-3" style={{ borderColor: selected ? tokens.color.brightBlue : tokens.color.textPrimary, borderBottomWidth: selected ? 3 : 1 }}>
+            <Text className=" type-button-cta" style={{ color: selected ? tokens.color.brightBlue : tokens.color.textPrimary }}>{label}</Text>
           </Pressable>;
         })}
       </View>}
@@ -89,8 +90,8 @@ function PayableBalancesScreen({ pendingOnly = false }: { pendingOnly?: boolean 
         {noRows ? <EmptyState title={query.trim() ? 'No matching debts' : paid ? 'No paid debts yet' : pendingOnly ? 'No pending debts' : 'No unpaid debts'} description={query.trim() ? 'Try another creditor name or clear your search.' : paid ? 'Fully settled debts will appear here.' : pendingOnly ? 'Pending debts will appear here.' : 'Record a business debt to track what your store owes.'} /> : <View className="gap-5">
           {groups.filter(group => group.rows.length).map(group => <View key={group.title} className={paid ? 'gap-3' : 'gap-3 rounded-surface p-3'} style={{ backgroundColor: paid ? undefined : group.surface }}>
             {!!group.title && <View className="flex-row flex-wrap items-center gap-2">
-              <Text accessibilityRole="header" className="font-poppins-semibold text-[14px]" style={{ color: group.color }}>{group.title}</Text>
-              <View className="min-h-5 min-w-5 items-center justify-center rounded-pill px-1" style={{ backgroundColor: group.color }}><Text className="font-poppins text-[10px] text-white">{group.rows.length}</Text></View>
+              <Text accessibilityRole="header" className=" type-micro-financial-rate" style={{ color: group.color }}>{group.title}</Text>
+              <View className="min-h-5 min-w-5 items-center justify-center rounded-pill px-1" style={{ backgroundColor: group.color }}><Text className=" type-helper text-white">{group.rows.length}</Text></View>
               {!pendingOnly && !paid && group.category && <Button variant="text" compact fullWidth={false} accessibilityLabel={`View all ${group.title.toLowerCase()} debts`} onPress={() => push({ pathname: `${balancesRoot}/category-transactions`, params: { section: 'payable', category: group.category } } as unknown as Href)} style={{ marginLeft: 'auto' }}>View all</Button>}
             </View>}
             {(!paid && !pendingOnly ? group.rows.slice(0, 2) : group.rows).map(row => <PayableCard key={row.debt.id} row={row} today={today}

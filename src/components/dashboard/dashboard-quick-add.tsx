@@ -86,7 +86,7 @@ export function DashboardQuickAdd({ onSelect }: { onSelect: (action: QuickAddAct
     <Modal visible={motion.presented} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={close}
       onShow={() => { measurePlacement(); motion.onShow(); }} onDismiss={motion.onDismiss}>
       <View ref={modalHost} collapsable={false} onLayout={measurePlacement} className="flex-1">
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.30)' }, backdrop]} />
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tokens.overlay.scrim }, backdrop]} />
         <Pressable accessibilityRole="button" accessibilityLabel={t('dashboard.quick.dismiss')}
           onPress={close} style={StyleSheet.absoluteFill} />
         {placement && <Animated.View pointerEvents={open ? "auto" : "none"} accessibilityViewIsModal onAccessibilityEscape={close}
@@ -105,11 +105,11 @@ export function DashboardQuickAdd({ onSelect }: { onSelect: (action: QuickAddAct
                   className="max-w-full flex-row items-center gap-2 rounded-control focus:outline focus:outline-2 focus:outline-action"
                   style={{ minHeight: tokens.size.touchTarget }}>
                   <View className="min-w-0 flex-shrink rounded-control bg-white px-3 py-1.5"
-                    style={{ minHeight: 32, justifyContent: 'center', boxShadow: '0 3px 6px rgba(16,35,66,0.18)' }}>
-                    <Text className="font-poppins text-[12px] leading-[18px] text-[#102342]">{t(action)}</Text>
+                    style={{ minHeight: 32, justifyContent: 'center' }}>
+                    <Text className=" type-micro-caption leading-[18px] text-text-primary">{t(action)}</Text>
                   </View>
                   <View style={styles.actionButton}>
-                    <PosIcon name={actionIcons[action]} size={24} color="#FFFFFF" />
+                    <PosIcon name={actionIcons[action]} size={24} color={tokens.color.surfaceCard} />
                   </View>
                 </Pressable>)}
               </ScrollView>

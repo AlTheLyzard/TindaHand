@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { useEffect } from 'react';
 import { Text } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
@@ -21,9 +22,9 @@ export function AvatarOption({ id, index, selected, inUse = false, disabled = fa
   const style = useAnimatedStyle(() => ({ opacity: entrance.value, transform: [{ scale: 0.86 + 0.14 * entrance.value }] }));
   return <Animated.View testID={`avatar-entrance-${id}`} style={style}>
     <Pressable accessibilityRole="radio" accessibilityLabel={`${profileAvatars[id].label}${inUse ? ', In use by another account' : ''}`} accessibilityState={{ checked: selected, selected, disabled: inUse || disabled }} aria-checked={selected} aria-selected={selected} aria-disabled={inUse || disabled} disabled={inUse || disabled} className="focus:outline focus:outline-2 focus:outline-action"
-      onPress={onSelect} style={{ padding: 4, borderRadius: 100, borderWidth: 3, borderColor: selected ? '#2675DB' : 'transparent' }}>
+      onPress={onSelect} style={{ padding: 4, borderRadius: 100, borderWidth: 3, borderColor: selected ? tokens.color.brightBlue : 'transparent' }}>
       <ProfileAvatar avatarId={id} size={66} />
     </Pressable>
-    <Text accessible={false} className="text-center font-poppins-semibold text-[10px] leading-[16px] text-brand">{inUse ? 'In use' : ' '}</Text>
+    <Text accessible={false} className="text-center type-helper leading-[16px] text-brand">{inUse ? 'In use' : ' '}</Text>
   </Animated.View>;
 }

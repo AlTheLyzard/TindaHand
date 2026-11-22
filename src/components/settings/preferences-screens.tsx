@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { router, type Href } from 'expo-router';
 import { Text, View } from 'react-native';
 import { EmptyState } from '@/components/ui/content-state';
@@ -35,16 +36,16 @@ export function LanguageScreen({ parent }: { parent?: Href } = {}) {
     <SettingsCard>
       <View accessibilityRole="radio" accessibilityState={{ checked: englishActive }} accessibilityLabel={`English${englishActive ? ', current language' : ''}`} className="min-h-12 flex-row items-center gap-3 pb-4">
         <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><SettingsIcon name="language" /></View>
-        <View className="flex-1 gap-1"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">English</Text><Text className="font-poppins text-[12px] text-text-secondary">{englishActive ? 'Current language' : 'Available'}</Text></View>
-        <View className="h-9 w-9 items-center justify-center">{englishActive ? <PosIcon name="check" size={20} color="#112F6F" active /> : null}</View>
+        <View className="flex-1 gap-1"><Text className=" type-button-cta text-text-primary">English</Text><Text className=" type-micro-caption text-text-secondary">{englishActive ? 'Current language' : 'Available'}</Text></View>
+        <View className="h-9 w-9 items-center justify-center">{englishActive ? <PosIcon name="check" size={20} color={tokens.color.darkNavy} active /> : null}</View>
       </View>
-      <Pressable disabled accessibilityRole="radio" accessibilityState={{ disabled: true, checked: tagalogActive }} accessibilityLabel={`Tagalog${tagalogActive ? ', current language' : ', coming soon'}`} className="min-h-12 flex-row items-center gap-3 border-t border-[#ADC9EE] pt-4">
+      <Pressable disabled accessibilityRole="radio" accessibilityState={{ disabled: true, checked: tagalogActive }} accessibilityLabel={`Tagalog${tagalogActive ? ', current language' : ', coming soon'}`} className="min-h-12 flex-row items-center gap-3 border-t border-outline pt-4">
         <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><SettingsIcon name="lock" /></View>
-        <View className="flex-1 gap-1"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">Tagalog</Text><Text className="font-poppins text-[12px] text-text-secondary">{tagalogActive ? 'Current language' : 'Coming soon'}</Text></View>
-        <View className="h-9 w-9 items-center justify-center">{tagalogActive ? <PosIcon name="check" size={20} color="#112F6F" active /> : null}</View>
+        <View className="flex-1 gap-1"><Text className=" type-button-cta text-text-primary">Tagalog</Text><Text className=" type-micro-caption text-text-secondary">{tagalogActive ? 'Current language' : 'Coming soon'}</Text></View>
+        <View className="h-9 w-9 items-center justify-center">{tagalogActive ? <PosIcon name="check" size={20} color={tokens.color.darkNavy} active /> : null}</View>
       </Pressable>
     </SettingsCard>
-    <View className="mt-4 gap-2 rounded-control bg-[#D1E1F5] p-4"><Text className="font-poppins-bold text-[12px] text-brand">English is currently available</Text><Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">Tagalog support is coming soon.</Text></View>
+    <View className="mt-4 gap-2 rounded-control bg-accent-soft p-4"><Text className=" type-label-nav text-brand">English is currently available</Text><Text className=" type-micro-caption leading-[18px] text-text-secondary">Tagalog support is coming soon.</Text></View>
   </SettingsFrame>;
 }
 export function HelpScreen() {
@@ -56,19 +57,19 @@ export function SecurityScreen() {
     <SettingsDescription>Manage the PINs used to access your May-Ari account and your store&apos;s Kahera accounts.</SettingsDescription>
     <SettingsCard>
       <View className="mb-6 mt-3 flex-row items-center gap-4">
-        <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><PosIcon name="checkCircle" color="#112F6F" /></View>
-        <View className="flex-1 gap-2"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">My PIN</Text><Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">Your personal May-Ari access PIN.</Text></View>
+        <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><PosIcon name="checkCircle" color={tokens.color.darkNavy} /></View>
+        <View className="flex-1 gap-2"><Text className=" type-button-cta text-text-primary">My PIN</Text><Text className=" type-micro-caption leading-[18px] text-text-secondary">Your personal May-Ari access PIN.</Text></View>
       </View>
       <Button onPress={() => router.navigate(`${settingsRoot}/change-pin`)}>Change My PIN</Button>
-      <View className="my-5 border-t border-[#ADC9EE]" />
+      <View className="my-5 border-t border-outline" />
       <View className="mb-6 flex-row items-center gap-4">
         <View className="h-9 w-9 items-center justify-center rounded-control bg-canvas"><SettingsIcon name="lock" /></View>
-        <View className="flex-1 gap-2"><Text className="font-poppins-bold text-[14px] text-[#0C1B3C]">Kahera PIN</Text><Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">Manage your Kaheras&apos; access PINs.</Text></View>
+        <View className="flex-1 gap-2"><Text className=" type-button-cta text-text-primary">Kahera PIN</Text><Text className=" type-micro-caption leading-[18px] text-text-secondary">Manage your Kaheras&apos; access PINs.</Text></View>
       </View>
       <Button onPress={() => router.navigate(`${settingsRoot}/cashier-pins`)}>Manage Kahera PINs</Button>
       <View className="h-4" />
       <Button variant="secondary" onPress={() => { void lock().then(() => { if (router.canDismiss()) router.dismissAll(); router.replace({ pathname: '/login', params: { role: 'owner' } }); }); }}>Lock App</Button>
-      <Text className="mt-3 font-poppins text-[12px] leading-[18px] text-text-secondary">Locking keeps this device session for PIN unlock. Full logout ends the session and requires your password.</Text>
+      <Text className="mt-3 type-micro-caption leading-[18px] text-text-secondary">Locking keeps this device session for PIN unlock. Full logout ends the session and requires your password.</Text>
     </SettingsCard>
   </SettingsFrame>;
 }

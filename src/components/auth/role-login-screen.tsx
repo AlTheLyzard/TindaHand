@@ -216,13 +216,6 @@ export function RoleLoginScreen({
     tokens.button.height,
     tokens.button.lineHeight * fontScale + tokens.button.paddingVertical * 2,
   );
-  const loginHint = password
-    ? undefined
-    : owner
-      ? "Welcome back. Enter your four-digit PIN to unlock your store."
-      : rememberedId
-        ? "Log in with your assigned four-digit Operator PIN."
-        : undefined;
   return (
     <AuthBackground headerWave>
       <KeyboardAvoidingView
@@ -249,22 +242,16 @@ export function RoleLoginScreen({
                   : "Logged out successfully."}
               </Text>
             )}
-            <View className="mt-12 px-2" style={{ flexShrink: 0 }}>
-              <Text
-                className="font-poppins-bold text-[12px] text-[#2675DB]"
-                style={{ lineHeight: 18 * fontScale }}
-              >
-                {owner ? "MAY-ARI · STORE OWNER" : "KAHERA · STORE CASHIER"}
-              </Text>
+            <View className="mt-16 px-2" style={{ flexShrink: 0 }}>
               <Text
                 accessibilityRole="header"
-                className="mt-2 font-poppins-bold text-[30px] text-brand"
+                className="type-large-metric text-brand"
                 style={{ lineHeight: 42 * fontScale }}
               >
                 {owner ? "May-Ari Login" : "Kahera Login"}
               </Text>
               <Text
-                className="mt-2 font-poppins text-[10px] text-text-secondary"
+                className="mt-2 type-helper text-text-secondary"
                 style={{ lineHeight: 15 * fontScale }}
               >
                 {password
@@ -272,15 +259,15 @@ export function RoleLoginScreen({
                     ? "Log in with your password to authenticate this device."
                     : "Log in with your permanent May-Ari ID and password to authenticate this device."
                   : owner
-                    ? "Welcome back. Enter your four-digit PIN to unlock your store."
+                    ? "Welcome back. Log in with your permanent May-Ari ID and PIN to access your store dashboard."
                     : rememberedId
                       ? "Log in with your assigned four-digit PIN."
-                      : "Enter your store's May-Ari ID and your assigned four-digit PIN."}
+                      : "Log in with the May-Ari ID for your store and your role's four-digit PIN."}
               </Text>
               {flow.restoring ? (
                 <Text
                   accessibilityRole="alert"
-                  className="mt-5 font-poppins text-[12px] text-brand"
+                  className="mt-5 type-micro-caption text-brand"
                 >
                   Restoring login details…
                 </Text>
@@ -289,7 +276,7 @@ export function RoleLoginScreen({
                   <View
                     className="px-3"
                     style={{
-                      marginTop: tokens.spacing.four,
+                      marginTop: 12,
                       gap: tokens.spacing.three,
                       flexShrink: 0,
                     }}
@@ -316,7 +303,7 @@ export function RoleLoginScreen({
                             : "Enter your store's May-Ari ID."
                         }
                         placeholder="TH-MA-0001"
-                        placeholderTextColor="#A3AFBF"
+                        placeholderTextColor={tokens.color.textDisabled}
                         selection={idSelection}
                         onSelectionChange={(event) => {
                           const reported = event.nativeEvent.selection;
@@ -391,7 +378,8 @@ export function RoleLoginScreen({
                       password={password}
                       pin={!password}
                       pinIndicators={!password}
-                      pinVisibilityToggle={!password}
+                      pinVisibilityToggle={!password && credential.length > 0}
+                      pinLengthIndicator={!password && credential.length === 0}
                       error={
                         owner
                           ? submitted || touched.credential
@@ -421,11 +409,11 @@ export function RoleLoginScreen({
                         }))
                       }
                       placeholder={password ? "Enter password" : undefined}
-                      placeholderTextColor="#A3AFBF"
+                      placeholderTextColor={tokens.color.textDisabled}
                       help={
                         password || credential.length === 4
                           ? undefined
-                          : "Enter exactly 4 numeric digits."
+                          : "Enter your PIN · exactly 4 numeric digits."
                       }
                       keyboardType={password ? "default" : "number-pad"}
                       autoComplete={password ? "current-password" : "off"}
@@ -446,7 +434,7 @@ export function RoleLoginScreen({
                       <Text
                         accessibilityRole="alert"
                         accessibilityLiveRegion="polite"
-                        className="font-poppins text-[12px] text-[#B42318]"
+                        className=" type-micro-caption text-error-base"
                         style={{ lineHeight: 18 * fontScale }}
                       >
                         {notice}
@@ -532,17 +520,18 @@ export function RoleLoginScreen({
                 </>
               )}
             </View>
-            <View className="mx-3 mt-4 gap-2 rounded-[10px] border border-[#7399CC] bg-[#D9E7F5CC] px-5 py-4">
-              <SettingsIcon name="security" />
-              <Text className="font-poppins-bold text-[12px] text-action">
-                One ID, every time
-              </Text>
+            <View className="mx-3 mt-4 gap-2 rounded-[10px] border border-bright-blue bg-ice-container px-4 py-3">
+              <View className="flex-row items-center gap-2">
+                <SettingsIcon name="security" />
+                <Text className="type-label-nav leading-[18px] text-action">
+                One ID, every time!
+                </Text>
+              </View>
               <Text
-                className="font-poppins text-[10px] text-brand"
+                className=" type-helper text-brand"
                 style={{ lineHeight: 15 * fontScale }}
               >
-                Your May-Ari ID stays the same. Logging in or resetting a PIN
-                never creates a new ID.
+                Your ID stays the same. Logging in never creates a new May-Ari ID.
               </Text>
             </View>
           </View>

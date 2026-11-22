@@ -7,7 +7,7 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { SymbolView } from 'expo-symbols';
+import { PosIcon } from '@/components/pos/pos-icon';
 import type { Ref } from 'react';
 import { Pressable, useColorScheme, View, StyleSheet, type ViewInstance } from 'react-native';
 
@@ -70,11 +70,7 @@ export function CustomTabList(props: TabListProps) {
         <ExternalLink href="https://docs.expo.dev" asChild>
           <Pressable style={styles.externalPressable}>
             <ThemedText type="link">{t('navigation.docs')}</ThemedText>
-            <SymbolView
-              tintColor={colors.text}
-              name={{ ios: 'arrow.up.right.square', web: 'link' }}
-              size={12}
-            />
+            <PosIcon name="chevronRight" color={colors.text} size={12} />
           </Pressable>
         </ExternalLink>
       </ThemedView>

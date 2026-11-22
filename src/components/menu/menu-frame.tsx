@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
 import { useNavigationHeight } from '@/state/navigation-motion';
+import tokens from '@/constants/design-tokens.json';
 
 export function MenuFrame({ title, children }: { title: string; children: ReactNode }) {
   const insets = useSafeAreaInsets();
@@ -19,10 +20,10 @@ export function MenuFrame({ title, children }: { title: string; children: ReactN
   return <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-white">
     <ScrollView ref={scroll}
       contentContainerStyle={{ paddingBottom: insets.bottom + navigationHeight + 24 }}>
-      <View className="w-full max-w-[460px] self-center px-5 pt-10">
+      <View className="w-full max-w-[460px] self-center px-5" style={{ paddingTop: tokens.spacing.safeAreaTitleGap }}>
         <View className="mb-6 flex-row items-center gap-3">
           <BackButton accessibilityLabel="Go back" onPress={back} />
-          <Text accessibilityRole="header" className="min-w-0 flex-1 font-poppins-bold text-[24px] leading-9 text-brand">{title}</Text>
+          <Text accessibilityRole="header" className="min-w-0 flex-1 type-h2-section leading-9 text-brand">{title}</Text>
         </View>
         {children}
       </View>

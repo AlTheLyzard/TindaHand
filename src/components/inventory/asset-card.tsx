@@ -20,8 +20,8 @@ export function AssetCard({ asset, onEdit }: {
     borderRadius: tokens.radius.control, backgroundColor: tokens.color.surfaceCard }}>
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spacing.two }}>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontFamily: tokens.button.fontFamily, fontSize: 22, lineHeight: 30, color: tokens.color.textPrimary }}>{asset.name}</Text>
-        <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18, color: tokens.color.textSecondary }}>{assetLabels[asset.classification]}</Text>
+        <Text style={{ fontFamily: tokens.button.fontFamily, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 30, color: tokens.color.textPrimary }}>{asset.name}</Text>
+        <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microCaption.fontSize, lineHeight: 18, color: tokens.color.textSecondary }}>{assetLabels[asset.classification]}</Text>
       </View>
       <IconButton ref={trigger} accessibilityLabel={`Actions for ${asset.name}`} accessibilityState={{ expanded: open }}
         onPress={() => { Keyboard.dismiss(); setOpen(true); }}
@@ -29,8 +29,8 @@ export function AssetCard({ asset, onEdit }: {
         icon={() => <View accessible={false} style={{ gap: 3 }}>{[0, 1, 2].map(dot => <View key={dot} style={{ width: 4, height: 4, borderRadius: tokens.radius.pill, backgroundColor: tokens.color.textPrimary }} />)}</View>} />
     </View>
     <View>
-      <Text style={{ fontFamily: tokens.button.fontFamily, fontSize: 22, lineHeight: 30, color: tokens.button.primary.pressed }}>{formatPesos(asset.valueCentavos)}</Text>
-      <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 14, lineHeight: 21, color: tokens.color.textSecondary }}>Recorded {formatCalendarDate(asset.recordedDate)}</Text>
+      <Text style={{ fontFamily: tokens.button.fontFamily, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 30, color: tokens.button.primary.pressed }}>{formatPesos(asset.valueCentavos)}</Text>
+      <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microFinancialRate.fontSize, lineHeight: 21, color: tokens.color.textSecondary }}>Recorded {formatCalendarDate(asset.recordedDate)}</Text>
     </View>
     <InventoryPopover visible={open} anchorRef={trigger} label={`actions for ${asset.name}`} testID={`asset-actions-${asset.id}`} width={tokens.size.touchTarget * 2 + tokens.spacing.four} placement="below"
       onClose={() => setOpen(false)} onHidden={() => {

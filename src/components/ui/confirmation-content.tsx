@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { IconButton } from '@/components/ui/button';
 import type { ButtonVariant } from '@/components/ui/button';
 import type { ReactNode } from 'react';
@@ -26,26 +27,26 @@ export function ConfirmationContent({ title, message, cancelLabel, confirmLabel,
     if (Platform.OS === 'web') close.current.focus();
     else AccessibilityInfo.sendAccessibilityEvent(close.current, 'focus');
   }, []);
-  const iconColor = iconTone === 'blue' ? '#2F6CC9' : '#B4232C';
-  const iconSurface = iconTone === 'blue' ? '#D1E1F5' : '#E9A7A7';
-  if (variant === 'quickAdd') return <View accessibilityViewIsModal className="w-full max-w-[340px] self-center rounded-control bg-white p-[18px]" style={{ boxShadow: '0 3px 4px #00000040' }}>
-      <View className="mb-4 flex-row items-center gap-2 border-b border-[#4A607A] pb-3 pr-5">
+  const iconColor = iconTone === 'blue' ? tokens.color.brightBlue : tokens.color.errorBase;
+  const iconSurface = iconTone === 'blue' ? tokens.color.softBlue : tokens.color.errorSoft;
+  if (variant === 'quickAdd') return <View accessibilityViewIsModal className="w-full max-w-[340px] self-center rounded-control bg-white p-[18px]">
+      <View className="mb-4 flex-row items-center gap-2 border-b border-text-secondary pb-3 pr-5">
       {leadingIcon ?? (iconTone === 'blue'
         ? <View className="h-8 w-8 shrink-0 items-center justify-center rounded-pill" style={{ backgroundColor: iconSurface }}><PosIcon name="alert" size={18} color={iconColor} /></View>
-        : <View className="h-7 w-7 items-center justify-center rounded-pill bg-[#E9A7A7]"><PosIcon name="alert" size={28} color={iconColor} /></View>)}
-      <Text accessibilityRole="header" className="flex-1 font-poppins-bold text-[16px] leading-6" style={{ color: titleColor ?? '#B4232C' }}>{title}</Text>
+        : <View className="h-7 w-7 items-center justify-center rounded-pill bg-error-tint"><PosIcon name="alert" size={28} color={iconColor} /></View>)}
+      <Text accessibilityRole="header" className="flex-1 type-list-financial leading-6" style={{ color: titleColor ?? tokens.color.errorBase }}>{title}</Text>
       <IconButton ref={close} accessibilityLabel="Close confirmation" onPress={onCancel} className="absolute -right-4 -top-4 min-h-12 min-w-12 items-center justify-center" icon={({ color }) => <PosIcon name="close" size={20} color={color} />} />
     </View>
-    <Text className="mb-4 font-poppins text-[14px] leading-[21px] text-[#102342]">{message}</Text>
+    <Text className="mb-4 type-micro-financial-rate leading-[21px] text-text-primary">{message}</Text>
     <ConfirmationActions destructive={destructive} cancelVariant={cancelVariant ?? 'destructiveOutline'} confirmLabel={confirmLabel} cancelLabel={cancelLabel} onConfirm={onConfirm} onCancel={onCancel} />
   </View>;
-  return <View accessibilityViewIsModal className="w-full max-w-[412px] self-center rounded-control bg-white p-5" style={{ boxShadow: '0 3px 6px #00000040' }}>
-    <View className="mb-3 flex-row items-center gap-2 border-b border-[#ADC9EE] pb-3 pr-8">
+  return <View accessibilityViewIsModal className="w-full max-w-[412px] self-center rounded-control bg-white p-5">
+    <View className="mb-3 flex-row items-center gap-2 border-b border-outline pb-3 pr-8">
       {leadingIcon ?? <PosIcon name="alert" size={24} color={iconColor} />}
-      <Text accessibilityRole="header" className="flex-1 font-poppins-bold text-[16px]" style={{ color: titleColor ?? '#B4232C' }}>{title}</Text>
-      <IconButton ref={close} accessibilityLabel="Close confirmation" onPress={onCancel} className="absolute -right-3 -top-3" icon={({ color }) => <Text accessible={false} style={{ color, fontSize: 20 }}>×</Text>} />
+      <Text accessibilityRole="header" className="flex-1 type-list-financial" style={{ color: titleColor ?? tokens.color.errorBase }}>{title}</Text>
+      <IconButton ref={close} accessibilityLabel="Close confirmation" onPress={onCancel} className="absolute -right-3 -top-3" icon={({ color }) => <PosIcon name="close" size={20} color={color} />} />
     </View>
-    <Text className="mb-5 font-poppins text-[14px] leading-[22px] text-[#102342]">{message}</Text>
+    <Text className="mb-5 type-micro-financial-rate leading-[22px] text-text-primary">{message}</Text>
     <ConfirmationActions destructive={destructive} cancelVariant={cancelVariant} stacked={stackedActions && !balancedActions} confirmLabel={confirmLabel} cancelLabel={cancelLabel} onConfirm={onConfirm} onCancel={onCancel} />
   </View>;
 }

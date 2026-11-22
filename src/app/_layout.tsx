@@ -2,7 +2,9 @@ import { MotionProvider } from '@/state/motion';
 import { useStackMotion } from '@/hooks/use-stack-motion';
 import "@/global.css";
 
+import { Poppins_300Light } from "@expo-google-fonts/poppins/300Light";
 import { Poppins_400Regular } from "@expo-google-fonts/poppins/400Regular";
+import { Poppins_500Medium } from "@expo-google-fonts/poppins/500Medium";
 import { Poppins_600SemiBold } from "@expo-google-fonts/poppins/600SemiBold";
 import { Poppins_700Bold } from "@expo-google-fonts/poppins/700Bold";
 import { useFonts } from "expo-font";
@@ -20,12 +22,13 @@ import { QuickAddProvider } from "@/state/quick-add";
 import { PosProvider } from "@/state/pos";
 import { NavigationMotionProvider } from "@/state/navigation-motion";
 import { ToastOverlayProvider } from "@/components/ui/toast-overlay";
+import tokens from "@/constants/design-tokens.json";
 
 void SplashScreen.preventAutoHideAsync();
 
 function RootNavigation() {
   const stackMotion = useStackMotion();
-  const [loaded, error] = useFonts({ Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold });
+  const [loaded, error] = useFonts({ Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold });
 
   useEffect(() => {
     if (loaded || error) {
@@ -51,7 +54,7 @@ function RootNavigation() {
                   screenOptions={{
                     ...stackMotion,
                     headerShown: false,
-                    contentStyle: { backgroundColor: "#F0F8FF" },
+                    contentStyle: { backgroundColor: tokens.color.appBackground },
                   }}
                 />
               </ToastOverlayProvider>

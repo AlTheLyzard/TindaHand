@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { MotionPressable as Pressable } from "@/components/ui/motion-pressable";
 import { useTranslation } from "@/i18n/use-translation";
-import { useState } from "react";
-import { Image, Text, View, useWindowDimensions } from "react-native";
+import { Text, View, useWindowDimensions } from "react-native";
 
 import { ActivityTile } from "@/components/dashboard/activity-tile";
 import {
@@ -11,7 +10,6 @@ import {
   DashboardIcon,
   dashboardIcons,
 } from "@/components/dashboard/dashboard-ui";
-import { GrowthSparkline } from "@/components/dashboard/growth-sparkline";
 import { PosIcon } from "@/components/pos/pos-icon";
 import {
   EmptyState,
@@ -20,14 +18,12 @@ import {
   SkeletonBar,
 } from "@/components/ui/content-state";
 import tokens from "@/constants/design-tokens.json";
-import { dashboardDemo } from "@/data/dashboard";
 import { getLocaleFormats } from "@/i18n";
 import type {
   DashboardActivity,
   GrowthMetrics,
   SalesPeriod,
 } from "@/types/dashboard";
-import type { InventoryProduct } from "@/types/inventory";
 import {
   formatActivityAmount,
   formatPesos,
@@ -66,12 +62,12 @@ export function CashCard({
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   return (
-    <View className="rounded-card bg-[#28549A] px-5 py-4">
+    <View className="rounded-card bg-action px-5 py-4">
       <View className="flex-row items-center gap-3">
-        <DashboardIcon source={dashboardIcons.money} size={40} />
+        <PosIcon name="money" size={40} color={tokens.color.surfaceCard} />
         <Text
           accessibilityRole="header"
-          className="flex-shrink font-poppins-bold text-[18px] leading-[27px] text-white"
+          className="flex-shrink type-title-accent text-white"
         >
           {t("dashboard.cashTitle")}
         </Text>
@@ -79,7 +75,7 @@ export function CashCard({
       <View className="mb-4 mt-3 flex-row items-center justify-between gap-2">
         <View className="min-w-0 flex-1">
           <Metric loading={loading}>
-            <Text className="font-poppins-bold text-[30px] leading-[45px] text-white">
+            <Text className=" type-large-metric leading-[45px] text-white">
               {formatPesos(summary.cashCentavos)}
             </Text>
           </Metric>
@@ -93,33 +89,30 @@ export function CashCard({
           onPress={onCashAction}
           className="min-h-12 min-w-12 items-center justify-center rounded-pill "
         >
-          <DashboardCircle
-            size={32}
-            backgroundColor={tokens.color.primaryDisabled}
-          >
-            <PosIcon name="plus" size={24} color="#112F6F" active />
+          <DashboardCircle size={tokens.size.iconCircle} backgroundColor={tokens.color.surfaceCard}>
+            <PosIcon name="plus" size={24} color={tokens.color.darkNavy} active />
           </DashboardCircle>
         </Pressable>
       </View>
       <View
         style={{ flexDirection: fontScale > 1.3 ? "column" : "row", gap: 12 }}
       >
-        <View className="min-w-0 flex-1 rounded-surface bg-[#E6F5E9] p-3">
-          <Text className="font-poppins text-[12px] leading-[18px] text-[#21642C]">
+        <View className="min-w-0 flex-1 rounded-surface bg-success-tint p-3">
+          <Text className=" type-micro-caption leading-[18px] text-success-base">
             {t("dashboard.income")}
           </Text>
           <Metric loading={loading}>
-            <Text className="mt-2 font-poppins-bold text-[16px] leading-6 text-[#21642C]">
+            <Text className="mt-2 type-list-financial leading-6 text-success-base">
               +{formatPesos(summary.moneyIn)}
             </Text>
           </Metric>
         </View>
-        <View className="min-w-0 flex-1 rounded-surface bg-[#FDEDEF] p-3">
-          <Text className="font-poppins text-[12px] leading-[18px] text-[#AB2025]">
+        <View className="min-w-0 flex-1 rounded-surface bg-error-tint p-3">
+          <Text className=" type-micro-caption leading-[18px] text-text-secondary">
             {t("dashboard.expenses")}
           </Text>
           <Metric loading={loading}>
-            <Text className="mt-2 font-poppins-bold text-[16px] leading-6 text-[#AB2025]">
+            <Text className="mt-2 type-list-financial leading-6 text-text-secondary">
               −{formatPesos(summary.moneyOut)}
             </Text>
           </Metric>
@@ -141,22 +134,15 @@ export function SalesCard({
   onPeriod,
   growthMetrics,
   loading = false,
-  empty = false,
 }: {
   summary: Summary;
   period: SalesPeriod;
   onPeriod: (period: SalesPeriod) => void;
   growthMetrics: GrowthMetrics | null;
   loading?: boolean;
-  empty?: boolean;
 }) {
   const { t } = useTranslation();
-  const { fontScale, width } = useWindowDimensions();
-  const noSales = {
-    daily: "No sales today",
-    weekly: "No sales this week",
-    monthly: "No sales this month",
-  }[period];
+  const { fontScale } = useWindowDimensions();
   const metricStyle = {
     minHeight: 94 * Math.max(1, fontScale),
     paddingVertical: tokens.spacing.two,
@@ -200,15 +186,15 @@ export function SalesCard({
                     alignItems: "center",
                     justifyContent: "center",
                     backgroundColor:
-                      period === value ? "#28549A" : tokens.color.surfaceSubtle,
+                      period === value ? tokens.color.royalBlue : tokens.color.surfaceSubtle,
                   }}
                 >
                   <Text
                     numberOfLines={1}
                     adjustsFontSizeToFit
                     minimumFontScale={0.7}
-                    className="font-poppins-bold text-[12px] leading-[18px] text-center"
-                    style={{ color: period === value ? "#FFFFFF" : "#102342" }}
+                    className=" type-label-nav leading-[18px] text-center"
+                    style={{ color: period === value ? tokens.color.surfaceCard : tokens.color.textPrimary }}
                   >
                     {t(label)}
                   </Text>
@@ -222,72 +208,45 @@ export function SalesCard({
         style={{ flexDirection: fontScale > 1.3 ? "column" : "row", gap: 12 }}
       >
         <View className="rounded-surface bg-canvas px-3" style={metricStyle}>
-          <Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">
+          <Text className=" type-micro-caption leading-[18px] text-text-secondary">
             {t("dashboard.totalSales")}
           </Text>
           <Metric loading={loading}>
             <Text
               style={{
-                minHeight: 24 * fontScale,
-                fontSize: width < 360 ? 14 : 16,
+                minHeight: tokens.typography.listFinancial.lineHeight * fontScale,
+                fontSize: tokens.typography.listFinancial.fontSize,
               }}
-              className="mt-1 font-poppins-bold leading-6 text-[#102342]"
+              className="mt-1 type-list-financial text-text-primary"
             >
               {formatPesos(summary.totalSalesCentavos)}
             </Text>
-          </Metric>
-          <Metric loading={loading}>
-            <View
-              className="mt-0.5 flex-row items-start gap-1"
-              style={{ minHeight: 30 * fontScale }}
-            >
-              <PosIcon name="cart" size={14} />
-              <Text
-                accessibilityLiveRegion="polite"
-                className="flex-1 font-poppins text-[10px] leading-[15px] text-text-secondary"
-              >
-                {empty ? noSales : "Recorded sales"}
-              </Text>
-            </View>
           </Metric>
         </View>
         <View
           className="overflow-hidden rounded-surface bg-canvas px-3"
           style={metricStyle}
         >
-          {!loading && growthMetrics && (
-            <GrowthSparkline points={growthMetrics.points} />
-          )}
-          <Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">
+          <Text className=" type-micro-caption leading-[18px] text-text-secondary">
             {t("dashboard.growth")}
           </Text>
           <Metric loading={loading}>
             <Text
-              className="mt-1 font-poppins-bold leading-6"
+              className="mt-1 type-list-financial leading-6"
               style={{
-                minHeight: 24 * fontScale,
-                fontSize: width < 360 ? 14 : 16,
+                minHeight: tokens.typography.listFinancial.lineHeight * fontScale,
                 color:
                   growthMetrics?.percentageChange == null
-                    ? "#4A607A"
+                    ? tokens.color.textSecondary
                     : growthMetrics.percentageChange < 0
-                      ? "#AB2025"
-                      : "#21642C",
+                      ? tokens.color.errorHover
+                      : tokens.color.successBase,
               }}
             >
               {growthMetrics?.percentageChange == null
                 ? "—"
                 : `${growthMetrics.percentageChange >= 0 ? "+" : ""}${growthMetrics.percentageChange}%`}
             </Text>
-          </Metric>
-          <Metric loading={loading}>
-            <View className="mt-0.5" style={{ minHeight: 30 * fontScale }}>
-              <Text className="font-poppins text-[10px] leading-[15px] text-text-secondary">
-                {growthMetrics?.source === "demo"
-                  ? t("dashboard.demoTrend")
-                  : t("dashboard.noComparison")}
-              </Text>
-            </View>
           </Metric>
         </View>
       </View>
@@ -328,10 +287,10 @@ export function StockCard({
               status: "out" as const,
               label: t("dashboard.outOfStock"),
               count: summary.outOfStock,
-              color: "#AB2025",
-              countColor: "#AB2025",
-              background: "#FDEDEF",
-              border: "#CA2229",
+              color: tokens.color.errorHover,
+              countColor: tokens.color.errorHover,
+              background: tokens.color.errorSoft,
+              border: tokens.color.errorBase,
             },
             {
               status: "low" as const,
@@ -339,8 +298,8 @@ export function StockCard({
               count: summary.lowStock,
               color: tokens.color.warningBase,
               countColor: tokens.color.warningBase,
-              background: "#FFF8E1",
-              border: "#FF8514",
+              background: tokens.color.warningTint,
+              border: tokens.color.warningBase,
             },
           ].map((item) => (
             <Pressable
@@ -374,25 +333,22 @@ export function StockCard({
                     allowFontScaling={false}
                     style={{
                       color: item.border,
-                      fontSize: 14,
+                      fontSize: tokens.typography.microFinancialRate.fontSize,
                       lineHeight: 18,
-                      fontFamily: "Poppins_700Bold",
+                      fontFamily: tokens.typography.weights.bold,
                       includeFontPadding: false,
                     }}
                   >
                     !
                   </Text>
                 </DashboardCircle>
-                <Text
-                  className="flex-shrink font-poppins text-[12px] leading-[18px]"
-                  style={{ color: item.color }}
-                >
+                <Text className="flex-shrink type-body-primary" style={{ color: item.color }}>
                   {item.label}
                 </Text>
               </View>
               <Metric loading={loading}>
                 <Text
-                  className="mt-3 font-poppins-bold text-[16px] leading-6"
+                  className="mt-3 type-list-financial leading-6"
                   style={{ color: item.countColor }}
                 >
                   {t(
@@ -411,7 +367,7 @@ export function StockCard({
         !empty &&
         summary.outOfStock === 0 &&
         summary.lowStock === 0 && (
-          <Text className="mt-3 font-poppins text-[12px] text-[#21642C]">
+          <Text className="mt-3 type-micro-caption text-success-base">
             All products are in stock. No restocking alerts.
           </Text>
         )}
@@ -421,12 +377,10 @@ export function StockCard({
 
 export function BestSellersCard({
   summary,
-  products = [],
   loading = false,
   onBrowse,
 }: {
   summary: Summary;
-  products?: readonly InventoryProduct[];
   loading?: boolean;
   onBrowse?: () => void;
 }) {
@@ -452,25 +406,15 @@ export function BestSellersCard({
           {summary.bestSellers.map((item, index) => (
             <View
               key={item.id}
-              className="min-h-[64px] flex-row items-center gap-2 rounded-surface bg-canvas px-2 py-3"
+              className="min-h-[64px] flex-row items-center gap-3 rounded-surface bg-canvas px-3 py-3"
             >
-              <DashboardCircle size={24}>
+              <DashboardCircle size={tokens.size.badge} backgroundColor={tokens.color.darkNavy}>
                 <Metric loading={loading}>
-                  <Text className="font-poppins text-[12px] text-action">
+                  <Text className="type-body-primary text-white">
                     {index + 1}
                   </Text>
                 </Metric>
               </DashboardCircle>
-              {loading ? (
-                <Skeleton>
-                  <SkeletonBar width={36} height={36} />
-                </Skeleton>
-              ) : (
-                <ProductThumbnail
-                  product={products.find((product) => product.id === item.id)}
-                  productId={item.id}
-                />
-              )}
               <View
                 className="min-w-0 flex-1"
                 style={{
@@ -483,7 +427,7 @@ export function BestSellersCard({
                   style={{ flex: fontScale > 1.3 ? undefined : 1, minWidth: 0 }}
                 >
                   <Metric loading={loading}>
-                    <Text className="font-poppins text-[12px] leading-[18px] text-[#102342]">
+                    <Text className="type-body-primary text-text-primary">
                       {item.name}
                     </Text>
                   </Metric>
@@ -491,8 +435,8 @@ export function BestSellersCard({
                 <Metric loading={loading}>
                   <Text
                     numberOfLines={fontScale > 1.3 ? undefined : 1}
-                    style={{ width: fontScale > 1.3 ? undefined : 76 }}
-                    className="text-right font-poppins-bold text-[10px] leading-[15px] text-brand"
+                    style={{ minWidth: fontScale > 1.3 ? undefined : 112 }}
+                    className="text-right type-list-financial leading-6 text-brand"
                   >
                     {t(
                       item.quantity === 1
@@ -556,21 +500,18 @@ export function RecentActivityCard({
                   <Skeleton>
                     <SkeletonBar width={40} height={40} />
                   </Skeleton>
+                ) : activity.kind === "sale" ? (
+                  <DashboardCircle size={tokens.size.iconCircle} backgroundColor={tokens.color.darkNavy} />
                 ) : activity.kind === "customerDebt" ||
                   activity.kind === "storeDebt" ||
                   activity.kind === "expense" ? (
-                  <PosIcon name={activity.kind} size={24} color="#245399" />
+                  <PosIcon name={activity.kind} size={24} color={tokens.color.royalBlue} />
                 ) : (
-                  <DashboardIcon
-                    source={
-                      activity.kind === "payment"
-                        ? dashboardIcons.payment
-                        : dashboardIcons.bottle
-                    }
-                    size={
-                      activity.kind === "payment" ? 24 : tokens.size.iconCircle
-                    }
-                  />
+                  activity.kind === "payment" ? (
+                    <PosIcon name="money" size={24} color={tokens.color.royalBlue} />
+                  ) : (
+                    <DashboardIcon source={dashboardIcons.bottle} size={tokens.size.iconCircle} />
+                  )
                 )}
               </View>
               <View className="min-w-0 flex-1">
@@ -590,7 +531,7 @@ export function RecentActivityCard({
                     }}
                   >
                     <Metric loading={loading}>
-                      <Text className="font-poppins text-[12px] leading-[18px] text-[#102342]">
+                      <Text className="type-body-primary text-text-primary">
                         {activity.label ??
                           {
                             sale: t("dashboard.posSale"),
@@ -607,14 +548,16 @@ export function RecentActivityCard({
                       <Text
                         style={{
                           color:
-                            activity.amountCentavos === 0 ||
+                            activity.kind === "sale"
+                              ? tokens.color.royalBlue
+                              : activity.amountCentavos === 0 ||
                             activity.direction === "neutral"
-                              ? "#4A607A"
+                              ? tokens.color.textSecondary
                               : activity.direction === "in"
-                                ? "#21642C"
-                                : "#AB2025",
+                                ? tokens.color.successBase
+                                : tokens.color.errorHover,
                         }}
-                        className="text-right font-poppins-bold text-[16px] leading-6"
+                        className="text-right type-list-financial leading-6"
                       >
                         {formatActivityAmount(activity)}
                       </Text>
@@ -625,18 +568,15 @@ export function RecentActivityCard({
                   <Text
                     numberOfLines={1}
                     adjustsFontSizeToFit
-                    className="mt-1 font-poppins text-[10px] leading-[15px] text-brand"
+                    className="mt-1 type-helper leading-[15px] text-brand"
                   >
-                    {new Date(activity.occurredAt).toLocaleString(
+                    {new Date(activity.occurredAt).toLocaleTimeString(
                       getLocaleFormats().date,
                       {
                         timeZone: "Asia/Manila",
                         hour: "2-digit",
                         minute: "2-digit",
                         hour12: true,
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
                       },
                     )}
                   </Text>
@@ -647,54 +587,6 @@ export function RecentActivityCard({
         </View>
       )}
     </DashboardCard>
-  );
-}
-
-function ProductThumbnail({
-  product,
-  productId,
-}: {
-  product?: InventoryProduct;
-  productId: string;
-}) {
-  const [failedUri, setFailedUri] = useState<string | null>(null);
-  const photoUri = product?.photoUri;
-  const category =
-    product?.category ??
-    dashboardDemo.products.find((item) => item.id === productId)?.category;
-  const icon = (
-    {
-      drinks: "🥤",
-      canned: "🥫",
-      snacks: "🍪",
-      coldCuts: "🥩",
-      groceries: "🛒",
-      household: "🧹",
-      personalCare: "🧴",
-    } as Record<string, string>
-  )[category ?? ""];
-  return (
-    <View
-      testID={`thumbnail-${productId}`}
-      accessible={false}
-      className="items-center justify-center overflow-hidden rounded-control bg-[#D9E7F4]"
-      style={{ width: 36, height: 36, flexShrink: 0 }}
-    >
-      {photoUri && failedUri !== photoUri ? (
-        <Image
-          source={{ uri: photoUri }}
-          resizeMode="cover"
-          style={{ width: 36, height: 36 }}
-          onError={() => setFailedUri(photoUri)}
-        />
-      ) : icon ? (
-        <Text allowFontScaling={false} style={{ fontSize: 23 }}>
-          {icon}
-        </Text>
-      ) : (
-        <PosIcon name="inventory" size={24} />
-      )}
-    </View>
   );
 }
 
@@ -717,17 +609,16 @@ function DashboardRowsSkeleton({
                 : "min-h-[70px] flex-row items-center gap-3 px-0 py-3"
             }
           >
-            {kind === "products" && <SkeletonBar width={24} height={24} />}
             <SkeletonBar
-              width={kind === "products" ? 36 : 40}
-              height={kind === "products" ? 36 : 40}
+              width={kind === "products" ? tokens.size.badge : 40}
+              height={kind === "products" ? tokens.size.badge : 40}
             />
             <View className="flex-1 gap-2">
               <SkeletonBar />
               <SkeletonBar width="55%" height={14} />
             </View>
             <SkeletonBar
-              width={kind === "products" ? 76 : 64}
+              width={kind === "products" ? 112 : 64}
               height={kind === "products" ? 15 : 18}
             />
           </View>

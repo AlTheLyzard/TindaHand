@@ -70,7 +70,7 @@ export function SettingsFrame({
             resizeMode="contain"
             accessible={false}
           />
-          <Text className="flex-shrink font-poppins-bold text-[20px] leading-[30px] text-brand">
+          <Text className="flex-shrink type-title-accent leading-[30px] text-brand">
             TindaHand
           </Text>
         </View>
@@ -90,7 +90,7 @@ export function SettingsFrame({
         >
           <View
             className="w-full max-w-[460px] flex-1 self-center px-6"
-            style={{ paddingTop: landing ? 16 : 32 }}
+            style={{ paddingTop: tokens.spacing.headerTitleGap }}
           >
             <View
               className={`flex-row items-center gap-2 ${landing ? "mb-1" : "mb-8"}`}
@@ -103,11 +103,7 @@ export function SettingsFrame({
               )}
               <Text
                 accessibilityRole="header"
-                className="min-w-0 flex-1 font-poppins-bold text-brand"
-                style={{
-                  fontSize: landing ? 30 : 24,
-                  lineHeight: landing ? 42 : 36,
-                }}
+                className={`min-w-0 flex-1 ${landing ? 'type-large-metric' : 'type-h2-section'} text-brand`}
               >
                 {title}
               </Text>

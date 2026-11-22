@@ -49,9 +49,9 @@ export function ExpenseListScreen() {
       <InvField hideLabel label="Search expenses" accessibilityLabel="Search expenses" value={query} onChangeText={setQuery} placeholder="Search expenses…" returnKeyType="search" style={{ paddingLeft: 52, paddingRight: 16 }} />
       <View pointerEvents="none" style={{ position: 'absolute', left: 16, top: 0, bottom: 0, justifyContent: 'center' }}><PosIcon name="search" size={20} /></View>
     </View>
-    <View testID="expense-month-summary" className="gap-1 rounded-control border border-[#B0C8E3] bg-[#D1E1F5] p-4">
-      <Text className="font-poppins-bold text-[12px] leading-[18px] text-brand">Total expenses this month</Text>
-      <Text accessibilityLiveRegion="polite" className="font-poppins-bold text-[30px] leading-[36px] text-brand">{formatPesos(monthlyExpenses(allExpenses, today))}</Text>
+    <View testID="expense-month-summary" className="gap-1 rounded-control border border-outline bg-accent-soft p-4">
+      <Text className=" type-label-nav leading-[18px] text-brand">Total expenses this month</Text>
+      <Text accessibilityLiveRegion="polite" className=" type-large-metric leading-[36px] text-brand">{formatPesos(monthlyExpenses(allExpenses, today))}</Text>
     </View>
     {expenseFeedback && <RegistrationToast expiresAt={expenseFeedback.expiresAt} onDismiss={dismissExpenseFeedback} title="Expense recorded" message="Your expense has been saved successfully." />}
     <Button onPress={newRecord}>New Record</Button>
@@ -62,13 +62,13 @@ export function ExpenseListScreen() {
     {allExpenses.length === 0 ? <EmptyState icon="expense" title="No expenses yet" description="Record your first store expense to start tracking your spending." action="New Record" onAction={newRecord} /> : expenses.length === 0 ?
       <EmptyState icon="search" title={query.trim() ? 'No expenses found' : 'No expenses in this category'} description="Try a different search or category to find your expenses." action="Clear search and filters" onAction={() => { setQuery(''); setCategory('all'); }} /> :
       expenses.map(record => <View key={record.id} testID="expense-card" style={{ gap: 10, borderRadius: tokens.radius.surface, borderWidth: 1, borderColor: tokens.color.borderOutline, backgroundColor: tokens.color.surfaceCard, padding: 16 }}>
-        <Text accessibilityRole="header" style={{ fontFamily: 'Poppins_700Bold', fontSize: 18, lineHeight: 27, color: tokens.color.textPrimary }}>{expenseCategoryLabel(record.category)}</Text>
+        <Text accessibilityRole="header" style={{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.h3Heading.fontSize, lineHeight: 27, color: tokens.color.textPrimary }}>{expenseCategoryLabel(record.category)}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: 8, rowGap: 4 }}>
-          <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 16, lineHeight: 24, color: tokens.button.primary.default }}>{formatPesos(record.amountCentavos)}</Text>
-          <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18, color: tokens.color.textSecondary }}>{formatExpenseDate(record.expenseDate)}</Text>
+          <Text style={{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.listFinancial.fontSize, lineHeight: 24, color: tokens.button.primary.default }}>{formatPesos(record.amountCentavos)}</Text>
+          <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microCaption.fontSize, lineHeight: 18, color: tokens.color.textSecondary }}>{formatExpenseDate(record.expenseDate)}</Text>
         </View>
         {!!record.details && <View style={{ alignSelf: 'flex-start', maxWidth: '100%', borderRadius: tokens.radius.pill, backgroundColor: tokens.color.surfaceSubtle, paddingHorizontal: 10, paddingVertical: 4 }}>
-          <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 12, lineHeight: 18, color: tokens.color.textPrimary }}>{record.details}</Text>
+          <Text style={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: 18, color: tokens.color.textPrimary }}>{record.details}</Text>
         </View>}
       </View>)}
   </InventoryFrame>;

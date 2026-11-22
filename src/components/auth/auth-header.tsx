@@ -17,7 +17,7 @@ export function AuthHeader({ onBack, backLabel, showWordmark = true, backDisable
         {showWordmark && <Image source={require('@/assets/images/brand/tindahand-mark.png')}
           style={{ width: 34, height: 34 }} resizeMode="contain" accessible={false} />
         }
-        <Text className="flex-shrink font-poppins-bold text-[20px] text-brand" style={{ lineHeight: 28 * fontScale }}>TindaHand</Text>
+        <Text className="flex-shrink type-title-accent text-brand" style={{ lineHeight: 28 * fontScale }}>TindaHand</Text>
       </View>
       {!showWordmark && <View style={{ width: 48 }} />}
     </View>

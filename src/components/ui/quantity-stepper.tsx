@@ -4,7 +4,7 @@ import { PosIcon } from '@/components/pos/pos-icon';
 
 /** Shared, compact quantity controls for cart and product-selection rows. */
 export function QuantityStepper({ value, valueLabel, decreaseLabel, increaseLabel, onDecrease, onIncrease,
-  decreaseDisabled = false, increaseDisabled = false, compact = false, valueTextClassName = 'font-poppins-bold text-[16px] text-[#102342]' }: {
+  decreaseDisabled = false, increaseDisabled = false, compact = false, valueTextClassName = 'type-list-financial text-text-primary' }: {
   value: number; valueLabel: string; decreaseLabel: string; increaseLabel: string;
   onDecrease: () => void; onIncrease: () => void;
   decreaseDisabled?: boolean; increaseDisabled?: boolean; compact?: boolean; valueTextClassName?: string;

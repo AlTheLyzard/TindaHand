@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { Redirect, Stack } from 'expo-router';
 import { InventoryFeedback } from '@/components/inventory/inventory-ui';
 import { useStackMotion } from '@/hooks/use-stack-motion';
@@ -13,8 +14,8 @@ export default function OperatorInventoryLayout() {
   // below never fires with a momentarily-null deviceSession (same fix as the
   // POS layout — keyboard open/close triggers AppState events that can race
   // with an in-progress refreshSession call during the restock confirm flow).
-  if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className="font-poppins text-[14px] text-brand">Restoring your session…</Text></View>;
+  if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className=" type-micro-financial-rate text-brand">Restoring your session…</Text></View>;
   if (!deviceSession || deviceSession.role !== 'operator' || !hasCapability(deviceSession, 'pos')) return <Redirect href="/choose-account" />;
   if (!hasCapability(deviceSession, 'inventory-edit') && !hasCapability(deviceSession, 'restock')) return <Redirect href={posHref('/operator-pos')} />;
-  return <><Stack screenOptions={{ ...stackMotion, headerShown: false, contentStyle: { backgroundColor: '#F0F8FF' } }} /><InventoryFeedback /></>;
+  return <><Stack screenOptions={{ ...stackMotion, headerShown: false, contentStyle: { backgroundColor: tokens.color.appBackground } }} /><InventoryFeedback /></>;
 }

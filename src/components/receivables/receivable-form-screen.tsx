@@ -178,16 +178,16 @@ export function ReceivableFormScreen() {
   </>;
 
   return <InventoryFrame title="New Customer Debt" back inlineTitle onBack={back} overlay={overlay} onNavigate={action => { if (!busy.current) action(); }}>
-    <Text className="font-poppins text-[14px] leading-[21px] text-text-secondary">{debtDescription}</Text>
+    <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">{debtDescription}</Text>
     <View className="gap-5" pointerEvents={saving ? 'none' : 'auto'}>
       <CustomerNameField onMatch={selected => update({ name: selected.name, customerId: selected.id })} inputRef={nameInput} value={draft.name} customerId={draft.customerId} onChange={name => update({ name, customerId: undefined })} error={error('name')} onSelect={() => openPicker('customer')} onNext={() => (product ? dateInput : amountInput).current?.focus()} />
-      <View className="gap-2"><Text className="font-poppins-semibold text-[12px] text-text-secondary">Debt Type</Text>
+      <View className="gap-2"><Text className=" type-label-nav text-text-secondary">Debt Type</Text>
         <View accessibilityRole="radiogroup" className="flex-row gap-3">{(['cash', 'product'] as const).map(type => {
           const selected = draft.borrowing === type;
           return <Pressable key={type} accessibilityRole="radio" accessibilityLabel={type === 'cash' ? 'Cash debt' : 'Product debt'} accessibilityState={{ checked: selected }} onPress={() => update({ borrowing: type })}
             className="min-h-[76px] min-w-0 flex-1 flex-row items-center gap-2 rounded-control border px-3 py-3" style={{ borderColor: selected ? tokens.color.accentBase : tokens.color.borderOutline, backgroundColor: selected ? tokens.color.accentContainer : tokens.color.surfaceCard }}>
             <PosIcon name={type === 'cash' ? 'money' : 'inventory'} size={28} color={selected ? tokens.color.accentBase : tokens.color.textSecondary} />
-            <View className="min-w-0 flex-1"><Text className="font-poppins-bold text-[14px]" style={{ color: selected ? tokens.color.textPrimary : tokens.color.textSecondary }}>{type === 'cash' ? 'Cash' : 'Product'}</Text><Text className="font-poppins text-[10px]" style={{ color: tokens.color.textSecondary }}>{type === 'cash' ? 'Money Amount' : 'Items'}</Text></View>
+            <View className="min-w-0 flex-1"><Text className=" type-button-cta" style={{ color: selected ? tokens.color.textPrimary : tokens.color.textSecondary }}>{type === 'cash' ? 'Cash' : 'Product'}</Text><Text className=" type-helper" style={{ color: tokens.color.textSecondary }}>{type === 'cash' ? 'Money Amount' : 'Items'}</Text></View>
             <View className="h-5 w-5 shrink-0 items-center justify-center rounded-full border-2" style={{ borderColor: selected ? tokens.color.accentBase : tokens.color.borderOutline }}>
               {selected && <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tokens.color.accentBase }} />}
             </View>
@@ -197,7 +197,7 @@ export function ReceivableFormScreen() {
       {product ? <CreditProductSelector fullPage selection={draft.items} onChange={change => setDraft(previous => ({ ...previous, items: change(previous.items) }))} onRemove={id => update({ items: removeSelectedProduct(draft.items, id) })} onBrowse={() => openPicker('products')} error={error('items')} /> : <QuickAddField ref={amountInput} label="Amount borrowed" money value={draft.amount} onChangeText={amount => update({ amount })} placeholder="0.00" inputMode="decimal" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => dateInput.current?.focus()} error={error('amount')} />}
       <BalancePanel dark title={product ? `Total Items: ${selectionSummary(draft.items).quantity} pcs` : 'Total Cash Borrowed'} amount={formatPesos(quickAddTotal(draft))} caption="This amount will be recorded as a customer receivable." />
       <InvDateField compact inputRef={dateInput} label="Due date (30 days default)" value={draft.dueDate} onChange={dueDate => update({ dueDate })} error={error('dueDate')} />
-      {!!failure && <Text accessibilityRole="alert" className="font-poppins text-[12px] text-[#972020]">{failure}</Text>}
+      {!!failure && <Text accessibilityRole="alert" className=" type-micro-caption text-error-base">{failure}</Text>}
       <View className="mt-3 flex-row flex-wrap gap-3">
         <View className="min-w-[110px] flex-1"><Button variant="secondary" disabled={saving} onPress={() => { Keyboard.dismiss(); setDraft(newReceivableDraft()); setSubmitted(false); setFailure(''); }}>Clear</Button></View>
         <View className="min-w-[130px] flex-1"><Button loading={saving} disabled={saving || !!savedRecord || (submitted && invalid)} onPress={submit}>Save Debt</Button></View>

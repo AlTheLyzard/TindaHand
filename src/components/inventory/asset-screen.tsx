@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import type { TextInputInstance } from 'react-native';
 import { useTranslation } from '@/i18n/use-translation';
 import { t } from '@/i18n';
@@ -117,13 +118,13 @@ export function AssetScreen() {
     </MotionModal>
   }>
     {!adding && preview.control}
-    {deleting && asset ? <><InvCard><InvText bold size={20}>{asset.name}</InvText><InvText>{assetLabels[asset.classification]}</InvText><InvText bold>{formatPesos(asset.valueCentavos)}</InvText></InvCard><View className="rounded-control bg-[#FFEBEE] p-4"><InvText color="#972020">{t("inventory.this.will.remove")}{asset.name} {t("inventory.from.your.asset.records.this.action.cannot")}</InvText></View><Button variant="secondary" onPress={() => leave()}>{t("inventory.cancel")}</Button><InvDanger label={t("inventory.delete.asset")} onPress={remove} /></> : <>
+    {deleting && asset ? <><InvCard><InvText bold size={20}>{asset.name}</InvText><InvText>{assetLabels[asset.classification]}</InvText><InvText bold>{formatPesos(asset.valueCentavos)}</InvText></InvCard><View className="rounded-control bg-error-tint p-4"><InvText color={tokens.color.errorBase}>{t("inventory.this.will.remove")}{asset.name} {t("inventory.from.your.asset.records.this.action.cannot")}</InvText></View><Button variant="secondary" onPress={() => leave()}>{t("inventory.cancel")}</Button><InvDanger label={t("inventory.delete.asset")} onPress={remove} /></> : <>
       <InvField label={t("inventory.asset.name.required")} value={name} onChangeText={setName} error={errors.name} placeholder={t("inventory.enter.asset.name")} maxLength={120} returnKeyType="next" onSubmitEditing={() => valueInput.current?.focus()} />
       <InvField money label={t("inventory.amount.value.required")} inputRef={valueInput} value={value} onChangeText={setValue} error={errors.value} placeholder="0.00" keyboardType="decimal-pad" returnKeyType={classification === 'current' ? 'done' : 'next'} onSubmitEditing={() => classification === 'current' ? Keyboard.dismiss() : lifeInput.current?.focus()} />
       <AssetClassificationField label={t("inventory.asset.classification.required")} value={classification} onChange={setClassification} error={errors.classification} />
       {classification !== 'current' ? <InvField label={t("inventory.estimated.useful.life.in.years.required")} inputRef={lifeInput} value={life} onChangeText={setLife} error={errors.life} placeholder={t("inventory.years2")} keyboardType="number-pad" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} /> : <InvText>{t("inventory.estimated.useful.life.does.not.apply.to")}</InvText>}
       <View className="mt-6 gap-3"><Button disabled={!!saved} onPress={save}>{adding ? t("inventory.add.asset2") : t("inventory.save.changes")}</Button><Button variant="secondary" disabled={!!saved} onPress={() => leave()}>{t("inventory.cancel")}</Button></View>
     </>}
-    {!!errors.form && <Text accessibilityRole="alert" className="font-poppins text-[12px] text-[#972020]">{errors.form}</Text>}
+    {!!errors.form && <Text accessibilityRole="alert" className=" type-micro-caption text-error-base">{errors.form}</Text>}
   </InventoryFrame>;
 }

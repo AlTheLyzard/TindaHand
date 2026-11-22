@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '..');
 const regions = {
   financial: [261, 266], history: [163, 302], expense: [114, 149],
   customerDebt: [310, 193], settings: [457, 61], profile: [408, 61],
+  manageOperators: [211, 302],
   logout: [163, 149], chevronRight: [261, 229], close: [457, 193], menu: [310, 105],
 };
 (async () => {
@@ -31,5 +32,5 @@ const regions = {
   for (const [name, [x, y]] of Object.entries(regions)) await writeGlyph(source, name, x, y);
   const clicked = await Jimp.read(path.join(root, 'docs/designs/Icons (1).png'));
   await writeGlyph(clicked, 'menu-active', 310, 105);
-  console.log('Extracted ten neutral icons and the original blue active Menu icon.');
+  console.log('Extracted eleven neutral icons and the original blue active Menu icon.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

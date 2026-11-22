@@ -87,7 +87,7 @@ export function OwnerMenuDrawer({ owner, visible, onClose, onPresentationChange,
       else AccessibilityInfo.sendAccessibilityEvent(closeButton.current, 'focus');
     }}>
     <View className="flex-1" accessibilityViewIsModal onAccessibilityEscape={() => confirmLogout ? setConfirmLogout(false) : close()}>
-      <Animated.View testID="more-tools-backdrop" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(16,35,66,0.50)' }, backdropStyle]}>
+      <Animated.View testID="more-tools-backdrop" style={[StyleSheet.absoluteFill, { backgroundColor: tokens.overlay.navy }, backdropStyle]}>
         <Pressable accessibilityRole="button" accessibilityLabel="Close More Tools backdrop" onPress={close} style={StyleSheet.absoluteFill} />
       </Animated.View>
       <Animated.View style={[{ flex: 1, width: drawerWidth }, drawerStyle]}>
@@ -98,30 +98,30 @@ export function OwnerMenuDrawer({ owner, visible, onClose, onPresentationChange,
         <ScrollView contentContainerStyle={{ paddingTop: 40, paddingHorizontal: 20,
           paddingBottom: insets.bottom + tokens.spacing.four }}>
           <View className="mb-6 flex-row items-center gap-3">
-            <Text accessibilityRole="header" className="min-w-0 flex-1 font-poppins-bold text-[24px] leading-9 text-brand">More Tools</Text>
+            <Text accessibilityRole="header" className="min-w-0 flex-1 type-h2-section leading-9 text-brand">More Tools</Text>
             <IconButton ref={closeButton} accessibilityLabel="Close More Tools" onPress={close} className="min-h-12 min-w-12 items-center justify-center" icon={() => <MenuIcon name="close" />} />
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel={`Profile: ${owner.name}, ${owner.id}, May-Ari (Owner)`}
             accessibilityHint="Opens Profile" onPress={() => open('profile')}
-            className="mb-6 flex-row items-start gap-3 rounded-card bg-[#F0F8FF] p-4">
+            className="mb-6 flex-row items-start gap-3 rounded-card bg-canvas p-4">
             <ProfileAvatar size={40} avatarId={profiles.get(owner.id)?.avatarId} />
             <View className="min-w-0 flex-1 gap-2">
-              <Text className="font-poppins-bold text-[18px] leading-[27px] text-brand">{owner.name}</Text>
+              <Text className=" type-h3-heading leading-[27px] text-brand">{owner.name}</Text>
               <View className="flex-row items-center justify-between gap-2">
-                <Text className="min-w-0 flex-1 font-poppins text-[12px] leading-[18px] text-text-secondary">{owner.id}</Text>
-                <View className="shrink-0 rounded-control bg-brand px-2 py-1"><Text className="font-poppins-bold text-[12px] leading-[18px] text-white">Owner</Text></View>
+                <Text className="min-w-0 flex-1 type-micro-caption leading-[18px] text-text-secondary">{owner.id}</Text>
+                <View className="shrink-0 rounded-control bg-brand px-2 py-1"><Text className=" type-label-nav leading-[18px] text-white">Owner</Text></View>
               </View>
             </View>
           </Pressable>
           <View>
             {ownerMenuTools.map((tool, index) => <View key={tool.id}>
-              {tool.id === 'settings' && <View className="mb-1 mt-1 border-t border-[#ADC9EE]" />}
+              {tool.id === 'settings' && <View className="mb-1 mt-1 border-t border-outline" />}
               <MenuRow tool={tool} selected={pathname === `/owner-menu/${tool.id}` || pathname.startsWith(`/owner-menu/${tool.id}/`)} onPress={() => open(tool.id)} optionIndex={index} frame={descriptions.frame} characters={descriptions.characters[index] ?? 0}
                 preparing={visible && !motion.opened && !motion.reduced} />
             </View>)}
             <ButtonSurface variant="destructiveText" accessibilityRole="button" accessibilityLabel="Log Out" accessibilityHint="Asks for confirmation before ending your session"
               onPress={() => setConfirmLogout(true)} className="min-h-[72px] flex-row items-center gap-3 rounded-surface px-3 py-3">
-              {({ color }) => <><MenuIcon name="logout" /><Text className="min-w-0 flex-1 font-poppins text-[16px] leading-6" style={{ color }}>Log Out</Text></>}
+              {({ color }) => <><MenuIcon name="logout" /><Text className="min-w-0 flex-1 type-body-primary leading-6" style={{ color }}>Log Out</Text></>}
             </ButtonSurface>
           </View>
         </ScrollView>

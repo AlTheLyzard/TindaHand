@@ -129,17 +129,17 @@ export function PayablePaymentScreen() {
 
   return <InventoryFrame title="Record Payment" back inlineTitle onBack={() => back()} overlay={overlay} onNavigate={action => { if (!busy.current) action(); }}>
     {!debt || !balance || outstanding === 0 ? <View className="gap-4 rounded-card bg-white p-5">
-      <Text className="font-poppins text-[14px] text-brand">{debt ? 'This debt is fully paid.' : 'This debt is not available.'}</Text>
+      <Text className=" type-micro-financial-rate text-brand">{debt ? 'This debt is fully paid.' : 'This debt is not available.'}</Text>
       <Button onPress={() => back(debt ? 'paid' : 'unpaid')}>Back to Account Balances</Button>
     </View> : <View className="gap-6" pointerEvents={saving ? 'none' : 'auto'}>
-      <View className="gap-5 rounded-control border border-[#2F6CC9] p-5" style={{ backgroundColor: '#112F6F' }}>
-        <View className="flex-row flex-wrap justify-between gap-2"><Text className="font-poppins-semibold text-[14px] text-white">Total Debt</Text><Text className="font-poppins-bold text-[16px] text-white">{formatPesos(debt.originalAmountCentavos)}</Text></View>
-        <View className="gap-2"><Text className="font-poppins-semibold text-[14px] text-white">Current Balance</Text><Text className="font-poppins-bold text-[30px] leading-[45px] text-white">{formatPesos(outstanding)}</Text></View>
-        <Text className="font-poppins text-[12px] leading-[18px] text-white">Payment Due Date: {debt.dueDate ? formatCalendarDate(debt.dueDate) : 'No due date'}</Text>
+      <View className="gap-5 rounded-control border border-accent p-5" style={{ backgroundColor: tokens.color.darkNavy }}>
+        <View className="flex-row flex-wrap justify-between gap-2"><Text className=" type-micro-financial-rate text-white">Total Debt</Text><Text className=" type-list-financial text-white">{formatPesos(debt.originalAmountCentavos)}</Text></View>
+        <View className="gap-2"><Text className=" type-micro-financial-rate text-white">Current Balance</Text><Text className=" type-large-metric leading-[45px] text-white">{formatPesos(outstanding)}</Text></View>
+        <Text className=" type-micro-caption leading-[18px] text-white">Payment Due Date: {debt.dueDate ? formatCalendarDate(debt.dueDate) : 'No due date'}</Text>
       </View>
       <View className="gap-4 rounded-card bg-white p-4">
         <QuickAddField ref={amountInput} label="Payment Amount" required={false} money value={amount} onChangeText={update} placeholder="0.00" inputMode="decimal" keyboardType="decimal-pad" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} error={submitted ? validation : undefined} />
-        <Text className="font-poppins-semibold text-[12px] text-text-secondary">Quick Amount</Text>
+        <Text className=" type-label-nav text-text-secondary">Quick Amount</Text>
         <Button shape="pill" variant="secondary" disabled={saving} onPress={() => update(payableAmountInput(outstanding))}>Full Payment</Button>
         <View className="flex-row flex-wrap gap-2">
           {paymentPresets.map(preset => <Button key={preset} fullWidth={false} shape="pill" variant="secondary" compact accessibilityLabel={`Set payment amount to ${formatPesos(preset)}`} disabled={saving || preset > outstanding}
@@ -147,13 +147,13 @@ export function PayablePaymentScreen() {
         </View>
       </View>
       <MotionLayout accessibilityLiveRegion="polite" className="gap-4 rounded-card p-5" style={{ backgroundColor: payableColors.greenSurface }}>
-        <View className="flex-row flex-wrap items-center justify-between gap-3"><Text className="font-poppins-semibold text-[12px]" style={{ color: payableColors.green }}>Preview</Text><Text className="rounded-control bg-white px-3 py-2 font-poppins-semibold text-[12px]" style={{ color: payableColors.green }}>{previewStatus}</Text></View>
-        <Text className="font-poppins-semibold text-[22px] leading-[33px]" style={{ color: payableColors.green }}>Remaining Balance:</Text>
-        <Text className="font-poppins-bold text-[24px] leading-9" style={{ color: payableColors.green }}>{formatPesos(remaining)}</Text>
-        {valid && <Text className="font-poppins text-[14px] leading-[21px] text-text-secondary">{formatPesos(outstanding)} - {formatPesos(entered)} = {formatPesos(remaining)}</Text>}
-        <Text className="font-poppins text-[11px] leading-[18px] text-text-secondary">Preview only. The debt record will be updated once the payment is confirmed.</Text>
+        <View className="flex-row flex-wrap items-center justify-between gap-3"><Text className=" type-label-nav" style={{ color: payableColors.green }}>Preview</Text><Text className="rounded-control bg-white px-3 py-2 type-label-nav" style={{ color: payableColors.green }}>{previewStatus}</Text></View>
+        <Text className=" type-title-accent leading-[33px]" style={{ color: payableColors.green }}>Remaining Balance:</Text>
+        <Text className=" type-h2-section leading-9" style={{ color: payableColors.green }}>{formatPesos(remaining)}</Text>
+        {valid && <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">{formatPesos(outstanding)} - {formatPesos(entered)} = {formatPesos(remaining)}</Text>}
+        <Text className=" type-micro-caption leading-[18px] text-text-secondary">Preview only. The debt record will be updated once the payment is confirmed.</Text>
       </MotionLayout>
-      {!!failure && <MotionRegion><Text accessibilityRole="alert" className="font-poppins text-[12px] text-[#972020]">{failure}</Text></MotionRegion>}
+      {!!failure && <MotionRegion><Text accessibilityRole="alert" className=" type-micro-caption text-error-base">{failure}</Text></MotionRegion>}
       <View className="flex-row flex-wrap gap-3">
         <View className="min-w-[100px] flex-1"><Button variant="secondary" disabled={saving} onPress={() => back()}>Cancel</Button></View>
         <View className="min-w-[160px] flex-1"><Button loading={saving} disabled={saving || (submitted && !!validation)} onPress={submitPayment}>Confirm Payment</Button></View>

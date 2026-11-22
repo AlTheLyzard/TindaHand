@@ -17,7 +17,8 @@ export function ChoiceChip({ label, selected, radio = false, compact = false, wr
       hitSlop={8}
       style={{ minHeight: 34, minWidth: tokens.size.touchTarget, paddingHorizontal: compact ? 8 : 12, paddingVertical: 6,
         borderRadius: tokens.radius.pill, justifyContent: 'center', alignItems: 'center' }}>
-      {({ color }) => <Text style={{ flexShrink: 1, textAlign: 'center', fontFamily: tokens.button.fontFamily, fontSize: compact ? 10 : 12, lineHeight: 18, color }}>{label}</Text>}
+      {({ color }) => <Text style={{ flexShrink: 1, textAlign: 'center', fontFamily: tokens.typography.weights.semibold,
+        fontSize: tokens.typography.labelNav.fontSize, lineHeight: tokens.typography.labelNav.lineHeight, color }}>{label}</Text>}
     </ButtonSurface>
   </View>;
 }

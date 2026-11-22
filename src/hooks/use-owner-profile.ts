@@ -3,7 +3,7 @@ import { authenticationService } from '@/services/authentication';
 import { useAuthFlow } from '@/state/auth-flow';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { getOwnerProfile } from '@/services/settings';
-import type { OwnerProfile } from '@/types/profile';
+import type { AvatarId, OwnerProfile } from '@/types/profile';
 
 export function useProfileSnapshot() {
   return useSyncExternalStore(authenticationService.profile.subscribe, authenticationService.profile.getSnapshot, authenticationService.profile.getSnapshot);

@@ -126,7 +126,7 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
   };
   return <Modal visible={open} sheet transitionDuration={motion.quickAddSheet} onHidden={onClose} backdropColor={quickAddColors.backdrop} onRequestClose={close}>
     <GestureHandlerRootView style={{ flex: 1 }}>
-    <SafeAreaView edges={browsing ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']} style={{ flex: 1, backgroundColor: browsing ? '#F0F8FF' : 'transparent' }}>
+    <SafeAreaView edges={browsing ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']} style={{ flex: 1, backgroundColor: browsing ? tokens.color.appBackground : 'transparent' }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {saved && successVisible ? <MotionRegion style={{ flex: 1 }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, paddingBottom: Math.max(insets.bottom, 24) }}>
           <QuickAddSuccess record={saved} onClose={dismiss} visible={successVisible && open} />
@@ -138,7 +138,7 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
             footer={picker ? undefined : compact => <View style={{ paddingTop: compact ? 4 : 8, paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 8) }}>
               {!expense && <View testID="quick-add-total" style={{ minHeight: compact ? 36 : 56, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderRadius: tokens.radius.surface, paddingHorizontal: 16, paddingVertical: compact ? 3 : 10, marginBottom: compact ? 4 : 8, backgroundColor: tokens.color.primaryDisabled }}>
                 <Text style={quickAddStyles.label}>Total debt</Text>
-                <Text accessibilityLiveRegion="polite" className="font-poppins-bold text-[#102342]" style={{ fontSize: compact ? 20 : 24, lineHeight: compact ? 30 : 36 }}>{formatPesos(quickAddTotal(draft))}</Text>
+                <Text accessibilityLiveRegion="polite" className={compact ? 'type-title-accent text-text-primary' : 'type-large-metric text-text-primary'}>{formatPesos(quickAddTotal(draft))}</Text>
               </View>}
               <View style={{ gap: compact ? 4 : 8 }}>
                 <Button loading={saving} disabled={!!saved} onPress={() => void submit()}>{expense ? 'Save Expense' : 'Save Debt'}</Button>
@@ -164,7 +164,7 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
                           else action();
                         }} className="min-h-12 flex-1 flex-row items-center gap-2.5">
                         <View className="h-5 w-5 items-center justify-center rounded-pill border-2 border-action">{draft.borrowing === borrowing && <View className="h-3 w-3 rounded-pill bg-action" />}</View>
-                        <Text className="font-poppins text-[14px] leading-[21px] text-[#102342]">{borrowing === 'cash' ? 'Cash' : 'Product'}</Text>
+                        <Text className=" type-micro-financial-rate leading-[21px] text-text-primary">{borrowing === 'cash' ? 'Cash' : 'Product'}</Text>
                       </Pressable>)}
                     </View>
                   </View>}
@@ -181,7 +181,7 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
                 <MotionLayout style={{ paddingTop: tokens.spacing.two }}>
                   {!customer && <Text style={quickAddStyles.note}>{expense ? 'This records money already spent by the store.' : 'This records money your store owes. It is saved in Store Debts.'}</Text>}
                   {!!failure && <MotionRegion><Text accessibilityRole="alert" style={[quickAddStyles.error, { marginTop: 8 }]}>{failure}</Text></MotionRegion>}
-                  {submitted && Object.keys(errors).length > 0 && <MotionRegion><Text accessibilityRole="alert" style={[quickAddStyles.error, { marginTop: 8, fontSize: 12, lineHeight: 18 }]}>Complete the highlighted fields to continue.</Text></MotionRegion>}
+                  {submitted && Object.keys(errors).length > 0 && <MotionRegion><Text accessibilityRole="alert" style={[quickAddStyles.error, { marginTop: 8, fontSize: tokens.typography.microCaption.fontSize, lineHeight: 18 }]}>Complete the highlighted fields to continue.</Text></MotionRegion>}
                 </MotionLayout>
                 </>}
               </MotionContent>
@@ -189,7 +189,7 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
         </Animated.View>}
         <MotionOverlay visible={datePickerOpen}>{datePickerOpen && <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 16, paddingBottom: Math.max(insets.bottom, 16) }}>
           <View accessibilityViewIsModal onAccessibilityEscape={() => setDatePickerOpen(false)} className="w-full max-w-[412px] gap-4 self-center rounded-card bg-white p-4">
-            <Text accessibilityRole="header" className="font-poppins-bold text-[20px] text-brand">{expense ? 'Expense date' : 'Due date'}</Text>
+            <Text accessibilityRole="header" className=" type-title-accent text-brand">{expense ? 'Expense date' : 'Due date'}</Text>
             <DatePicker confirmLabel={expense ? 'Confirm Expense Date' : 'Confirm Due Date'} value={expense ? draft.expenseDate : draft.dueDate} onChange={date => { update(expense ? { expenseDate: date } : { dueDate: date }); setDatePickerOpen(false); }} onClose={() => setDatePickerOpen(false)} />
           </View>
         </ScrollView>}</MotionOverlay>

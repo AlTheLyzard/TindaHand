@@ -9,7 +9,7 @@ export function fieldLabel(label: string) {
 export function FieldLabel({ label, required = /\(Required\)|\*\s*$/i.test(label), style, ...props }: TextProps & { label: string; required?: boolean }) {
   const { fontScale } = useWindowDimensions();
   return <Text {...props} accessibilityLabel={`${fieldLabel(label)}${required ? ', required' : ''}`}
-    style={[{ fontFamily: 'Poppins_600SemiBold', fontSize: 12, lineHeight: 18 * fontScale, color: tokens.color.textPrimary }, style]}>
-    {fieldLabel(label)}{required && <Text style={{ color: '#B42318' }}> *</Text>}
+    style={[{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: tokens.typography.labelNav.lineHeight * fontScale, color: tokens.color.textPrimary }, style]}>
+    {fieldLabel(label)}{required && <Text style={{ color: tokens.color.errorBase }}> *</Text>}
   </Text>;
 }

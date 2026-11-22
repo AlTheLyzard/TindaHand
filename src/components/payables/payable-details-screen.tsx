@@ -58,10 +58,10 @@ export function PayableDetailsScreen() {
   return <InventoryFrame title={paidDetails ? 'Paid Details' : 'Creditor Debt Details'} back inlineTitle onBack={back}>
     {!debt || !selectedBalance ? <EmptyState title="Debt not available" description="Return to Account Balances and choose an existing business debt." action="Back to Account Balances" onAction={back} /> : <View className="gap-5">
       <View className="flex-row flex-wrap items-center justify-between gap-3">
-        <Text accessibilityRole="header" className="min-w-0 flex-1 font-poppins-bold text-[20px] leading-[30px] text-text-primary">{debt.name}</Text>
+        <Text accessibilityRole="header" className="min-w-0 flex-1 type-title-accent leading-[30px] text-text-primary">{debt.name}</Text>
         <PayableStatusPill status={status} />
       </View>
-      <Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">{detailBalances.length} {detailBalances.length === 1 ? 'borrowing record' : 'borrowing records'} · Ref {debt.id.slice(-10)}</Text>
+      <Text className=" type-micro-caption leading-[18px] text-text-secondary">{detailBalances.length} {detailBalances.length === 1 ? 'borrowing record' : 'borrowing records'} · Ref {debt.id.slice(-10)}</Text>
 
       <View className="flex-row rounded-control border p-3" style={{ borderColor: tokens.color.borderOutline, backgroundColor: tokens.color.surfaceSubtle }}>
         {[
@@ -69,33 +69,33 @@ export function PayableDetailsScreen() {
           { title: 'Amount Paid', value: paidCentavos, color: payableColors.green },
           { title: 'Remaining Balance', value: remainingCentavos, color: payableColors.blue },
         ].map((item, index) => <View key={item.title} className="min-w-0 flex-1 items-center justify-center gap-2 px-1" style={index > 0 ? { borderLeftWidth: 1, borderLeftColor: tokens.color.borderOutline } : undefined}>
-          <Text className="min-h-8 text-center font-poppins text-[9px] leading-[14px] text-text-secondary">{item.title}</Text>
-          <Text adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7} className="font-poppins-bold text-[12px]" style={{ color: item.color }}>{formatPesos(item.value)}</Text>
+          <Text className="min-h-8 text-center type-helper leading-[14px] text-text-secondary">{item.title}</Text>
+          <Text adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7} className=" type-label-nav" style={{ color: item.color }}>{formatPesos(item.value)}</Text>
         </View>)}
       </View>
 
       <View className="gap-3" style={{ marginBottom: tokens.spacing.four }}>
-        <View className="flex-row flex-wrap items-center justify-between gap-2"><Text className="font-poppins-semibold text-[14px] text-text-secondary">Payment Progress</Text><Text className="font-poppins-bold text-[14px] text-text-primary">{progress.toFixed(2)}%</Text></View>
+        <View className="flex-row flex-wrap items-center justify-between gap-2"><Text className=" type-micro-financial-rate text-text-secondary">Payment Progress</Text><Text className=" type-button-cta text-text-primary">{progress.toFixed(2)}%</Text></View>
         <View accessibilityRole="progressbar" accessibilityLabel="Payment progress" accessibilityValue={{ min: 0, max: 100, now: progress, text: `${progress.toFixed(2)}% paid` }} className="h-3 overflow-hidden rounded-pill" style={{ backgroundColor: tokens.color.surfaceSubtle }}>
           <View style={{ height: '100%', width: `${progress}%`, backgroundColor: color, borderRadius: 9999 }} />
         </View>
-        <View className="flex-row flex-wrap justify-between gap-2"><Text className="font-poppins text-[11px] text-text-secondary">{formatPesos(paidCentavos)} Paid</Text><Text className="font-poppins text-[11px] text-text-secondary">{formatPesos(remainingCentavos)} Remaining</Text></View>
+        <View className="flex-row flex-wrap justify-between gap-2"><Text className=" type-micro-caption text-text-secondary">{formatPesos(paidCentavos)} Paid</Text><Text className=" type-micro-caption text-text-secondary">{formatPesos(remainingCentavos)} Remaining</Text></View>
       </View>
 
       <View className="gap-3" style={{ marginBottom: tokens.spacing.four }}>
-        <Text accessibilityRole="header" className="font-poppins-bold text-[16px] text-text-primary">Borrowing Information</Text>
+        <Text accessibilityRole="header" className=" type-list-financial text-text-primary">Borrowing Information</Text>
         {borrowingGroups.map(([date, rows]) => <View key={date} className="gap-3">
-          <Text className="font-poppins-semibold text-[12px] text-text-secondary">{formatCalendarDate(date)}</Text>
+          <Text className=" type-label-nav text-text-secondary">{formatCalendarDate(date)}</Text>
           {rows.map(row => <View key={row.debt.id} className="gap-4 rounded-card border bg-white p-4" style={{ borderColor: tokens.color.borderOutline }}>
             <View className="flex-row items-center gap-2">
-              <View className="h-9 w-9 items-center justify-center rounded-pill bg-[#D1E1F5]"><PosIcon name="money" size={20} color={payableColors.blue} /></View>
-              <Text className="font-poppins-semibold text-[14px] text-text-secondary">Borrowing Information</Text>
+              <View className="h-9 w-9 items-center justify-center rounded-pill bg-accent-soft"><PosIcon name="money" size={20} color={payableColors.blue} /></View>
+              <Text className=" type-micro-financial-rate text-text-secondary">Borrowing Information</Text>
             </View>
-            <View className="flex-row flex-wrap justify-between gap-2"><Text className="font-poppins-semibold text-[12px] text-text-secondary">Borrowing Type</Text><Text className="font-poppins-bold text-[12px] text-brand">{row.debt.borrowingType === 'goods-stock' ? 'Goods/Stock' : 'Cash'}</Text></View>
-            <View className="flex-row flex-wrap justify-between gap-2"><Text className="font-poppins-semibold text-[12px] text-text-secondary">Amount Borrowed</Text><Text className="font-poppins-bold text-[12px] text-brand">{formatPesos(row.debt.originalAmountCentavos)}</Text></View>
-            <View className="flex-row flex-wrap justify-between gap-2"><Text className="font-poppins-semibold text-[12px] text-text-secondary">Borrowing Date</Text><Text className="font-poppins text-[12px] text-text-primary">{formatCalendarDate(row.debt.occurredAt.slice(0, 10))}</Text></View>
-            <View className="flex-row flex-wrap justify-between gap-2"><Text className="font-poppins-semibold text-[12px] text-text-secondary">Due Date</Text><Text className="font-poppins-bold text-[12px]" style={{ color: row.remainingCentavos > 0 && row.debt.dueDate && row.debt.dueDate < today ? payableColors.red : payableColors.blue }}>{row.debt.dueDate ? formatCalendarDate(row.debt.dueDate) : 'No due date'}</Text></View>
-            {!!row.debt.details && <Text className="border-t pt-3 font-poppins text-[12px] text-text-secondary" style={{ borderColor: tokens.color.borderOutline }}>{row.debt.details}</Text>}
+            <View className="flex-row flex-wrap justify-between gap-2"><Text className=" type-label-nav text-text-secondary">Borrowing Type</Text><Text className=" type-label-nav text-brand">{row.debt.borrowingType === 'goods-stock' ? 'Goods/Stock' : 'Cash'}</Text></View>
+            <View className="flex-row flex-wrap justify-between gap-2"><Text className=" type-label-nav text-text-secondary">Amount Borrowed</Text><Text className=" type-label-nav text-brand">{formatPesos(row.debt.originalAmountCentavos)}</Text></View>
+            <View className="flex-row flex-wrap justify-between gap-2"><Text className=" type-label-nav text-text-secondary">Borrowing Date</Text><Text className=" type-micro-caption text-text-primary">{formatCalendarDate(row.debt.occurredAt.slice(0, 10))}</Text></View>
+            <View className="flex-row flex-wrap justify-between gap-2"><Text className=" type-label-nav text-text-secondary">Due Date</Text><Text className=" type-label-nav" style={{ color: row.remainingCentavos > 0 && row.debt.dueDate && row.debt.dueDate < today ? payableColors.red : payableColors.blue }}>{row.debt.dueDate ? formatCalendarDate(row.debt.dueDate) : 'No due date'}</Text></View>
+            {!!row.debt.details && <Text className="border-t pt-3 type-micro-caption text-text-secondary" style={{ borderColor: tokens.color.borderOutline }}>{row.debt.details}</Text>}
           </View>)}
         </View>)}
       </View>
@@ -105,14 +105,14 @@ export function PayableDetailsScreen() {
       <View className="gap-3">
         <View className="gap-3 rounded-card border bg-white p-4" style={{ borderColor: tokens.color.borderOutline }}>
           <View className="flex-row items-center gap-2">
-            <View className="h-8 w-8 items-center justify-center rounded-pill bg-[#D1E1F5]"><PosIcon name="history" size={18} color={payableColors.blue} /></View>
-            <Text accessibilityRole="header" className="font-poppins-semibold text-[14px] text-text-secondary">Payment History</Text>
+            <View className="h-8 w-8 items-center justify-center rounded-pill bg-accent-soft"><PosIcon name="history" size={18} color={payableColors.blue} /></View>
+            <Text accessibilityRole="header" className=" type-micro-financial-rate text-text-secondary">Payment History</Text>
           </View>
           {!history.length ? <View className="items-center gap-2 p-3">
-            <Text className="font-poppins-semibold text-[14px] text-text-primary">No Payments Yet</Text><Text className="text-center font-poppins text-[12px] text-text-secondary">This creditor has no payment transactions.</Text>
+            <Text className=" type-micro-financial-rate text-text-primary">No Payments Yet</Text><Text className="text-center type-micro-caption text-text-secondary">This creditor has no payment transactions.</Text>
           </View> : history.map(({ payment, debtId: paymentDebtId }, index) => <View key={payment.id} className="flex-row flex-wrap items-start justify-between gap-2 pb-3" style={{ borderBottomWidth: index < history.length - 1 ? 1 : 0, borderColor: tokens.color.borderOutline }}>
-            <View className="min-w-0 flex-1 gap-1"><Text className="font-poppins-semibold text-[12px] text-text-primary">Payment {index + 1}</Text><Text className="font-poppins text-[11px] text-text-secondary">{manilaDateTime(payment.occurredAt)} · Ref {paymentDebtId.slice(-8)}</Text></View>
-            <Text className="font-poppins-bold text-[14px]" style={{ color: payableColors.green }}>+{formatPesos(payment.amountCentavos)}</Text>
+            <View className="min-w-0 flex-1 gap-1"><Text className=" type-label-nav text-text-primary">Payment {index + 1}</Text><Text className=" type-micro-caption text-text-secondary">{manilaDateTime(payment.occurredAt)} · Ref {paymentDebtId.slice(-8)}</Text></View>
+            <Text className=" type-button-cta" style={{ color: payableColors.green }}>+{formatPesos(payment.amountCentavos)}</Text>
           </View>)}
         </View>
       </View>

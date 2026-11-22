@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -115,24 +116,24 @@ export function DataManagementScreen() {
 
   return <SettingsFrame title="Data Management" parent={settingsParent}>
     <SettingsDescription>Manage data synchronization and device storage.</SettingsDescription>
-    <Text className="mb-5 font-poppins text-[11px] leading-4 text-text-secondary">Demo only. Sync and cache clearing are simulated. No backend or durable offline storage is connected.</Text>
+    <Text className="mb-5 type-micro-caption leading-4 text-text-secondary">Demo only. Sync and cache clearing are simulated. No backend or durable offline storage is connected.</Text>
     {toast.expiresAt && <RegistrationToast {...toast} onDismiss={dismissToast} />}
     <SettingsSection>DATA SYNC</SettingsSection>
     <MotionContent changeKey={state.status}>
       <View accessibilityLiveRegion="polite" className="mb-5 gap-3 rounded-control p-4"
-        style={{ backgroundColor: good ? '#E8F5E9' : failed ? '#FFEBEE' : '#D9E7F4' }}>
+        style={{ backgroundColor: good ? tokens.color.successTint : failed ? tokens.color.errorTint : tokens.color.iceContainer }}>
         <View className="flex-row items-center gap-3">
-          <PosIcon name={good ? 'checkCircle' : failed ? 'alert' : 'history'} color={good ? '#1D5D21' : failed ? '#972020' : '#112F6F'} />
-          <Text accessibilityRole="header" className="flex-1 font-poppins-bold text-[14px] leading-[21px]"
-            style={{ color: good ? '#1D5D21' : failed ? '#972020' : '#112F6F' }}>{titles[state.status]}</Text>
+          <PosIcon name={good ? 'checkCircle' : failed ? 'alert' : 'history'} color={good ? tokens.color.successBase : failed ? tokens.color.errorBase : tokens.color.darkNavy} />
+          <Text accessibilityRole="header" className="flex-1 type-button-cta leading-[21px]"
+            style={{ color: good ? tokens.color.successBase : failed ? tokens.color.errorBase : tokens.color.darkNavy }}>{titles[state.status]}</Text>
         </View>
-        <Text className="font-poppins text-[12px] leading-[18px]" style={{ color: failed ? '#972020' : '#4A607A' }}>{description}</Text>
+        <Text className=" type-micro-caption leading-[18px]" style={{ color: failed ? tokens.color.errorBase : tokens.color.textSecondary }}>{description}</Text>
         {syncing && <View accessibilityRole="progressbar" accessibilityLabel="Simulated synchronization"
           accessibilityValue={{ min: 0, max: 100, now: state.progress }} className="gap-2">
           <View className="h-[6px] overflow-hidden rounded-pill bg-white">
             <View className="h-full rounded-pill bg-action" style={{ width: `${state.progress}%` }} />
           </View>
-          <Text className="font-poppins text-[11px] text-brand">Synchronizing demo records… {state.progress}%</Text>
+          <Text className=" type-micro-caption text-brand">Synchronizing demo records… {state.progress}%</Text>
         </View>}
       </View>
     </MotionContent>
@@ -142,9 +143,9 @@ export function DataManagementScreen() {
     {!dialog && notice ? <SettingsNotice error>{notice}</SettingsNotice> : null}
     <View className="h-6" />
     <SettingsSection>DEVICE STORAGE</SettingsSection>
-    <View className="mb-5 gap-2 rounded-control bg-[#D1E1F5] p-4">
-      <Text className="font-poppins-bold text-[12px] leading-[18px] text-brand">Clear Local Cache</Text>
-      <Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">
+    <View className="mb-5 gap-2 rounded-control bg-accent-soft p-4">
+      <Text className=" type-label-nav leading-[18px] text-brand">Clear Local Cache</Text>
+      <Text className=" type-micro-caption leading-[18px] text-text-secondary">
         {eligible ? 'Remove temporary files from this device. Business records are retained.' : 'Sync pending records before clearing cached data.'}
       </Text>
     </View>
@@ -160,8 +161,8 @@ export function DataManagementScreen() {
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }}>
         {clearing
           ? <View accessibilityViewIsModal accessibilityRole="alert" accessibilityLiveRegion="polite" className="w-full max-w-[412px] gap-4 self-center rounded-control bg-white p-6">
-            <ActivityIndicator color="#245399" />
-            <Text className="text-center font-poppins-bold text-[16px] text-brand">Simulating cache clearing…</Text>
+            <ActivityIndicator color={tokens.color.royalBlue} />
+            <Text className="text-center type-list-financial text-brand">Simulating cache clearing…</Text>
           </View>
           : <View onAccessibilityEscape={cancel} className="w-full max-w-[412px] self-center">
             <ConfirmationContent title="Clear Local Cache?"

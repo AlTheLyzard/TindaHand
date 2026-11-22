@@ -10,12 +10,15 @@ import type { CashierValues, PinValues, SettingsErrors, SettingsResult } from '@
 type Values = CashierValues & PinValues;
 const empty = (): Values => ({ name: '', ownerPin: '', pin: '', confirmPin: '' });
 /** Shared PIN validation, independent visibility, request lock and sensitive-value lifecycle. */
-export function CredentialForm<T>({ mode, onSave, onSuccess, onCancel, fieldsCard = false }: {
+export function CredentialForm<T>({ mode, onSave, onSuccess, onCancel, fieldsCard = false, labelOverrides, showReviewLabel = true, setupValidationCopy = false }: {
   mode: 'owner' | 'cashier' | 'create';
   onSave: (values: Values) => Promise<SettingsResult<T>>;
   onSuccess: (result: T) => void;
   onCancel?: () => void;
   fieldsCard?: boolean;
+  labelOverrides?: Partial<Record<keyof Values, string>>;
+  showReviewLabel?: boolean;
+  setupValidationCopy?: boolean;
 }) {
   const [values, setValues] = useState(empty);
   const [submitted, setSubmitted] = useState(false);
@@ -34,7 +37,19 @@ export function CredentialForm<T>({ mode, onSave, onSuccess, onCancel, fieldsCar
   const fields: (keyof Values)[] = [create ? 'name' : 'ownerPin', 'pin', 'confirmPin'];
   const clientErrors = validate(values);
   const errors: SettingsErrors = {};
-  for (const field of fields) if (submitted || touched[field]) errors[field] = clientErrors[field] ?? serverErrors[field];
+  for (const field of fields) {
+    if (!submitted && !touched[field]) continue;
+    let error = clientErrors[field] ?? serverErrors[field];
+    if (error && setupValidationCopy) {
+      if (field === 'name' && !values.name.trim()) error = 'Please enter kahera name.';
+      if (field === 'pin' && !values.pin) error = 'Please enter kahera PIN.';
+      if (field === 'confirmPin') {
+        if (!values.confirmPin) error = 'Please confirm kahera PIN.';
+        else if (values.pin !== values.confirmPin) error = 'PIN do not match. Please enter correct PIN.';
+      }
+    }
+    errors[field] = error;
+  }
 
   function reset() {
     sensitive.current = empty(); setValues(empty()); setSubmitted(false); setTouched({}); setServerErrors({}); setNotice(''); setEpoch(value => value + 1);
@@ -73,13 +88,13 @@ export function CredentialForm<T>({ mode, onSave, onSuccess, onCancel, fieldsCar
     }
   }
   return <View className="flex-1">
-    <View className={fieldsCard ? 'gap-7 rounded-[20px] bg-[#D9E7F5] px-5 py-6' : 'gap-7'} key={epoch}>
+    <View className={`${create ? 'gap-4' : 'gap-7'} ${fieldsCard ? 'rounded-[20px] bg-ice-container px-5 py-6' : ''}`} key={epoch}>
       {fields.map((field, index) => {
         const name = field === 'name';
         const label = name ? 'Kahera name' : field === 'ownerPin' ? mode === 'owner' ? 'Current May-Ari PIN' : 'Your May-Ari PIN' : field === 'pin' ? create ? 'Kahera PIN' : mode === 'owner' ? 'New May-Ari PIN' : 'New Kahera PIN' : create ? 'Confirm PIN' : mode === 'owner' ? 'Confirm new May-Ari PIN' : 'Confirm new Kahera PIN';
-        return <FormField key={field} ref={input => { inputs.current[field] = input; }} label={label}
+        return <FormField key={field} ref={input => { inputs.current[field] = input; }} label={labelOverrides?.[field] ?? label}
           value={values[field]} onChangeText={value => update(field, value)} error={errors[field]} requiredIndicator="asterisk" onBlur={() => setTouched(current => ({ ...current, [field]: true }))}
-          placeholder={name ? 'Enter Kahera name' : undefined} pin={!name} pinIndicators={!name} pinVisibilityToggle={!name}
+          placeholder={name ? 'Enter Kahera name' : undefined} pin={!name} pinIndicators={!name} pinVisibilityToggle={!name && !create}
           errorVariant="registration" editable={!busy} maxLength={name ? 120 : 4} keyboardType={name ? 'default' : 'number-pad'}
           autoCapitalize={name ? 'words' : 'none'} autoComplete="off" textContentType="none"
           returnKeyType={index === fields.length - 1 ? 'done' : 'next'} submitBehavior={index === fields.length - 1 ? 'blurAndSubmit' : 'submit'}
@@ -88,7 +103,7 @@ export function CredentialForm<T>({ mode, onSave, onSuccess, onCancel, fieldsCar
     </View>
     {notice ? <SettingsNotice error>{notice}</SettingsNotice> : null}
     <View className="min-h-10 flex-1" />
-    {create && <Text className="mb-4 text-center font-poppins-bold text-[12px] leading-[18px] text-brand">Review your Kahera account details</Text>}
+    {create && showReviewLabel && <Text className="mb-4 text-center type-label-nav leading-[18px] text-brand">Review your Kahera account details</Text>}
     <View className="gap-4 pb-2 pt-6">
       <Button loading={busy} onPress={() => void submit()}>{create ? 'Continue' : mode === 'cashier' ? 'Reset Kahera PIN' : 'Save New PIN'}</Button>
       <Button variant="secondary" disabled={busy} onPress={onCancel ?? reset}>{onCancel ? 'Cancel' : 'Clear'}</Button>

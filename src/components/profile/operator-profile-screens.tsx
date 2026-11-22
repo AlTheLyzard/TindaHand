@@ -9,6 +9,7 @@ import { FormField } from '@/components/ui/form-field';
 import { KeyboardAwareScrollView } from '@/components/ui/keyboard-aware-scroll-view';
 import { MotionModal } from '@/components/ui/motion-modal';
 import { PosDialog } from '@/components/pos/pos-dialog';
+import { PosIcon } from '@/components/pos/pos-icon';
 import { SuccessContent } from '@/components/ui/success-content';
 import { ProfileError, ProfileNotice, ProfileSection, ProfileText } from '@/components/profile/profile-ui';
 import { SettingsCard, SettingsRow } from '@/components/settings/settings-ui';
@@ -27,8 +28,8 @@ import type { AvatarId } from '@/types/profile';
 import type { OperatorProfileValues, SettingsErrors } from '@/types/settings';
 
 function OperatorRoleBadge() {
-  return <View className="rounded-pill bg-[#D1E2F8] px-3 py-1">
-    <Text className="font-poppins-bold text-[10px] leading-[15px] text-brand">Kahera</Text>
+  return <View className="rounded-pill bg-accent-soft px-3 py-1">
+    <Text className="type-status-badge text-brand">Kahera</Text>
   </View>;
 }
 
@@ -73,13 +74,11 @@ export function OperatorProfileScreen() {
           <View className="min-w-0 flex-1"><ProfileText bold>{operator.name}</ProfileText></View>
           <OperatorRoleBadge />
         </View>
-        <View className="my-4 h-px bg-[#ADC9EE]" />
+        <View className="my-4 h-px bg-outline" />
         <ProfileText small>Owner ID</ProfileText>
         <ProfileText bold>{session.ownerId}</ProfileText>
         <View className="mt-1 flex-row items-center gap-1.5">
-          <View className="h-3.5 w-3.5 items-center justify-center rounded-pill border border-[#7399CC]">
-            <Text className="font-poppins-bold text-[9px] leading-[12px] text-[#7399CC]">i</Text>
-          </View>
+          <PosIcon name="info" size={14} />
           <ProfileText small>Assigned once. Cannot be changed.</ProfileText>
         </View>
         <View className="mt-4"><Button variant="outlined" onPress={() => router.push('/operator-profile/edit')}>Edit Profile</Button></View>
@@ -229,7 +228,7 @@ function EditOperatorProfile({ operator, values, initialized, onBegin, onUpdate,
       </View>
       <View className="mt-4"><Button compact variant="outlined" onPress={() => router.push('/operator-profile/photo')}>Change Photo</Button></View>
     </SettingsCard>
-    <Text accessibilityRole="header" className="mb-3 mt-5 font-poppins-semibold text-[12px] leading-[18px] text-[#7399CC]">Personal Information</Text>
+    <Text accessibilityRole="header" className="mb-3 mt-5 type-label-nav leading-[18px] text-text-secondary">Personal Information</Text>
     <FormField ref={nameInput} label="Name" value={values.name} onChangeText={updateField} onBlur={() => setSubmitted(true)} error={serverErrors.name ?? errors.name} maxLength={120} autoCapitalize="words" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
     <View className="mt-4"><ProfileNotice title="Permanent Owner ID">{operator.ownerId} · Assigned once and cannot be edited.</ProfileNotice></View>
     {!!failure && <View className="mt-3"><ProfileError message={failure} /></View>}

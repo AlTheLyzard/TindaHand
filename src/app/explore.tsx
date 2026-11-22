@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/i18n/use-translation';
 import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
 import { Platform, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,6 +11,7 @@ import { Collapsible } from '@/components/ui/collapsible';
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { PosIcon } from '@/components/pos/pos-icon';
 
 export default function TabTwoScreen() {
   const { t } = useTranslation();
@@ -49,7 +49,7 @@ export default function TabTwoScreen() {
 
           <ExternalLink href="https://docs.expo.dev" asChild>
             <Button variant="secondary" fullWidth={false} iconPosition="trailing"
-              icon={({ color }) => <SymbolView tintColor={color} name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }} size={12} />}>
+              icon={({ color }) => <PosIcon name="chevronRight" color={color} size={12} />}>
               {t('starter.documentation')}
             </Button>
           </ExternalLink>

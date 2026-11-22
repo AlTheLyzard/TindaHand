@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { useRef, useState } from 'react';
 import { Keyboard, Platform, Text, View, type TextInputInstance } from 'react-native';
@@ -25,7 +26,7 @@ export function TransactionFilterSheet({ applied, onApply, onClose }: {
   const error = transactionFilterError(draft);
   const dismiss = () => { Keyboard.dismiss(); setOpen(false); };
   return <MotionModal visible={open} sheet statusBarTranslucent navigationBarTranslucent
-    backdropColor="rgba(16,35,66,0.42)" onHidden={onClose}
+    backdropColor={tokens.overlay.navySoft} onHidden={onClose}
     onRequestClose={() => calendar ? setCalendar(false) : dismiss()}>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
@@ -34,7 +35,7 @@ export function TransactionFilterSheet({ applied, onApply, onClose }: {
             subtitle={calendar ? undefined : 'Choose a payment method or date range.'} alwaysShowSubtitle
             onClose={() => calendar ? setCalendar(false) : dismiss()}
             footer={!calendar && <View style={{ gap: 12, paddingVertical: 12, paddingBottom: insets.bottom + 12 }}>
-              {!!error && <Text accessibilityRole="alert" className="font-poppins text-[12px] text-[#972020]">{error}</Text>}
+              {!!error && <Text accessibilityRole="alert" className=" type-micro-caption text-error-base">{error}</Text>}
               <View className="flex-row gap-3">
                 <View className="flex-1"><Button compact variant="secondary" onPress={() => { Keyboard.dismiss(); setDraft(emptyTransactionFilters()); }}>Reset</Button></View>
                 <View className="flex-[2]"><Button compact disabled={!!error} onPress={() => { if (!error) { onApply({ ...draft }); dismiss(); } }}>Apply Filter</Button></View>
@@ -43,15 +44,15 @@ export function TransactionFilterSheet({ applied, onApply, onClose }: {
             {calendar ? <View style={{ paddingBottom: Math.max(insets.bottom, 16) }}><DateRangePicker value={{ from: draft.from, to: draft.to }} onChange={range => { setDraft(previous => ({ ...previous, ...range })); setCalendar(false); }} onClose={() => setCalendar(false)} /></View> :
               <View className="gap-4 pb-3">
                 <View className="gap-2">
-                  <Text className="font-poppins-semibold text-[14px] text-brand">Payment method</Text>
+                  <Text className=" type-micro-financial-rate text-brand">Payment method</Text>
                   <View accessibilityRole="radiogroup" accessibilityLabel="Payment method" className="flex-row flex-wrap gap-x-2">
                     {transactionMethods.map(method => <PosChip key={method.value} radio label={method.label} selected={draft.paymentMethod === method.value}
                       onPress={() => setDraft(previous => ({ ...previous, paymentMethod: method.value }))} />)}
                   </View>
                 </View>
                 <View className="gap-2">
-                  <Text className="font-poppins-semibold text-[14px] text-brand">Date range</Text>
-                  <Text className="font-poppins text-[12px] leading-[18px] text-text-secondary">Dates include the entire day in the store timezone (Asia/Manila). Leave blank for any date.</Text>
+                  <Text className=" type-micro-financial-rate text-brand">Date range</Text>
+                  <Text className=" type-micro-caption leading-[18px] text-text-secondary">Dates include the entire day in the store timezone (Asia/Manila). Leave blank for any date.</Text>
                   <QuickAddField date required={false} label="Start date" value={draft.from} placeholder="YYYY-MM-DD" maxLength={10}
                     onChangeText={from => setDraft(previous => ({ ...previous, from }))} onPickDate={() => { Keyboard.dismiss(); setCalendar(true); }}
                     autoCapitalize="none" returnKeyType="next" onSubmitEditing={() => toInput.current?.focus()} />

@@ -19,12 +19,12 @@ export function SuccessContent({ title, amountCentavos, value, message, eventKey
     else AccessibilityInfo.sendAccessibilityEvent(done.current, 'focus');
   }, [presented, visible]);
   return <View testID={testID} accessibilityViewIsModal onAccessibilityEscape={onClose}
-    style={{ width: '100%', maxWidth: 340, alignSelf: 'center', gap: 16, padding: 24, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard, boxShadow: '0 3px 6px #00000040' }}>
+    style={{ width: '100%', maxWidth: 340, alignSelf: 'center', gap: 16, padding: 24, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard }}>
     <SuccessHalo visible={visible} eventKey={eventKey} />
-    <Text accessibilityRole="header" style={{ textAlign: 'center', fontFamily: 'Poppins_600SemiBold', fontSize: 24, lineHeight: 36, color: '#102342' }}>{title}</Text>
+    <Text accessibilityRole="header" style={{ textAlign: 'center', fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.h2Section.fontSize, lineHeight: 36, color: tokens.color.textPrimary }}>{title}</Text>
     <View accessible accessibilityRole="alert" style={{ gap: 4 }}>
-      <Text testID={`${testID}-amount`} style={{ textAlign: 'center', fontFamily: 'Poppins_700Bold', fontSize: 22, lineHeight: 33, color: tokens.color.textPrimary }}>{value ?? (amountCentavos === undefined ? '' : formatPesos(amountCentavos))}</Text>
-      <Text style={{ textAlign: 'center', fontFamily: 'Poppins_400Regular', fontSize: 14, lineHeight: 22, color: tokens.color.textSecondary }}>{message}</Text>
+      <Text testID={`${testID}-amount`} style={{ textAlign: 'center', fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 33, color: tokens.color.textPrimary }}>{value ?? (amountCentavos === undefined ? '' : formatPesos(amountCentavos))}</Text>
+      <Text style={{ textAlign: 'center', fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microFinancialRate.fontSize, lineHeight: 22, color: tokens.color.textSecondary }}>{message}</Text>
     </View>
     <Button ref={done} onPress={onClose}>Done</Button>
   </View>;

@@ -1,5 +1,6 @@
 import type { FinancialReport } from '@/types/financial';
 import { reportTitles, periodLabel, reportTimestamp, accountExplanation, balanceSide } from '@/utils/financial';
+import tokens from '@/constants/design-tokens.json';
 
 /** HTML never includes raw store/account/transaction strings. */
 export function escapeReportHtml(value: string) {
@@ -49,12 +50,12 @@ export function financialReportHtml(report: FinancialReport) {
     body += `<p>${b.balanced ? 'Matches' : 'Does not match'} Total Assets: ${money(b.assets)}</p>`;
   }
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${financialFilename(report)}</title><style>
-    @page { size: A4; margin: 18mm 14mm; } * { box-sizing: border-box; } html, body { background: #FFFFFF; color-scheme: light; } body { font: 11px Arial, sans-serif; color: #0C1B3C; }
-    h1 { color: #112F6F; font-size: 22px; margin-bottom: 8px; } h2 { font-size: 16px; color: #112F6F; break-after: avoid; } h3 { break-after: avoid; }
-    table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; table-layout: auto; } thead { display: table-header-group; } th { text-align: left; background: #D1E1F5; }
-    td, th { border-bottom: 1px solid #B0C8E3; padding: 9px 7px; overflow-wrap: anywhere; vertical-align: top; } th:not(:first-child), .number { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    tr { break-inside: avoid; page-break-inside: avoid; } .total { font-weight: bold; background: #D1E1F5; } .indent { padding-left: 24px; } .description { font-size: 10px; color: #4A607A; }
-    .summary { padding: 14px; border: 1px solid #B0C8E3; margin: 12px 0; break-inside: avoid; } .summary h2 { margin: 8px 0 0; color: inherit; } .good { color: #21642C; background: #E8F5E9; } .blue { color: #112F6F; background: #D1E1F5; } .bad { color: #B4232C; background: #FFEBEE; }
-    footer { margin-top: 20px; color: #4A607A; font-size: 10px; }
+    @page { size: A4; margin: 18mm 14mm; } * { box-sizing: border-box; } html, body { background: ${tokens.color.surfaceCard}; color-scheme: light; } body { font: 11px Arial, sans-serif; color: ${tokens.color.textPrimary}; }
+    h1 { color: ${tokens.color.darkNavy}; font-size: 22px; margin-bottom: 8px; } h2 { font-size: 16px; color: ${tokens.color.darkNavy}; break-after: avoid; } h3 { break-after: avoid; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; table-layout: auto; } thead { display: table-header-group; } th { text-align: left; background: ${tokens.color.softBlue}; }
+    td, th { border-bottom: 1px solid ${tokens.color.borderOutline}; padding: 9px 7px; overflow-wrap: anywhere; vertical-align: top; } th:not(:first-child), .number { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    tr { break-inside: avoid; page-break-inside: avoid; } .total { font-weight: bold; background: ${tokens.color.softBlue}; } .indent { padding-left: 24px; } .description { font-size: 10px; color: ${tokens.color.textSecondary}; }
+    .summary { padding: 14px; border: 1px solid ${tokens.color.borderOutline}; margin: 12px 0; break-inside: avoid; } .summary h2 { margin: 8px 0 0; color: inherit; } .good { color: ${tokens.color.successBase}; background: ${tokens.color.successTint}; } .blue { color: ${tokens.color.darkNavy}; background: ${tokens.color.softBlue}; } .bad { color: ${tokens.color.errorBase}; background: ${tokens.color.errorTint}; }
+    footer { margin-top: 20px; color: ${tokens.color.textSecondary}; font-size: 10px; }
   </style></head><body><h1>${escapeReportHtml(report.storeName)}</h1><h2>${reportTitles[report.kind]}</h2><p>${escapeReportHtml(periodLabel(report.selection, report.kind === 'balance-sheet'))}</p><p>Generated: ${escapeReportHtml(reportTimestamp(report.generatedAt))}</p>${body}<footer>TindaHand · Fictional posted demo records · ${escapeReportHtml(report.timezone)}</footer></body></html>`;
 }

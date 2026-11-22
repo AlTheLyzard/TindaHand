@@ -1,7 +1,7 @@
 import tokens from '@/constants/design-tokens.json';
 
 export function inventoryStatusAppearance(status: string) {
-  return status === 'good' ? { color: '#1D5D21', backgroundColor: '#E8F5E9', borderColor: tokens.button.positive.default }
-    : ['out', 'expired'].includes(status) ? { color: '#972020', backgroundColor: '#FFEBEE', borderColor: tokens.button.destructive.default }
-      : { color: '#805000', backgroundColor: '#FFF8E1', borderColor: tokens.color.warningBase };
+  return status === 'good' ? { color: tokens.color.successBase, backgroundColor: tokens.color.successTint, borderColor: tokens.button.positive.default }
+    : ['out', 'expired'].includes(status) ? { color: tokens.color.errorBase, backgroundColor: tokens.color.errorTint, borderColor: tokens.button.destructive.default }
+      : { color: tokens.color.warningText, backgroundColor: tokens.color.warningTint, borderColor: tokens.color.warningBase };
 }

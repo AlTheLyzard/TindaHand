@@ -5,8 +5,9 @@ Visual authority: [Buttons.png](designs/Buttons.png). The uploaded reference is 
 
 The reference's 360 × 100 artwork is interpreted as approximately 180 × 50 logical
 units. CTAs use a minimum height of 50, radius 5, Poppins Bold 14/21, horizontal
-padding 16, and an inset highlight. Width follows the surrounding screen rather
-than the exported image. Larger text and longer labels can increase the height.
+padding 16, an inset highlight and the reference's soft drop shadow. Width follows
+the surrounding screen rather than the exported image. Larger text and longer
+labels can increase the height.
 The image contains no icon specifications, so existing glyphs and specialized icon
 sizes are retained; new labeled icons default to 20 with an 8-unit gap.
 

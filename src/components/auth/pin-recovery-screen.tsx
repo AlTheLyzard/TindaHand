@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -27,13 +28,12 @@ function RecoveryFrame({ children, onBack = backToLogin }: { children: ReactNode
 }
 function RecoveryHeading({ title, children }: { title: string; children?: ReactNode }) {
   return <View className="mb-8 mt-12 px-2">
-    <Text className="font-poppins-bold text-[12px] text-[#2675DB]">MAY-ARI · STORE OWNER</Text>
-    <Text accessibilityRole="header" className="mt-2 font-poppins-bold text-[28px] leading-[40px] text-brand">{title}</Text>
-    {children && <Text className="mt-2 font-poppins text-[10px] leading-[15px] text-text-secondary">{children}</Text>}
+    <Text accessibilityRole="header" className="type-large-metric leading-[40px] text-brand">{title}</Text>
+    {children && <Text className="mt-2 type-helper leading-[15px] text-text-secondary">{children}</Text>}
   </View>;
 }
 function Notice({ children }: { children: string }) {
-  return <Text accessibilityRole="alert" accessibilityLiveRegion="polite" className="mt-3 font-poppins text-[12px] leading-[18px] text-[#B42318]">{children}</Text>;
+  return <Text accessibilityRole="alert" accessibilityLiveRegion="polite" className="mt-3 type-micro-caption leading-[18px] text-error-base">{children}</Text>;
 }
 export function ForgotPinScreen() {
   const [email, setEmail] = useState('');
@@ -58,33 +58,31 @@ export function ForgotPinScreen() {
       const result = await authenticationService.requestPinRecovery({ email });
       if (!active.current) return;
       if (result.ok) {
-        if (!result.value.found) {
-          setNotice('Use the email address linked to your May-Ari account.');
-        } else {
-          Keyboard.dismiss(); setSent(true); setResendAt(result.value.resendAt); setNow(Date.now()); setToast(Date.now() + 15000);
-        }
+        // Keep recovery responses neutral so this screen does not reveal whether
+        // an email belongs to a May-Ari account.
+        Keyboard.dismiss(); setSent(true); setResendAt(result.value.resendAt); setNow(Date.now()); setToast(Date.now() + 15000);
       } else setNotice(result.message);
     } catch { if (active.current) setNotice('Unable to request recovery. Please try again.'); }
     finally { locked.current = false; if (active.current) setBusy(false); }
   }
   return <RecoveryFrame>
     {!sent ? <>
-      <RecoveryHeading title="Forgot PIN?">Enter your registered email address to request a PIN recovery link.</RecoveryHeading>
+      <RecoveryHeading title="Forgot PIN?">Enter your registered email address to recover your account and reset your PIN.</RecoveryHeading>
       <View className="mx-3 gap-3">
-        <FormField ref={input} label="Email Address" requiredIndicator="asterisk" value={email} placeholder="name@gmail.com" placeholderTextColor="#A3AFBF"
+        <FormField ref={input} label="Email Address" requiredIndicator="asterisk" value={email} placeholder="name@gmail.com" placeholderTextColor={tokens.color.textDisabled}
           onChangeText={value => { setEmail(value); setTouched(true); setNotice(''); }} onBlur={() => setTouched(true)}
           error={touched ? validateEmail(email) : undefined} editable={!busy} keyboardType="email-address" autoComplete="email" textContentType="emailAddress" autoCapitalize="none" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
         {!!notice && <Notice>{notice}</Notice>}
       </View>
-      <View className="mt-12 gap-3"><Button loading={busy} onPress={notice ? backToLogin : () => void send()}>{notice ? 'Log In' : 'Send Recovery Link'}</Button><Button variant="secondary" disabled={busy} onPress={backToLogin}>Back to Login</Button></View>
+      <View className="mt-12 gap-3"><Button loading={busy} onPress={() => void send()}>Send Recovery Link</Button><Button variant="secondary" disabled={busy} onPress={backToLogin}>Back to Login</Button></View>
     </> : <>
-      <RegistrationToast expiresAt={toast} onDismiss={dismiss} title="Recovery link requested" message="Check your email for the next steps." />
+      <RegistrationToast expiresAt={toast} onDismiss={dismiss} title="Recovery Link Sent!" message="Check your email for the PIN reset link." />
       <View testID="recovery-email-content" className="min-h-[300px] flex-1 justify-center py-6">
         <View testID="recovery-email-group" className="items-center px-2">
           <Image source={require('@/assets/images/auth/recovery-envelope.svg')} contentFit="contain" accessible={false}
             style={{ width: 128, height: 128, maxWidth: '100%' }} />
-          <Text accessibilityRole="header" className="mt-6 text-center font-poppins-bold text-[28px] leading-[40px] text-brand">Check your Email</Text>
-          <Text className="mt-4 w-full max-w-[320px] text-center font-poppins text-[12px] leading-[20px] text-text-secondary">We’ve sent a PIN recovery link to your registered email address.</Text>
+          <Text accessibilityRole="header" className="mt-6 text-center type-large-metric leading-[40px] text-brand">Check your Email</Text>
+          <Text className="mt-4 w-full max-w-[320px] text-center type-micro-caption leading-[20px] text-text-secondary">We’ve sent a PIN recovery link to your registered email address.</Text>
         </View>
       </View>
       {!!notice && <Notice>{notice}</Notice>}
@@ -132,14 +130,14 @@ export function ResetPinScreen() {
     finally { if (!completed) { locked.current = false; if (active.current) setBusy(false); } }
   }
   return <RecoveryFrame>
-    <RecoveryHeading title="Create New PIN">Enter a new four-digit PIN for your May-Ari account.</RecoveryHeading>
-    {status === 'verifying' && <Text accessibilityRole="alert" className="font-poppins text-[14px] text-brand">Verifying recovery link…</Text>}
+    <RecoveryHeading title="Create New PIN?">Enter a new 4-digit PIN for your May-Ari account.</RecoveryHeading>
+    {status === 'verifying' && <Text accessibilityRole="alert" className=" type-micro-financial-rate text-brand">Verifying recovery link…</Text>}
     {status === 'ready' && <>
       <View className="mx-3 gap-6">
-        <FormField ref={pinInput} label="New PIN" requiredIndicator="asterisk" pin pinIndicators pinVisibilityToggle value={pin} editable={!busy} error={touched.pin ? pinError : undefined}
+        <FormField ref={pinInput} label="New PIN" requiredIndicator="asterisk" pin pinIndicators pinLengthIndicator={false} value={pin} editable={!busy} error={touched.pin ? pinError : undefined}
           onChangeText={value => { setPin(value.replace(/[^0-9]/g, '').slice(0, 4)); setTouched(current => ({ ...current, pin: true })); }} onBlur={() => setTouched(current => ({ ...current, pin: true }))}
           keyboardType="number-pad" autoComplete="off" textContentType="none" maxLength={4} returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => confirmInput.current?.focus()} />
-        <FormField ref={confirmInput} label="Confirm New PIN" requiredIndicator="asterisk" pin pinIndicators pinVisibilityToggle value={confirmPin} editable={!busy} error={touched.confirm ? confirmError : undefined}
+        <FormField ref={confirmInput} label="Confirm New PIN" requiredIndicator="asterisk" pin pinIndicators pinLengthIndicator={false} value={confirmPin} editable={!busy} error={touched.confirm ? confirmError : undefined}
           onChangeText={value => { setConfirmPin(value.replace(/[^0-9]/g, '').slice(0, 4)); setTouched(current => ({ ...current, confirm: true })); }} onBlur={() => setTouched(current => ({ ...current, confirm: true }))}
           keyboardType="number-pad" autoComplete="off" textContentType="none" maxLength={4} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
       </View>

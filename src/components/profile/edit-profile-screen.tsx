@@ -115,27 +115,35 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
   }
   if (state.phase === 'avatar') return <ProfilePhotoSelectionScreen storeId={profile.ownerId} accountId={profile.ownerId}
     currentAvatarId={resolveOwnerAvatarId(state.preview ?? state.draft.avatarId)} failure={failure}
-    onApply={applyAvatar} onCancel={cancelStep} onNavigate={requestExit} onSelectionChange={() => setFailure('')} />;
-  return <ProfileFrame title={state.phase === 'verify' ? 'Verify Your Identity' : 'Edit Profile'} subtitle={state.phase === 'verify' ? 'Enter your current PIN to confirm your identity.' : 'Update your personal details.'} onBack={back} onNavigate={requestExit} busy={busy}>
+    onApply={applyAvatar} onCancel={cancelStep} onSelectionChange={() => setFailure('')} />;
+  return <ProfileFrame title={state.phase === 'verify' ? 'Verify Your Identity' : 'Edit Profile'} subtitle={state.phase === 'verify' ? 'Enter your current PIN to confirm your identity.' : 'Update your personal details.'} onBack={back} busy={busy}>
     {state.phase === 'verify' ? <>
-      <View className="mb-6 h-20 w-20 items-center justify-center rounded-pill bg-[#D1E2F8]"><SettingsIcon name="security" /></View>
+      <View className="mb-6 h-20 w-20 items-center justify-center rounded-pill bg-accent-soft"><SettingsIcon name="security" size={52} /></View>
       <FormField key={pinEpoch} ref={pinInput} label="Enter your Current PIN" requiredIndicator="asterisk" pin pinIndicators pinVisibilityToggle keyboardType="number-pad" maxLength={4} autoComplete="off" textContentType="none" value={pin} editable={!busy}
         onChangeText={value => { setPin(value.replace(/[^0-9]/g, '').slice(0, 4)); setPinTouched(true); setFailure(''); }} onBlur={() => setPinTouched(true)}
         error={failure || (pinTouched && !/^[0-9]{4}$/.test(pin) ? 'Enter exactly four numeric digits.' : undefined)} help="Enter your PIN · exactly 4 numeric digits." returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
       <View className="min-h-12 flex-1" /><ProfileNotice title="Your PIN is Secure">Your PIN is only used to verify your identity. Never share it with anyone.</ProfileNotice>
       <View className="gap-3 pt-6"><Button loading={busy} disabled={!/^[0-9]{4}$/.test(pin)} onPress={() => void save()}>Verify</Button><Button variant="secondary" disabled={busy} onPress={cancelStep}>Cancel</Button></View>
     </> : <>
-      <SettingsCard><View className="flex-row items-center gap-4"><ProfileAvatar avatarId={state.draft.avatarId} size={70} /><View className="min-w-0 flex-1 gap-2"><ProfileText bold>Profile Photo</ProfileText><Button compact fullWidth={false} variant="secondary" style={{ alignSelf: 'flex-start' }} onPress={() => dispatch({ type: 'pick' })}>Change Photo</Button></View></View></SettingsCard>
+      <SettingsCard>
+        <View className="flex-row flex-wrap items-center gap-4">
+          <ProfileAvatar avatarId={state.draft.avatarId} size={76} />
+          <View className="min-w-[150px] flex-1 gap-2">
+            <ProfileText bold>Profile Photo</ProfileText>
+            <Button compact fullWidth={false} variant="outlined" style={{ alignSelf: 'flex-start' }} onPress={() => dispatch({ type: 'pick' })}>Change Photo</Button>
+          </View>
+        </View>
+      </SettingsCard>
       <ProfileSection>Personal Information</ProfileSection>
       <FormField ref={nameInput} label="Name" requiredIndicator="asterisk" value={state.draft.name} onChangeText={value => update('name', value)} onBlur={() => setTouched(current => ({ ...current, name: true }))} error={touched.name ? errors.name : undefined} maxLength={PROFILE_LIMITS.name} autoCapitalize="words" returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => storeInput.current?.focus()} />
       <ProfileSection>Store Information</ProfileSection>
       <FormField ref={storeInput} label="Store Name" required={false} value={state.draft.storeName} onChangeText={value => update('storeName', value)} error={touched.storeName ? errors.storeName : undefined} maxLength={PROFILE_LIMITS.storeName} autoCapitalize="words" returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => emailInput.current?.focus()} />
       <ProfileSection>Contact Information</ProfileSection>
       <FormField ref={emailInput} label="Registered Email Address" requiredIndicator="asterisk" value={state.draft.email} onChangeText={value => update('email', value)} onBlur={() => setTouched(current => ({ ...current, email: true }))} error={touched.email ? errors.email : undefined} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" maxLength={PROFILE_LIMITS.email} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
-      <View className="mt-4"><ProfileNotice title="Permanent May-Ari ID">{profile.ownerId} · Assigned once and cannot be edited.</ProfileNotice></View>
+      <View className="mt-4"><ProfileNotice title="Permanent Owner ID">{profile.ownerId} · Assigned once and cannot be edited.</ProfileNotice></View>
       {profile.pendingEmail && <View className="mt-3"><ProfileNotice title="Pending email verification">{profile.pendingEmail.address}. Your current registered email stays active until verification succeeds.</ProfileNotice></View>}
       {!!failure && <ProfileError message={failure} />}
-      <View className="min-h-8 flex-1" /><View className="gap-3 pt-6"><Button disabled={!dirty || Object.keys(errors).length > 0 || busy} onPress={confirmSave}>Save Changes</Button><Button variant="secondary" onPress={() => requestExit()}>Cancel</Button></View>
+      <View className="min-h-8 flex-1" /><View className="gap-3 pt-6"><Button disabled={!dirty || busy} onPress={confirmSave}>Save Changes</Button><Button variant="secondary" onPress={() => requestExit()}>Cancel</Button></View>
     </>}
     <PosDialog visible={dialog === 'save'} title="Save Changes?" message="Are you sure you want to save these changes to this profile?" confirmLabel="Save Changes" onClose={() => setDialog(null)} onConfirm={() => { setDialog(null); clearPin(); setFailure(''); dispatch({ type: 'verify' }); }} />
     <PosDialog visible={dialog === 'discard'} title="Discard Changes?" message="Your unsaved profile changes will be discarded." confirmLabel="Discard Changes" cancelLabel="Keep Editing" destructive onClose={() => setDialog(null)} onConfirm={() => { setDialog(null); clearPin(); dispatch({ type: 'discard' }); setLeaving(true); disablePrevention(); pendingExit.current(); }} />

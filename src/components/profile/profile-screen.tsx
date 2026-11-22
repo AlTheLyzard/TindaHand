@@ -14,6 +14,7 @@ import {
   OwnerProfileAvatar as ProfileAvatar,
   ProfileError,
   ProfileNotice,
+  ProfileReadOnlyValue,
   ProfileSection,
   ProfileText,
   ProfileUnavailable,
@@ -51,6 +52,12 @@ export function ProfileScreen() {
       title="Profile"
       subtitle="Your account and store information"
       busy={busy}
+      footer={!loading && !error && profile ? <>
+        {!!failure && <ProfileError message={failure} />}
+        <Button variant="destructive" loading={busy} onPress={() => setLogout(true)}>
+          Log Out
+        </Button>
+      </> : undefined}
     >
       {feedback && (
         <ProfileSuccess
@@ -65,13 +72,13 @@ export function ProfileScreen() {
         <>
           <SettingsCard>
             <View className="flex-row flex-wrap items-center gap-3">
-              <ProfileAvatar avatarId={profile.avatarId} size={52} />
+              <ProfileAvatar avatarId={profile.avatarId} size={60} />
               <View className="min-w-[120px] flex-1">
                 <ProfileText bold>{profile.name}</ProfileText>
               </View>
               <AccountBadge status="May-Ari" />
             </View>
-            <View className="my-4 h-px bg-[#ADC9EE]" />
+            <View className="my-4 h-px bg-outline" />
             <ProfileText small>May-Ari ID</ProfileText>
             <ProfileText bold>{profile.ownerId}</ProfileText>
             <View className="mb-4 mt-1">
@@ -80,25 +87,16 @@ export function ProfileScreen() {
               </ProfileText>
             </View>
             <Button
-              variant="secondary"
+              variant="outlined"
               onPress={() => router.push(`${profileRoot}/edit`)}
             >
               Edit Profile
             </Button>
           </SettingsCard>
           <ProfileSection>Store</ProfileSection>
-          <SettingsCard>
-            <ProfileText>{profile.storeName || "Not set"}</ProfileText>
-          </SettingsCard>
-          <ProfileSection>Contact Information</ProfileSection>
-          <SettingsCard>
-            <ProfileText small bold>
-              Registered Email Address
-            </ProfileText>
-            <View className="mt-2">
-              <ProfileText>{profile.email}</ProfileText>
-            </View>
-          </SettingsCard>
+          <ProfileReadOnlyValue>{profile.storeName || "Not set"}</ProfileReadOnlyValue>
+          <ProfileSection>Registered Email Address</ProfileSection>
+          <ProfileReadOnlyValue>{profile.email}</ProfileReadOnlyValue>
           {profile.pendingEmail && (
             <View className="mt-3 gap-3">
               <ProfileNotice
@@ -119,29 +117,12 @@ export function ProfileScreen() {
           <SettingsCard>
             <SettingsRow
               inCard
-              title="Manage Kahera"
+              title="Manage Operators"
               description="Accounts, PINs and permissions"
-              icon="profile"
+              icon="manageOperators"
               onPress={() => router.push(operatorsRoot)}
             />
-            <View className="h-px bg-[#ADC9EE]" />
-            <SettingsRow
-              inCard
-              title="Settings"
-              description="Preferences, security and support"
-              icon="settings"
-              onPress={() => router.navigate("/owner-menu/settings")}
-            />
           </SettingsCard>
-          <View className="min-h-5 flex-1" />
-          {!!failure && <ProfileError message={failure} />}
-          <Button
-            variant="destructive"
-            loading={busy}
-            onPress={() => setLogout(true)}
-          >
-            Log Out
-          </Button>
           <PosDialog
             visible={logout}
             title="Log Out"

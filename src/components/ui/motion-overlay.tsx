@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import type { ViewInstance } from 'react-native';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
@@ -21,7 +22,7 @@ export function MotionOverlay({ visible, children }: { visible: boolean; childre
   if (!transition.presented) return null;
   return <View ref={host} style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}
     accessibilityElementsHidden={!visible} importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}>
-    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.30)' }, backdrop]} />
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tokens.overlay.scrim }, backdrop]} />
     <Animated.View style={[{ flex: 1 }, surface]}>
       <PresentationContext.Provider value={parentVisible && visible && transition.opened}>
         <RetainedContent visible={visible}>{children}</RetainedContent>

@@ -7,10 +7,6 @@ export default function RegisterRoute() {
   const { clear } = useAuthFlow();
   return (
     <RegistrationScreen
-      onBack={() => {
-        if (router.canGoBack()) router.back();
-        else router.replace('/');
-      }}
       onContinue={() => router.navigate('/account-created')}
       onCancel={() => {
         clear();

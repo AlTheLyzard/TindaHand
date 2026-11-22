@@ -22,7 +22,7 @@ export function MenuRow({ tool, selected = false, onPress, optionIndex, frame, c
   const hint = `${tool.subtitle ? `${tool.subtitle}. ` : ''}${tool.temporaryMessage ? 'Opens a temporary destination. This feature is not fully available yet.' : `Opens ${tool.label}.`}`;
   return <Pressable testID={`menu-option-${tool.id}`} accessibilityRole="button" accessibilityLabel={tool.label}
     accessibilityHint={hint} accessibilityState={{ selected }} aria-selected={selected} {...(Platform.OS === 'web' ? { 'aria-describedby': hintId } : {})}
-    onPress={onPress} className="min-h-[72px] flex-row items-center gap-3 rounded-surface px-3 py-3" style={{ backgroundColor: selected ? '#B8CCE4' : '#FFFFFF' }}>
+    onPress={onPress} className="min-h-[72px] flex-row items-center gap-3 rounded-surface px-3 py-3" style={{ backgroundColor: selected ? tokens.color.primaryDisabled : tokens.color.surfaceCard }}>
     <MenuIcon name={tool.icon} />
     <View className="min-w-0 flex-1">
       <Text testID={`menu-title-${tool.id}`} style={styles.title}>{tool.label}</Text>
@@ -44,8 +44,8 @@ export function MenuRow({ tool, selected = false, onPress, optionIndex, frame, c
 }
 
 const styles = StyleSheet.create({
-  title: { fontFamily: 'Poppins_400Regular', fontSize: 16, lineHeight: 24, color: '#102342' },
-  description: { fontFamily: 'Poppins_400Regular', fontSize: 10, lineHeight: 15, color: tokens.color.textSecondary },
+  title: { fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.bodyPrimary.fontSize, lineHeight: 24, color: tokens.color.textPrimary },
+  description: { fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.textSecondary },
   descriptionClip: { overflow: 'hidden' },
   descriptionContent: { paddingTop: tokens.spacing.one },
   measurement: { opacity: 0 },

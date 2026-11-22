@@ -9,7 +9,7 @@ import { hasCapability } from '@/utils/operator-access';
 export default function OperatorMoreRoute() {
   const { section } = useLocalSearchParams<{ section?: string }>();
   const { deviceSession, restoring } = useAuthFlow();
-  if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className="font-poppins text-[14px] text-brand">Restoring your session…</Text></View>;
+  if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className=" type-micro-financial-rate text-brand">Restoring your session…</Text></View>;
   if (!deviceSession || deviceSession.role !== 'operator') return <Redirect href="/choose-account" />;
   if (section === 'transactions') {
     if (!hasCapability(deviceSession, 'transactions')) return <Redirect href="/choose-account" />;

@@ -28,10 +28,10 @@ export function ToastOverlayProvider({ children }: { children: ReactNode }) {
   return <ToastOverlayContext.Provider value={context}>
     <View style={{ flex: 1 }}>
       {children}
-      <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 1000, elevation: 24 }}>
+      <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 1000 }}>
         {toasts.size > 0 && <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + 56, left: 20, right: 20, alignItems: 'center' }}>
           <View pointerEvents="box-none" style={{ width: '100%', maxWidth: 460, gap: 8 }}>
-            {Array.from(toasts, ([id, content]) => <View key={id} pointerEvents="box-none" style={{ zIndex: 1001, elevation: 8 }}>{content}</View>)}
+            {Array.from(toasts, ([id, content]) => <View key={id} pointerEvents="box-none" style={{ zIndex: 1001 }}>{content}</View>)}
           </View>
         </View>}
       </View>

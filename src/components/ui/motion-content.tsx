@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { cssInterop } from 'nativewind';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Platform, StyleSheet, View, type ViewProps, type TextProps, type ViewInstance } from 'react-native';
@@ -56,7 +57,7 @@ cssInterop(MotionSurface, { className: 'style' });
 export function MotionText({ style, ...props }: TextProps) {
   const reduced = useMotionReduced();
   const target = StyleSheet.flatten(style)?.color;
-  const color = useSharedValue(typeof target === 'string' ? target : '#102342');
+  const color = useSharedValue(typeof target === 'string' ? target : tokens.color.textPrimary);
   useLayoutEffect(() => {
     if (typeof target === 'string') color.set(reduced ? target : withTiming(target, { duration: motion.state, easing: motion.ease }));
   }, [color, reduced, target]);

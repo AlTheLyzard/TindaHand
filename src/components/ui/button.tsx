@@ -25,22 +25,28 @@ export function ButtonSurface({ variant = 'primary', pressedVariant, loading = f
   const textOnly = appearanceVariant === 'text' || appearanceVariant === 'destructiveText';
   const outlined = appearanceVariant === 'secondary' || appearanceVariant === 'outlined' || appearanceVariant === 'destructiveOutline';
   const palette = tokens.button[appearanceVariant === 'destructiveText' ? 'destructiveOutline' : appearanceVariant === 'outlined' || textOnly ? 'secondary' : appearanceVariant];
-  const ink = appearanceVariant.startsWith('destructive') ? tokens.button.destructive : tokens.button.primary;
+  const destructive = appearanceVariant.startsWith('destructive');
+  const secondary = appearanceVariant === 'secondary' || appearanceVariant === 'outlined';
+  const ink = destructive ? tokens.button.destructive : secondary ? tokens.button.primary : tokens.button.primary;
   const state = disabled ? 'disabled' : loading ? 'default' : pressed ? 'pressed' : hovered ? 'hover' : 'default';
-  const color = disabled ? palette.disabledText : outlined || textOnly ? ink[pressed ? 'pressed' : hovered ? 'hover' : 'default'] : '#FFFFFF';
+  const color = disabled ? palette.disabledText
+    : textOnly && appearanceVariant === 'text' ? pressed ? tokens.color.deepRoyalBlue : hovered ? tokens.color.royalBlue : tokens.color.brightBlue
+      : secondary ? tokens.button.secondary.ink
+        : outlined || textOnly ? ink[pressed ? 'pressed' : hovered ? 'hover' : 'default'] : tokens.color.textInverse;
   const appearance: ViewStyle = {
     backgroundColor: textOnly
       ? interactionBackgroundColor && (pressed || hovered || props.accessibilityState?.selected) ? interactionBackgroundColor
         : pressed || hovered ? palette[state] : 'transparent'
       : palette[state],
     borderWidth: textOnly ? 0 : 1,
-    borderColor: disabled ? appearanceVariant === 'destructiveOutline' ? '#FFEBEE' : outlined ? '#B0C8E3' : palette.disabled : outlined ? ink[pressed ? 'pressed' : hovered ? 'hover' : 'default'] : palette[state],
-    boxShadow: textOnly ? 'none' : outlined || disabled
-      ? appearanceVariant.startsWith('destructive') ? 'inset 0 2px 4px rgba(211,47,47,0.15)'
-        : appearanceVariant === 'positive' ? 'inset 0 2px 4px rgba(37,91,41,0.25)' : tokens.button.outlineHighlight
-      : tokens.button.highlight,
+    borderColor: disabled ? appearanceVariant === 'destructiveOutline' ? tokens.color.errorTint : outlined ? tokens.color.borderOutline : palette.disabled
+      : secondary ? tokens.color.darkNavy : outlined ? ink[pressed ? 'pressed' : hovered ? 'hover' : 'default'] : palette[state],
+    boxShadow: textOnly ? 'none' : `${tokens.shadow.raised}, ${outlined || disabled
+      ? destructive ? tokens.button.destructiveHighlight
+        : appearanceVariant === 'positive' ? tokens.button.positiveHighlight : tokens.button.outlineHighlight
+      : tokens.button.highlight}`,
     outlineWidth: focused && !blocked ? 2 : 0, outlineOffset: 3, outlineStyle: 'solid',
-    outlineColor: appearanceVariant.startsWith('destructive') ? tokens.button.destructive.default : tokens.button.primary.default,
+    outlineColor: destructive ? tokens.button.destructive.default : tokens.color.brightBlue,
   };
   return <MotionPressable {...props} fadeOnPress={false} accessibilityRole={props.accessibilityRole ?? 'button'}
     disabled={blocked} aria-busy={loading} accessibilityState={{ ...props.accessibilityState, disabled: blocked, busy: loading }}
@@ -88,7 +94,7 @@ export function Button({ children, icon, iconPosition = 'leading', fullWidth = t
       <View accessible={false} style={[styles.content, { opacity: loading ? 0 : 1 }]}>
         {icon && iconPosition === 'leading' && <View style={styles.icon}>{icon({ color, size })}</View>}
         <Text style={[styles.label, { color: props.disabled ? color : textColor ?? color,
-          fontSize: compact ? 12 : tokens.button.fontSize, lineHeight: tokens.button.lineHeight * fontScale }]}>{children}</Text>
+          fontSize: tokens.typography.buttonCta.fontSize, lineHeight: tokens.typography.buttonCta.lineHeight * fontScale }]}>{children}</Text>
         {icon && iconPosition === 'trailing' && <View style={styles.icon}>{icon({ color, size })}</View>}
       </View>
       {loading && <View pointerEvents="none" style={styles.loading}><ActivityIndicator size="small" color={color} /></View>}

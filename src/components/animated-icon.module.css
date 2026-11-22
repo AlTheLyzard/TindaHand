@@ -1,5 +1,5 @@
 .expoLogoBackground {
-  background-color: #f0f8ff;
+  background-color: var(--color-canvas);
   border-radius: 40px;
   width: 128px;
   height: 128px;

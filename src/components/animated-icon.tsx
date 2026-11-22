@@ -1,3 +1,4 @@
+import tokens from '@/constants/design-tokens.json';
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
 import { useState } from 'react';
@@ -133,14 +134,14 @@ const styles = StyleSheet.create({
   },
   background: {
     borderRadius: 40,
-    backgroundColor: '#F0F8FF',
+    backgroundColor: tokens.color.appBackground,
     width: 128,
     height: 128,
     position: 'absolute',
   },
   splashOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#F0F8FF',
+    backgroundColor: tokens.color.appBackground,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,

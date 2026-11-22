@@ -6,7 +6,6 @@ import type { TextInputInstance } from 'react-native';
 import { AccessibilityInfo, Keyboard, Platform, Text, View } from 'react-native';
 import { AuthBackground } from './auth-background';
 
-import { AuthHeader } from '@/components/auth/auth-header';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { registerOwner } from '@/services/registration';
@@ -17,8 +16,7 @@ import { createRegistrationRequest } from '@/utils/registration-request';
 
 const fieldOrder: RegistrationField[] = ['name', 'email', 'password', 'confirmPassword', 'pin', 'confirmPin'];
 
-export function RegistrationScreen({ onBack, onCancel, onContinue, service = registerOwner }: {
-  onBack: () => void;
+export function RegistrationScreen({ onCancel, onContinue, service = registerOwner }: {
   onCancel: () => void;
   onContinue: () => void;
   service?: RegistrationService;
@@ -130,28 +128,25 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
           keyboardDismissMode={Platform.OS === 'web' ? 'none' : 'on-drag'}
           showsVerticalScrollIndicator={false}>
           <View className="w-full max-w-[460px] flex-1 self-center px-6 pb-4 pt-5">
-            <View className="-mx-1">
-              <AuthHeader showWordmark={false} backDisabled={busy} onBack={() => { if (!locked.current) { Keyboard.dismiss(); onBack(); } }} />
-            </View>
             <View
               accessible
               accessibilityLabel={t('auth.progress', { step: 1 })}
-              className="mb-5 mt-4 flex-row items-center justify-center">
+              className="mb-5 mt-5 flex-row items-center justify-center">
               {[1, 2, 3].map((step) => (
                 <View key={step} className="flex-row items-center">
-                  {step > 1 && <View className="mx-1 h-px w-10 bg-[#AFC8E8]" />}
-                  <View className={`min-h-[20px] min-w-[24px] items-center justify-center rounded-full border border-action px-1 ${step === 1 ? 'bg-action' : 'bg-white'}`}>
-                    <Text className={`font-poppins-bold text-[12px] leading-[18px] ${step === 1 ? 'text-white' : 'text-action'}`}>
+                  {step > 1 && <View className="mx-1 h-px w-10 bg-outline" />}
+                  <View className={`min-h-9 min-w-9 items-center justify-center rounded-full border border-action ${step === 1 ? 'bg-action' : 'bg-white'}`}>
+                    <Text className={` type-label-nav leading-[18px] ${step === 1 ? 'text-white' : 'text-action'}`}>
                       {step}
                     </Text>
                   </View>
                 </View>
               ))}
             </View>
-            <Text accessibilityRole="header" className="text-center font-poppins-bold text-[22px] leading-[30px] text-brand">{t('auth.registration.title')}</Text>
-            <Text className="mt-0.5 text-center font-poppins text-[10px] leading-[15px] text-text-secondary">{t('auth.registration.instructions')}</Text>
+            <Text accessibilityRole="header" className="text-center type-large-metric leading-[40px] text-brand">{t('auth.registration.title')}</Text>
+            <Text className="mt-0.5 text-center type-helper leading-[15px] text-text-secondary">{t('auth.registration.instructions')}</Text>
 
-            <View className="mx-1 mt-4 gap-6 rounded-[20px] bg-[#D9E7F5] px-5 py-8">
+            <View className="mt-4 gap-3">
               {fieldOrder.map((field, index) => {
                 const label = { name: t('fields.name'), email: 'Email Address', password: t('fields.password'), confirmPassword: t('fields.confirmPassword'), pin: t('fields.pin'), confirmPin: t('fields.confirmPin') }[field];
                 const pin = field === 'pin' || field === 'confirmPin';
@@ -172,7 +167,6 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
                     passwordIndicators={field === 'password' || field === 'confirmPassword'}
                     pin={pin}
                     pinIndicators={pin}
-                    pinVisibilityToggle={pin}
                     placeholder={pin ? undefined : field === 'email' ? 'name@gmail.com' : field === 'name' ? t('fields.namePlaceholder') : field === 'password' ? t('fields.passwordPlaceholder') : t('fields.confirmPasswordPlaceholder')}
                     keyboardType={pin ? 'number-pad' : field === 'email' ? 'email-address' : 'default'}
                     maxLength={pin ? 4 : undefined}
@@ -191,8 +185,7 @@ export function RegistrationScreen({ onBack, onCancel, onContinue, service = reg
             </View>
 
             <View className="mt-4 gap-3">
-              <Text className="text-center font-poppins text-[10px] leading-[15px] text-brand">{t('auth.registration.privacy')}</Text>
-              {requestError ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" className="font-poppins text-[12px] leading-[18px] text-[#B42318]">{requestError}</Text> : null}
+              {requestError ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" className=" type-micro-caption leading-[18px] text-error-base">{requestError}</Text> : null}
               <Button disabled={disabled} loading={busy} onPress={() => { void submit(); }}>
                 {t('auth.registration.submit')}
               </Button>
