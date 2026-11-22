@@ -10,7 +10,7 @@ import { summarizeQuickAdd, quickAddTotal } from '@/utils/quick-add';
 import { payableAsQuickAdd } from '@/utils/payables';
 import type { PayablesLedger, PayablePayment } from '@/types/payables';
 import type { ReceivablePayment } from '@/types/receivables';
-import { createReceivablesService, createReceivablePayment } from '@/services/receivables';
+import { createReceivablesService, createReceivable, createReceivablePayment } from '@/services/receivables';
 
 type ExpenseFeedback = { recordId: string; expiresAt: number } | null;
 type TransactionLedger = { records: readonly QuickAddRecord[]; receivablePayments: readonly ReceivablePayment[]; payables: PayablesLedger };
@@ -51,6 +51,38 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   // - UI State to Wire: Preserve modal drafts on error and update success feedback/totals only after confirmation
   async function save(token: string, draft: QuickAddDraft) {
     if (draft.kind === 'customerDebt') {
+      if (!MOCK_AUTH_ENABLED && owner?.mode === 'confirmed') {
+        if (!owner) throw new Error('An owner session is required.');
+        const result = await createReceivable({
+          name: draft.name.trim(),
+          customerId: draft.customerId || undefined,
+          amountCentavos: quickAddTotal(draft),
+          borrowing: draft.borrowing,
+          dueDate: draft.dueDate || undefined,
+          details: draft.details.trim() || undefined,
+          occurredAt: new Date().toISOString(),
+        });
+        const record: QuickAddRecord = {
+          id: String(result.id),
+          ownerId: owner.id,
+          kind: 'customerDebt',
+          name: result.name,
+          amountCentavos: result.originalAmountCentavos,
+          originalAmountCentavos: result.originalAmountCentavos,
+          paidCentavos: 0,
+          category: null,
+          details: result.details ?? '',
+          expenseDate: null,
+          dueDate: result.dueDate ?? null,
+          borrowing: result.borrowing ?? 'cash',
+          items: {},
+          paymentStatus: 'unpaid',
+          customerId: result.customerId ?? undefined,
+          occurredAt: result.occurredAt,
+        };
+        setReceivableFeedback({ ownerId: owner.id, message: `Debt saved for ${record.name}.` });
+        return record;
+      }
       const record = receivables.saveDebt(owner, token, draft);
       setReceivableFeedback({ ownerId: record.ownerId, message: `Debt saved for ${record.name}.` });
       return record;
@@ -101,7 +133,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
     if (!MOCK_AUTH_ENABLED && owner?.mode === 'confirmed') {
       if (!owner) throw new Error('An owner session is required.');
       const amountCentavos = Math.round(parseFloat(amount) * 100);
-      const result = await createReceivablePayment({ debtId: parseInt(debtId, 10), amountCentavos });
+      const result = await createReceivablePayment({ debtId, amountCentavos, occurredAt: new Date().toISOString() });
       const payment: ReceivablePayment = {
         id: String(result.id),
         ownerId: owner.id,
