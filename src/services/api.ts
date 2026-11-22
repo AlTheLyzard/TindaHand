@@ -8,7 +8,7 @@
 
 import { getToken } from '@/services/token-storage';
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://jawed-sizable-dandy.ngrok-free.dev';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://tindahand-production.up.railway.app';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -24,7 +24,6 @@ export async function apiFetch<T = unknown>(
   const token = await getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true',
     ...(init.headers as Record<string, string>),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;

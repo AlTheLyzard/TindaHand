@@ -5,8 +5,13 @@ import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { useTranslation } from '@/i18n/use-translation';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+<<<<<<< HEAD
 import { ScrollView, Text, View, useWindowDimensions, StyleSheet } from 'react-native';
 import { Image as BackgroundImage } from 'expo-image';
+=======
+import { useFocusEffect } from 'expo-router';
+import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
+>>>>>>> b02a199c3ee2e3a6b86d7ee9519802bf7495149d
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BestSellersCard, CashCard, RecentActivityCard, SalesCard, StockCard } from '@/components/dashboard/dashboard-cards';
@@ -45,19 +50,28 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   const [apiMovements, setApiMovements] = useState<CashMovement[] | null>(null);
   const [apiLoading, setApiLoading] = useState(owner.mode === 'confirmed');
 
-  useEffect(() => {
+  const refreshDashboard = useCallback(() => {
     if (owner.mode !== 'confirmed') return;
-    let cancelled = false;
     setApiLoading(true);
     Promise.allSettled([getDashboardSummary(), getCashMovements()])
       .then(([summaryResult, movementsResult]) => {
-        if (cancelled) return;
         if (summaryResult.status === 'fulfilled') setApiSummary(summaryResult.value);
         if (movementsResult.status === 'fulfilled') setApiMovements(movementsResult.value);
         setApiLoading(false);
       });
-    return () => { cancelled = true; };
   }, [owner.mode]);
+
+  useEffect(() => {
+    refreshDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner.mode]);
+
+  // Re-fetch every time the dashboard comes back into focus (e.g. after a POS sale)
+  useFocusEffect(
+    useCallback(() => {
+      refreshDashboard();
+    }, [refreshDashboard])
+  );
 
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -95,15 +109,15 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     ...localSummary,
     // Cash balance comes directly from the backend (includes opening cash + cash movements + sales tenders)
     cashCentavos: apiSummary.cashBalanceCentavos,
-    // Money in/out from real cash movement records
-    moneyIn: apiMoneyIn ?? localSummary.moneyIn,
-    moneyOut: apiMoneyOut ?? localSummary.moneyOut,
-    // Sales totals: daily = today, monthly = this month; weekly has no backend equivalent (falls back to local)
+    // Money In = manual cash additions + all sales revenue
+    moneyIn: (apiMoneyIn ?? 0) + apiSummary.totalSalesCentavos,
+    moneyOut: apiSummary.totalMoneyOutCentavos,
+    // Sales totals per period — all three now come from the backend
     totalSalesCentavos: period === 'daily'
       ? apiSummary.totalSalesTodayCentavos
-      : period === 'monthly'
-        ? apiSummary.totalSalesThisMonthCentavos
-        : localSummary.totalSalesCentavos,
+      : period === 'weekly'
+        ? apiSummary.totalSalesThisWeekCentavos
+        : apiSummary.totalSalesThisMonthCentavos,
     // Best sellers from the backend top-K algorithm (quantitySold maps to quantity)
     bestSellers: apiSummary.topProducts.map(p => ({ id: p.productId, name: p.name, quantity: p.quantitySold })),
   } : localSummary;
@@ -118,7 +132,11 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   // Growth metrics: use real sales presence (totalSalesCentavos > 0) so that
   // stores with actual backend sales but no local mock data still show trends.
   const hasSales = summary.totalSalesCentavos > 0 || summary.saleCount > 0;
-  const growthMetrics = hasSales && period === growthPreview.reportingPeriod ? { ...growthPreview, percentageChange: summary.growth } : null;
+  // For confirmed (real backend) accounts, don't show the demo sparkline or "Demo trend" label —
+  // we don't have a real growth series from the backend yet, so pass null to show "No comparison".
+  const growthMetrics = owner.mode !== 'confirmed' && hasSales && period === growthPreview.reportingPeriod
+    ? { ...growthPreview, percentageChange: summary.growth }
+    : null;
   const [todayDate] = useState(() => new Date());
   const dateOptions = { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' } as const;
   const today = todayDate.toLocaleDateString(getLocaleFormats().date, dateOptions);
@@ -162,7 +180,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     <DashboardQuickAdd onSelect={action => { preview.reset(); setQuickKind(action === 'dashboard.quick.customerDebt' ? 'customerDebt' : action === 'dashboard.quick.storeDebt' ? 'storeDebt' : 'expense'); }} />
     {quickKind && <QuickAddModal initialKind={quickKind} onClose={() => setQuickKind(null)} />}
     {cashToastExpiresAt !== null && <RegistrationToast expiresAt={cashToastExpiresAt} onDismiss={dismissCashToast} title="Amount Saved!" message="Cash added successfully." />}
-    {cashOpen && <AddCashModal onClose={() => setCashOpen(false)} onSaved={() => { setCashOpen(false); setCashToastExpiresAt(Date.now() + 15000); }} />}
+    {cashOpen && <AddCashModal onClose={() => setCashOpen(false)} onSaved={() => { setCashOpen(false); setCashToastExpiresAt(Date.now() + 15000); refreshDashboard(); }} />}
     <Modal visible={!!notice} onRequestClose={() => setNotice(null)}>
       <View className="flex-1 items-center justify-center px-6">
         <View accessibilityViewIsModal className="w-full max-w-[412px] gap-4 rounded-card bg-white p-6">

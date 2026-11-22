@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { quickAddSeed } from '@/data/quick-add';
 import { createQuickAddService } from '@/services/quick-add';
+import { createPayable } from '@/services/payables';
 import { useAuthFlow } from '@/state/auth-flow';
+import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { useInventory } from '@/state/inventory';
 import type { QuickAddDraft, QuickAddRecord } from '@/types/quick-add';
-import { summarizeQuickAdd } from '@/utils/quick-add';
+import { summarizeQuickAdd, quickAddTotal } from '@/utils/quick-add';
 import { payableAsQuickAdd } from '@/utils/payables';
 import type { PayablesLedger, PayablePayment } from '@/types/payables';
 import type { ReceivablePayment } from '@/types/receivables';
@@ -51,6 +53,33 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
     if (draft.kind === 'customerDebt') {
       const record = receivables.saveDebt(owner, token, draft);
       setReceivableFeedback({ ownerId: record.ownerId, message: `Debt saved for ${record.name}.` });
+      return record;
+    }
+    if (draft.kind === 'storeDebt' && !MOCK_AUTH_ENABLED && owner?.mode === 'confirmed') {
+      // Real path: POST to backend. The account-balances-screen re-fetches via useFocusEffect.
+      const result = await createPayable({
+        creditorName: draft.name.trim(),
+        amountCentavos: quickAddTotal(draft),
+        dueDate: draft.dueDate || undefined,
+        details: draft.details.trim() || undefined,
+      });
+      if (!owner) throw new Error('An owner session is required.');
+      const record: QuickAddRecord = {
+        id: String(result.id),
+        ownerId: owner.id,
+        kind: 'storeDebt',
+        name: result.creditorName,
+        amountCentavos: result.amountCentavos,
+        category: null,
+        details: draft.details.trim(),
+        expenseDate: null,
+        dueDate: result.dueDate ?? null,
+        borrowing: null,
+        items: {},
+        paymentStatus: 'unpaid',
+        occurredAt: result.occurredAt,
+      };
+      setPayableFeedback({ ownerId: owner.id, message: `Debt saved for ${record.name}.` });
       return record;
     }
     const saved = await service.save(owner, token, draft);

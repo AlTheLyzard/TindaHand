@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { authenticationService } from '@/services/authentication';
 import { useAuthFlow } from '@/state/auth-flow';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
@@ -52,6 +53,14 @@ export function useOwnerProfile() {
     }).catch(() => { if (active) setResult({ key, error: 'Profile unavailable. Please retry.' }); });
     return () => { active = false; };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-fetch profile when the screen comes back into focus (e.g. after editing).
+  // Only for real sessions — mock sessions read from an in-memory store already.
+  useFocusEffect(
+    useCallback(() => {
+      if (!MOCK_AUTH_ENABLED) setAttempt(value => value + 1);
+    }, []),
+  );
 
   const resolvedProfile = MOCK_AUTH_ENABLED ? profile : realProfile;
 

@@ -2,9 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
 from typing import Optional
-import secrets, smtplib, os
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import secrets, os, logging, json
+import urllib.request, urllib.error
 
 from database import get_db
 from models import MayAri, Kahera, PinRecoveryToken
@@ -378,25 +377,19 @@ def get_me(
 
 # ── PIN RECOVERY ─────────────────────────────────────────────────────────────
 
-SMTP_HOST        = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT        = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER        = os.getenv("SMTP_USER", "")       # Gmail address
-SMTP_PASSWORD    = os.getenv("SMTP_PASSWORD", "")   # Gmail App Password
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+# From address — must be a verified domain in Resend.
+# "onboarding@resend.dev" works on Resend's free tier without domain verification.
+RESEND_FROM    = os.getenv("RESEND_FROM", "TindaHand <onboarding@resend.dev>")
+
 # Deep-link base for the recovery email.
 # Dev builds: "tindahand:/" → link becomes tindahand://reset-pin?token=...
-#             The app scheme "tindahand" is registered in app.json.
-# Production: Set to your HTTPS domain (e.g. "https://app.tindahand.com")
-#             and configure iOS Associated Domains + Android App Links.
 APP_DEEP_LINK_BASE = os.getenv("APP_DEEP_LINK_BASE",
                                 os.getenv("APP_BASE_URL", "tindahand:/"))
 
 def _send_recovery_email(to_email: str, owner_name: str, token: str):
-    """Send the PIN recovery link via Gmail SMTP."""
+    """Send the PIN recovery link via Resend HTTPS API (works on Railway)."""
     reset_link = f"{APP_DEEP_LINK_BASE}/reset-pin?token={token}"
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "TindaHand — PIN Recovery"
-    msg["From"]    = f"TindaHand <{SMTP_USER}>"
-    msg["To"]      = to_email
 
     plain = (
         f"Hi {owner_name},\n\n"
@@ -426,13 +419,37 @@ def _send_recovery_email(to_email: str, owner_name: str, token: str):
       <p style="color:#999;font-size:11px">TindaHand &mdash; POS for sari-sari stores</p>
     </body></html>
     """
-    msg.attach(MIMEText(plain, "plain"))
-    msg.attach(MIMEText(html, "html"))
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-        server.starttls()
-        server.login(SMTP_USER, SMTP_PASSWORD)
-        server.sendmail(SMTP_USER, to_email, msg.as_string())
+    if not RESEND_API_KEY:
+        logging.error("RESEND_API_KEY is not set — cannot send recovery email")
+        raise RuntimeError("Email service not configured")
+
+    payload = json.dumps({
+        "from":    RESEND_FROM,
+        "to":      [to_email],
+        "subject": "TindaHand — PIN Recovery",
+        "text":    plain,
+        "html":    html,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type":  "application/json",
+            "User-Agent":    "TindaHand/1.0",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read()
+            logging.info(f"Resend response {resp.status}: {body[:200]}")
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace")
+        logging.error(f"Resend HTTP {e.code}: {err_body}")
+        raise
 
 
 @router.post("/forgot-pin")
