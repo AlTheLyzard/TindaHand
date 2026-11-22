@@ -133,3 +133,18 @@ export async function createReceivablePayment(data: {
     body: JSON.stringify(data),
   });
 }
+
+/** List customers for the current owner. */
+export async function getCustomers(): Promise<Customer[]> {
+  const data = await apiFetch<{ id: string; ownerId: string; name: string }[]>("/pos/customers");
+  return data.map(c => ({ id: c.id, name: c.name }));
+}
+
+/** Create a new customer. */
+export async function createCustomer(name: string): Promise<Customer> {
+  const data = await apiFetch<{ id: string; ownerId: string; name: string }>("/pos/customers", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+  return { id: data.id, name: data.name };
+}
