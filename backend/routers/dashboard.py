@@ -121,29 +121,34 @@ def dashboard_summary(
             return dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc)
 
-    # Today's sales (Manila time)
+    # Helper: amount actually received for a sale (total minus any unpaid remainder).
+    # This matches what Transaction History shows and what the customer actually paid.
+    def _received(s) -> int:
+        return s.total_centavos - s.remaining_centavos
+
+    # Today's sales (Manila time) — sum of amounts actually received
     today_sales_centavos = sum(
-        s.total_centavos
+        _received(s)
         for s in all_sales
         if today_start_utc <= _utc(s.occurred_at) < today_end_utc
     )
 
     # This week's sales (Monday–Sunday, Manila time)
     week_sales_centavos = sum(
-        s.total_centavos
+        _received(s)
         for s in all_sales
         if _utc(s.occurred_at) >= week_start_utc
     )
 
     # This month's sales
     month_sales_centavos = sum(
-        s.total_centavos
+        _received(s)
         for s in all_sales
         if _utc(s.occurred_at) >= month_start_utc
     )
 
     # All-time sales total (for Money In)
-    all_time_sales_centavos = sum(s.total_centavos for s in all_sales)
+    all_time_sales_centavos = sum(_received(s) for s in all_sales)
 
     # Total outstanding receivables (what customers owe us)
     receivables_centavos = sum(
