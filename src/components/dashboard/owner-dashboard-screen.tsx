@@ -189,3 +189,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     </SafeAreaView>
   </View>;
 }
+function useFocusEffect(arg0: () => void) {
+  throw new Error('Function not implemented.');
+}
+
