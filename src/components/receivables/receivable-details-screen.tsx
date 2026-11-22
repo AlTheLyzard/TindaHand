@@ -100,7 +100,12 @@ export function ReceivableDetailsScreen() {
           {rows.map(row => {
             const rowDebt = row.debt;
             const lines = Object.values(rowDebt.items);
-            const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.unitPriceCentavos, 0);
+            // If items are available (same-session local record), compute from them.
+            // Otherwise fall back to originalAmountCentavos — the backend stores the total
+            // but not individual product line items.
+            const subtotal = lines.length > 0
+              ? lines.reduce((sum, line) => sum + line.quantity * line.unitPriceCentavos, 0)
+              : row.originalCentavos;
             return <View key={rowDebt.id} className="gap-4 rounded-card border bg-white p-4" style={{ borderColor: tokens.color.borderOutline }}>
               <View className="flex-row flex-wrap justify-between gap-2"><Text className=" type-label-nav text-text-secondary">Borrowing Type</Text><Text className=" type-label-nav text-brand">{rowDebt.borrowing === 'product' ? 'Product' : 'Cash'}</Text></View>
               {rowDebt.borrowing === 'product' ? <>

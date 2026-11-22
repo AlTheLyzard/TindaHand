@@ -75,7 +75,9 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
           expenseDate: null,
           dueDate: result.dueDate ?? null,
           borrowing: result.borrowing ?? 'cash',
-          items: {},
+          // Backend doesn't store product line items — preserve the draft's items
+          // so the details screen can show the breakdown in the same session.
+          items: draft.borrowing === 'product' ? draft.items : {},
           paymentStatus: 'unpaid',
           customerId: result.customerId ?? undefined,
           occurredAt: result.occurredAt,
