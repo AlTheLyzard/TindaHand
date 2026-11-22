@@ -19,18 +19,19 @@ function toQuickAddRecord(debt: ApiCustomerDebt, ownerId: string): QuickAddRecor
     id: String(debt.id),
     ownerId,
     kind: "customerDebt",
-    name: debt.customerName,
-    amountCentavos: debt.amountCentavos,
-    originalAmountCentavos: debt.amountCentavos,
-    paidCentavos: 0,
+    name: debt.name,
+    amountCentavos: debt.originalAmountCentavos,
+    originalAmountCentavos: debt.originalAmountCentavos,
+    paidCentavos: debt.paidCentavos ?? 0,
     category: null,
     details: debt.details ?? "",
     expenseDate: null,
     dueDate: debt.dueDate ?? null,
-    borrowing: "cash",
-    items: {},
-    paymentStatus: "unpaid",
-    customerId: debt.customerId != null ? String(debt.customerId) : undefined,
+    borrowing: debt.borrowing ?? "cash",
+    // items is now returned by the backend for product debts; fall back to {}
+    items: debt.items ?? {},
+    paymentStatus: debt.paymentStatus ?? "unpaid",
+    customerId: debt.customerId ?? undefined,
     occurredAt: debt.occurredAt,
   };
 }
@@ -48,6 +49,7 @@ function toReceivablePayment(
     occurredAt: payment.occurredAt,
   };
 }
+
 
 export function useApiReceivables(ownerId: string | undefined) {
   const [debts, setDebts] = useState<QuickAddRecord[]>([]);

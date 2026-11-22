@@ -23,7 +23,7 @@ export function SuccessContent({ title, amountCentavos, value, message, eventKey
     <SuccessHalo visible={visible} eventKey={eventKey} />
     <Text accessibilityRole="header" style={{ textAlign: 'center', fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.h2Section.fontSize, lineHeight: 36, color: tokens.color.textPrimary }}>{title}</Text>
     <View accessible accessibilityRole="alert" style={{ gap: 4 }}>
-      <Text testID={`${testID}-amount`} style={{ textAlign: 'center', fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 33, color: tokens.color.textPrimary }}>{value ?? (amountCentavos === undefined ? '' : formatPesos(amountCentavos))}</Text>
+      {(value !== undefined || amountCentavos !== undefined) && <Text testID={`${testID}-amount`} style={{ textAlign: 'center', fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 33, color: tokens.color.textPrimary }}>{value ?? formatPesos(amountCentavos!)}</Text>}
       <Text style={{ textAlign: 'center', fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microFinancialRate.fontSize, lineHeight: 22, color: tokens.color.textSecondary }}>{message}</Text>
     </View>
     <Button ref={done} onPress={onClose}>Done</Button>

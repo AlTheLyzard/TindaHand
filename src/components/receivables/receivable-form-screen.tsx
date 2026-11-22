@@ -18,6 +18,8 @@ import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { PosIcon } from '@/components/pos/pos-icon';
 import { useQuickAdd } from '@/state/quick-add';
 import { useInventory } from '@/state/inventory';
+import { useAuthFlow } from '@/state/auth-flow';
+import { useApiCustomers } from '@/hooks/use-customers';
 import { newReceivableDraft, useReceivableDraft } from '@/state/receivable-draft';
 import { customerDebtErrors } from '@/utils/receivables';
 import { quickAddTotal } from '@/utils/quick-add';
@@ -36,6 +38,9 @@ export function ReceivableFormScreen() {
   const { draft, setDraft, setQuery } = useReceivableDraft();
   const { save } = useQuickAdd();
   const { store } = useInventory();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { customers: apiCustomers, addCustomer } = useApiCustomers(confirmedMode ? owner?.id : undefined);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState('');
@@ -134,7 +139,9 @@ export function ReceivableFormScreen() {
     router.dismissTo({ pathname: receivablesRoot, params: { section: 'receivable', status: 'unpaid' } });
   }
   function selectCustomer(customer: Customer) {
-    update({ name: customer.name, customerId: customer.id });
+    // For confirmed owners, only pass customerId if it's a real backend ID (not a local mock)
+    const isRealId = confirmedMode ? !customer.id.startsWith('demo-') : true;
+    update({ name: customer.name, customerId: isRealId ? customer.id : undefined });
     closePicker();
   }
 
@@ -146,7 +153,7 @@ export function ReceivableFormScreen() {
           nameInput.current?.focus();
         }
       }} disabled={saving} testID="customer-picker">
-      <CustomerList key={pickerSession} customers={store.pos?.customers ?? []} searchPlaceholder="Search Customer..."
+      <CustomerList key={pickerSession} customers={confirmedMode ? apiCustomers : (store.pos?.customers ?? [])} searchPlaceholder="Search Customer..."
         onAddNew={() => { focusCustomerAfterPicker.current = true; closePicker(); }} onSelect={selectCustomer} />
     </PartySelectionSheet>
     <MotionModal visible={picker === 'products'} sheet transitionDuration={motion.quickAddSheet} backdropColor={quickAddColors.backdrop}
@@ -180,7 +187,7 @@ export function ReceivableFormScreen() {
   return <InventoryFrame title="New Customer Debt" back inlineTitle onBack={back} overlay={overlay} onNavigate={action => { if (!busy.current) action(); }}>
     <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">{debtDescription}</Text>
     <View className="gap-5" pointerEvents={saving ? 'none' : 'auto'}>
-      <CustomerNameField onMatch={selected => update({ name: selected.name, customerId: selected.id })} inputRef={nameInput} value={draft.name} customerId={draft.customerId} onChange={name => update({ name, customerId: undefined })} error={error('name')} onSelect={() => openPicker('customer')} onNext={() => (product ? dateInput : amountInput).current?.focus()} />
+      <CustomerNameField onMatch={selected => selectCustomer(selected)} inputRef={nameInput} value={draft.name} customerId={draft.customerId} onChange={name => update({ name, customerId: undefined })} error={error('name')} onSelect={() => openPicker('customer')} onNext={() => (product ? dateInput : amountInput).current?.focus()} customers={confirmedMode ? apiCustomers : undefined} />
       <View className="gap-2"><Text className=" type-label-nav text-text-secondary">Debt Type</Text>
         <View accessibilityRole="radiogroup" className="flex-row gap-3">{(['cash', 'product'] as const).map(type => {
           const selected = draft.borrowing === type;
