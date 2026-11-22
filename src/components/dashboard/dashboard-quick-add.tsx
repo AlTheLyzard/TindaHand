@@ -12,12 +12,13 @@ import { useNavigationHeight } from '@/state/navigation-motion';
 import { useTranslation } from '@/i18n/use-translation';
 import { PosIcon } from '@/components/pos/pos-icon';
 
-const actions = ['dashboard.quick.customerDebt', 'dashboard.quick.storeDebt', 'dashboard.quick.expense'] as const;
+const actions = ['dashboard.quick.customerDebt', 'dashboard.quick.storeDebt', 'dashboard.quick.expense', 'dashboard.quick.asset'] as const;
 export type QuickAddAction = (typeof actions)[number];
 const actionIcons = {
   'dashboard.quick.customerDebt': 'customerDebt',
   'dashboard.quick.storeDebt': 'storeDebt',
   'dashboard.quick.expense': 'expense',
+  'dashboard.quick.asset': 'asset',
 } as const;
 
 /** Dashboard shortcuts only; transaction destinations remain owned by their features. */

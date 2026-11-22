@@ -1,6 +1,6 @@
 import type { ProductSelection } from './pos';
 
-export type QuickAddKind = 'customerDebt' | 'storeDebt' | 'expense';
+export type QuickAddKind = 'customerDebt' | 'storeDebt' | 'expense' | 'asset';
 export type QuickAddDraft = {
   kind: QuickAddKind;
   borrowing: 'cash' | 'product';
@@ -13,6 +13,9 @@ export type QuickAddDraft = {
   expenseDate: string;
   dueDate: string;
   items: ProductSelection;
+  // Asset-specific fields (only used when kind === 'asset')
+  assetClassification: string;
+  assetLife: string;
 };
 // TODO(backend): Verify quick-add debt and expense record fields against the approved API schemas.
 // - Method/Action: POST / Create customer debt, store debt, or expense

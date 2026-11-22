@@ -13,6 +13,7 @@ import type { ReceivablePayment } from '@/types/receivables';
 import { createReceivablesService, createReceivable, createReceivablePayment } from '@/services/receivables';
 import { createPayablePayment } from '@/services/payables';
 import { createExpense } from '@/services/expenses';
+import { createAsset } from '@/services/inventory';
 
 type ExpenseFeedback = { recordId: string; expiresAt: number } | null;
 type TransactionLedger = { records: readonly QuickAddRecord[]; receivablePayments: readonly ReceivablePayment[]; payables: PayablesLedger };
@@ -146,6 +147,35 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
         items: {},
         paymentStatus: null,
         occurredAt: result.occurredAt,
+      };
+      setFeedback({ recordId: record.id, ownerId: record.ownerId, expiresAt: Date.now() + 5000 });
+      return record;
+    }
+    if (draft.kind === 'asset' && !MOCK_AUTH_ENABLED && owner?.mode === 'confirmed') {
+      if (!owner) throw new Error('An owner session is required.');
+      const result = await createAsset({
+        name: draft.name.trim(),
+        classification: draft.assetClassification as 'current' | 'equipment' | 'furniture',
+        valueCentavos: quickAddTotal(draft),
+        usefulLifeYears: draft.assetClassification !== 'current' ? Number(draft.assetLife) : undefined,
+        recordedDate: draft.expenseDate,
+      });
+      const record: QuickAddRecord = {
+        id: result.id,
+        ownerId: owner.id,
+        kind: 'asset',
+        name: result.name,
+        amountCentavos: result.valueCentavos,
+        originalAmountCentavos: result.valueCentavos,
+        paidCentavos: 0,
+        category: result.classification ?? null,
+        details: '',
+        expenseDate: result.recordedDate,
+        dueDate: null,
+        borrowing: null,
+        items: {},
+        paymentStatus: null,
+        occurredAt: new Date().toISOString(),
       };
       setFeedback({ recordId: record.id, ownerId: record.ownerId, expiresAt: Date.now() + 5000 });
       return record;

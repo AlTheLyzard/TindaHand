@@ -10,6 +10,7 @@ export const en = {
   'dashboard.quick.customerDebt': 'Add Customer Debt',
   'dashboard.quick.storeDebt': 'Add Store Debt',
   'dashboard.quick.expense': 'Record Expense',
+  'dashboard.quick.asset': 'Add Pag-aari',
   'dashboard.quick.unavailable': '{{feature}} is not implemented yet. Its transaction form is unavailable; no record has been created.',
   'auth.mock.title': 'Development mock login',
   'auth.mock.credentials': 'Fictional demo credentials only. May-Ari ID: {{id}} · Initial PIN: {{pin}}. If changed in Settings, use your current PIN. No backend is used.',

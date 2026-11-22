@@ -23,6 +23,7 @@ export const posIconPaths = {
   customerDebt: '<circle cx="10" cy="5" r="3"/><circle cx="17" cy="6" r="3"/><path d="M3 14h3v7H3zM6 19l4 2h5l6-5a2 2 0 0 0-3-2l-3 2h-4M6 15l3-3h4a2 2 0 0 1 0 4h-2"/>',
   storeDebt: '<ellipse cx="8" cy="5" rx="5" ry="2"/><path d="M3 5v10c0 2.7 10 2.7 10 0V5M3 10c0 2.7 10 2.7 10 0"/><ellipse cx="17" cy="12" rx="4" ry="2"/><path d="M13 12v8c0 2.7 8 2.7 8 0v-8M13 16c0 2.7 8 2.7 8 0"/>',
   expense: '<path d="M4 8 17 3a2 2 0 0 1 3 2v3"/><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M21 12h-6v5h6"/><circle cx="18" cy="14.5" r=".7" fill="currentColor" stroke="none"/>',
+  asset: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M12 12v5M9.5 14.5h5"/>',
   image: '<path d="M21 12v8H3V4h10M16 5h6M19 2v6M3 17l6-6 5 5 3-3 4 4"/><circle cx="8" cy="8" r="1.5"/>',
   filter: '<path d="M3 4h18l-7 8v7l-4 2v-9z"/>',
   search: '<circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/>',

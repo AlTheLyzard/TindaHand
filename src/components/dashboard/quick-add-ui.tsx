@@ -11,7 +11,7 @@ import type { QuickAddKind } from '@/types/quick-add';
 import { FieldLabel, fieldLabel } from '@/components/ui/field-label';
 import { formatCalendarDate } from '@/utils/date';
 
-export const quickAddLabels: Record<QuickAddKind, string> = { customerDebt: 'Customer Debt', storeDebt: 'Store Debt', expense: 'Expense' };
+export const quickAddLabels: Record<QuickAddKind, string> = { customerDebt: 'Customer Debt', storeDebt: 'Store Debt', expense: 'Expense', asset: 'Asset' };
 export const quickAddColors = { ink: tokens.color.textPrimary, muted: tokens.color.textSecondary, primary: tokens.color.royalBlue, backdrop: tokens.overlay.navySoft };
 /** Equal-width segments share one neutral track; full segments expose selection to assistive tech. */
 export function QuickAddChips({ kind, onSelect }: { kind: QuickAddKind; onSelect: (kind: QuickAddKind) => void }) {

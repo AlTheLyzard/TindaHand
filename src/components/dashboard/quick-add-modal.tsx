@@ -17,6 +17,8 @@ import { QuickAddField, quickAddColors, quickAddStyles, quickAddLabels } from '.
 import { CreditProductBrowser } from '@/components/pos/credit-product-browser';
 import { ConfirmationContent } from '@/components/ui/confirmation-content';
 import { ExpenseCategoryField } from '@/components/expenses/expense-category-field';
+import { AssetClassificationField } from '@/components/inventory/asset-classification-field';
+import type { AssetClassification } from '@/types/inventory';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useQuickAdd } from '@/state/quick-add';
 import { useExpenseClassifier } from '@/hooks/use-expense-classifier';
@@ -84,6 +86,9 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
   useEffect(() => {
     if (Platform.OS === 'web' && form.current) (form.current as unknown as { inert: boolean }).inert = !!saved || !!confirmation || datePickerOpen || saving;
   }, [saved, confirmation, datePickerOpen, picker, saving]);
+  const asset = draft.kind === 'asset';
+  const expense = draft.kind === 'expense';
+  const customer = draft.kind === 'customerDebt';
   // Classifier — watches "Transaction details" and suggests a category for expenses.
   const { suggestion: categorySuggestion } = useExpenseClassifier(expense ? draft.details : '');
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
@@ -144,8 +149,7 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
     catch { setFailure('Could not save your record. Your draft is preserved. Please try again.'); }
     finally { busy.current = false; setSaving(false); }
   }
-  const expense = draft.kind === 'expense';
-  const customer = draft.kind === 'customerDebt';
+  // expense, customer, asset are declared above near the classifier hook
   const changeItems = (change: (previous: QuickAddDraft['items']) => QuickAddDraft['items']) => {
     setDraft(previous => ({ ...previous, items: change(previous.items) })); setFailure('');
   };
@@ -157,16 +161,16 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
           <QuickAddSuccess record={saved} onClose={dismiss} visible={successVisible && open} />
         </ScrollView></MotionRegion> : browsing ? <CreditProductBrowser name={draft.name} selection={draft.items} onConfirm={items => { update({ items }); setBrowsing(false); }} onReturn={() => { Keyboard.dismiss(); setBrowsing(false); }} /> : <>
         {entry.presented && <Animated.View ref={form} style={[{ flex: 1, minHeight: 0 }, entryStyle]} pointerEvents={saved || confirmation || datePickerOpen || saving ? 'none' : 'auto'} aria-hidden={!!saved || !!confirmation || datePickerOpen} accessibilityElementsHidden={!!saved || !!confirmation || datePickerOpen} importantForAccessibility={saved || confirmation || datePickerOpen ? 'no-hide-descendants' : 'auto'}>
-          <ResizableSheet title={picker ? picker === 'customer' ? 'Select Customer' : 'Select Creditor' : expense ? 'Record Expense' : `Add ${quickAddLabels[draft.kind]}`}
-            subtitle={picker ? 'Choose an existing name. Your debt details are kept.' : customer ? 'Record what a customer owes your store.' : expense ? 'Keep track of money spent by your store.' : 'Track what your store owes a supplier.'}
+          <ResizableSheet title={picker ? picker === 'customer' ? 'Select Customer' : 'Select Creditor' : expense ? 'Record Expense' : asset ? 'Add Pag-aari' : `Add ${quickAddLabels[draft.kind]}`}
+            subtitle={picker ? 'Choose an existing name. Your debt details are kept.' : customer ? 'Record what a customer owes your store.' : expense ? 'Keep track of money spent by your store.' : asset ? 'Record a business asset owned by the store.' : 'Track what your store owes a supplier.'}
             disabled={saving || !!saved || !!confirmation || datePickerOpen} onClose={close}
             footer={picker ? undefined : compact => <View style={{ paddingTop: compact ? 4 : 8, paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 8) }}>
-              {!expense && <View testID="quick-add-total" style={{ minHeight: compact ? 36 : 56, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderRadius: tokens.radius.surface, paddingHorizontal: 16, paddingVertical: compact ? 3 : 10, marginBottom: compact ? 4 : 8, backgroundColor: tokens.color.primaryDisabled }}>
+              {!expense && !asset && <View testID="quick-add-total" style={{ minHeight: compact ? 36 : 56, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderRadius: tokens.radius.surface, paddingHorizontal: 16, paddingVertical: compact ? 3 : 10, marginBottom: compact ? 4 : 8, backgroundColor: tokens.color.primaryDisabled }}>
                 <Text style={quickAddStyles.label}>Total debt</Text>
                 <Text accessibilityLiveRegion="polite" className={compact ? 'type-title-accent text-text-primary' : 'type-large-metric text-text-primary'}>{formatPesos(quickAddTotal(draft))}</Text>
               </View>}
               <View style={{ gap: compact ? 4 : 8 }}>
-                <Button loading={saving} disabled={!!saved} onPress={() => void submit()}>{expense ? 'Save Expense' : 'Save Debt'}</Button>
+                <Button loading={saving} disabled={!!saved} onPress={() => void submit()}>{expense ? 'Save Expense' : asset ? 'Save Asset' : 'Save Debt'}</Button>
                 <Button variant="secondary" disabled={saving || !!saved} onPress={() => {
                   if (hasQuickAddChanges(draft, baseline)) confirm('Clear All Fields?', 'Clear all entered information? This action cannot be undone.', 'Clear', () => reset());
                   else reset();
@@ -194,6 +198,13 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
                     </View>
                   </View>}
                   {draft.kind === 'storeDebt' ? <CreditorNameField floatingSuggestions creditorId={draft.creditorId} onMatch={selected => update({ name: selected.name, creditorId: selected.id })} inputRef={nameInput} value={draft.name} onChange={name => update({ name, creditorId: undefined })} error={error('name')} onSelect={() => { Keyboard.dismiss(); setPicker('creditor'); }} onSubmitEditing={() => amountInput.current?.focus()} /> : customer && <CustomerNameField floatingSuggestions onMatch={selected => update({ name: selected.name, customerId: selected.id })} inputRef={nameInput} value={draft.name} customerId={draft.customerId} onChange={name => update({ name, customerId: undefined })} error={error('name')} onSelect={() => { Keyboard.dismiss(); setPicker('customer'); }} onNext={() => (draft.borrowing === 'product' ? dueInput : amountInput).current?.focus()} />}
+                  {asset && <>
+                    <QuickAddField ref={nameInput} label="Asset name" value={draft.name} onChangeText={name => update({ name })} placeholder="e.g. Cash register, Delivery bike" error={error('name')} returnKeyType="next" onSubmitEditing={() => amountInput.current?.focus()} />
+                    <AssetClassificationField label="Asset type" value={draft.assetClassification as AssetClassification | ''} onChange={classification => update({ assetClassification: classification })} error={error('assetClassification')} />
+                    <QuickAddField ref={amountInput} label="Value" money large value={draft.amount} onChangeText={amount => update({ amount })} placeholder="0.00" keyboardType="decimal-pad" inputMode="decimal" error={error('amount')} returnKeyType={draft.assetClassification !== 'current' ? 'next' : 'done'} onSubmitEditing={() => draft.assetClassification !== 'current' ? dueInput.current?.focus() : Keyboard.dismiss()} />
+                    {draft.assetClassification !== 'current' && draft.assetClassification !== '' && <QuickAddField ref={dueInput} label="Useful life (years)" value={draft.assetLife} onChangeText={assetLife => update({ assetLife })} placeholder="e.g. 5" keyboardType="number-pad" inputMode="numeric" maxLength={3} error={error('assetLife')} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />}
+                    <QuickAddField date onPickDate={() => { Keyboard.dismiss(); setDatePickerOpen(true); }} label="Recorded date" value={draft.expenseDate} onChangeText={expenseDate => update({ expenseDate })} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" maxLength={10} error={error('expenseDate')} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
+                  </>}
                   {expense && <>
                     <ExpenseCategoryField value={draft.category} onChange={category => { update({ category }); setSuggestionDismissed(true); }} error={error('category')} open={categoryOpen} onOpenChange={setCategoryOpen} />
                     {showSuggestion && (
@@ -215,16 +226,16 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
                       </View>
                     )}
                   </>}
-                  {customer && draft.borrowing === 'product' ? <CreditProductSelector selection={draft.items} onChange={changeItems} onBrowse={() => { Keyboard.dismiss(); setBrowsing(true); }} error={error('items')}
+                  {!asset && (customer && draft.borrowing === 'product' ? <CreditProductSelector selection={draft.items} onChange={changeItems} onBrowse={() => { Keyboard.dismiss(); setBrowsing(true); }} error={error('items')}
                     onRemove={id => confirm('Remove Item?', `Remove ${draft.items[id].itemName} from this debt?`, 'Remove', () => setDraft(previous => ({ ...previous, items: removeSelectedProduct(previous.items, id) })))} /> :
-                    <QuickAddField ref={amountInput} label={expense ? 'Amount' : 'Amount borrowed'} money large={!customer} value={draft.amount} onChangeText={amount => update({ amount })} placeholder="0.00" keyboardType="decimal-pad" inputMode="decimal" error={error('amount')} returnKeyType={expense ? 'done' : 'next'} onSubmitEditing={() => expense ? Keyboard.dismiss() : dueInput.current?.focus()} />}
-                  {!customer && (!expense || detailsOpen || !!draft.details) && <QuickAddField label="Transaction details" required={false} value={draft.details} onChangeText={details => update({ details })} placeholder="e.g. 1 case of Red Horse" multiline returnKeyType="default" />}
+                    <QuickAddField ref={amountInput} label={expense ? 'Amount' : 'Amount borrowed'} money large={!customer} value={draft.amount} onChangeText={amount => update({ amount })} placeholder="0.00" keyboardType="decimal-pad" inputMode="decimal" error={error('amount')} returnKeyType={expense ? 'done' : 'next'} onSubmitEditing={() => expense ? Keyboard.dismiss() : dueInput.current?.focus()} />)}
+                  {!customer && !asset && (!expense || detailsOpen || !!draft.details) && <QuickAddField label="Transaction details" required={false} value={draft.details} onChangeText={details => update({ details })} placeholder="e.g. 1 case of Red Horse" multiline returnKeyType="default" />}
                   {expense && !detailsOpen && !draft.details && <Button variant="text" fullWidth={false} compact style={{ alignSelf: 'flex-start' }} onPress={() => setDetailsOpen(true)}>Add transaction details</Button>}
                   {expense && <QuickAddField ref={dueInput} date onPickDate={() => { Keyboard.dismiss(); setDatePickerOpen(true); }} label="Expense date" value={draft.expenseDate} onChangeText={expenseDate => update({ expenseDate })} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" maxLength={10} error={error('expenseDate')} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />}
-                  {!expense && <QuickAddField ref={dueInput} date dueDate onPickDate={() => { Keyboard.dismiss(); setDatePickerOpen(true); }} label={customer ? 'Due date (30 days default)' : 'Due date'} required={customer} value={draft.dueDate} onChangeText={dueDate => update({ dueDate })} placeholder="YYYY-MM-DD" autoCapitalize="none" keyboardType="numbers-and-punctuation" error={error('dueDate')} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />}
+                  {!expense && !asset && <QuickAddField ref={dueInput} date dueDate onPickDate={() => { Keyboard.dismiss(); setDatePickerOpen(true); }} label={customer ? 'Due date (30 days default)' : 'Due date'} required={customer} value={draft.dueDate} onChangeText={dueDate => update({ dueDate })} placeholder="YYYY-MM-DD" autoCapitalize="none" keyboardType="numbers-and-punctuation" error={error('dueDate')} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />}
                 </MotionLayout>
                 <MotionLayout style={{ paddingTop: tokens.spacing.two }}>
-                  {!customer && <Text style={quickAddStyles.note}>{expense ? 'This records money already spent by the store.' : 'This records money your store owes. It is saved in Store Debts.'}</Text>}
+                  {!customer && <Text style={quickAddStyles.note}>{expense ? 'This records money already spent by the store.' : asset ? 'This records a physical or financial asset owned by the store.' : 'This records money your store owes. It is saved in Store Debts.'}</Text>}
                   {!!failure && <MotionRegion><Text accessibilityRole="alert" style={[quickAddStyles.error, { marginTop: 8 }]}>{failure}</Text></MotionRegion>}
                   {submitted && Object.keys(errors).length > 0 && <MotionRegion><Text accessibilityRole="alert" style={[quickAddStyles.error, { marginTop: 8, fontSize: tokens.typography.microCaption.fontSize, lineHeight: 18 }]}>Complete the highlighted fields to continue.</Text></MotionRegion>}
                 </MotionLayout>
@@ -234,8 +245,8 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
         </Animated.View>}
         <MotionOverlay visible={datePickerOpen}>{datePickerOpen && <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 16, paddingBottom: Math.max(insets.bottom, 16) }}>
           <View accessibilityViewIsModal onAccessibilityEscape={() => setDatePickerOpen(false)} className="w-full max-w-[412px] gap-4 self-center rounded-card bg-white p-4">
-            <Text accessibilityRole="header" className=" type-title-accent text-brand">{expense ? 'Expense date' : 'Due date'}</Text>
-            <DatePicker confirmLabel={expense ? 'Confirm Expense Date' : 'Confirm Due Date'} value={expense ? draft.expenseDate : draft.dueDate} onChange={date => { update(expense ? { expenseDate: date } : { dueDate: date }); setDatePickerOpen(false); }} onClose={() => setDatePickerOpen(false)} />
+            <Text accessibilityRole="header" className=" type-title-accent text-brand">{expense || asset ? (asset ? 'Recorded date' : 'Expense date') : 'Due date'}</Text>
+            <DatePicker confirmLabel={expense ? 'Confirm Expense Date' : asset ? 'Confirm Recorded Date' : 'Confirm Due Date'} value={expense || asset ? draft.expenseDate : draft.dueDate} onChange={date => { update(expense || asset ? { expenseDate: date } : { dueDate: date }); setDatePickerOpen(false); }} onClose={() => setDatePickerOpen(false)} />
           </View>
         </ScrollView>}</MotionOverlay>
         <MotionOverlay visible={!!confirmation}>{confirmation && <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, paddingBottom: Math.max(insets.bottom, 24) }}>
