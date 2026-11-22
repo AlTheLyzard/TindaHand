@@ -211,11 +211,7 @@ def dashboard_summary(
     ).all()
     total_customer_debts_centavos = sum(d.original_amount_centavos for d in all_customer_debts)
 
-    total_money_out_centavos = (
-        total_expenses_centavos
-        + total_store_debt_payments_centavos
-        + total_customer_debts_centavos
-    )
+    total_money_out_centavos = total_expenses_centavos
 
     # Top products by revenue (Max-Heap Top-K)
     all_lines = []
