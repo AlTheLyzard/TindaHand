@@ -1,5 +1,5 @@
-import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useLocalSearchParams, useFocusEffect, type Href } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { InventoryFrame } from '@/components/inventory/inventory-ui';
 import { EmptyState } from '@/components/ui/content-state';
@@ -47,12 +47,13 @@ function ReceivableCategoryTransactions({ category }: { category: Category }) {
   const { records, receivablePayments: localPayments } = useQuickAdd();
   const { owner } = useAuthFlow();
   const confirmedMode = owner?.mode === 'confirmed';
-  const { debts: apiDebts, payments: apiPayments } = useApiReceivables(confirmedMode ? owner?.id : undefined);
+  const { debts: apiDebts, payments: apiPayments, refresh } = useApiReceivables(confirmedMode ? owner?.id : undefined);
   const receivableRecords = confirmedMode ? apiDebts : records;
   const receivablePayments = confirmedMode ? apiPayments : localPayments;
   const { query, setQuery } = useReceivableDraft();
   const [today, setToday] = useState(localCalendarDate);
   const push = usePushOnce();
+  useFocusEffect(useCallback(() => { if (confirmedMode) refresh(); }, [confirmedMode, refresh]));
   useEffect(() => {
     const timer = setInterval(() => setToday(localCalendarDate()), 30000);
     return () => clearInterval(timer);
