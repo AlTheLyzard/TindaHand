@@ -21,7 +21,9 @@ export interface TopProduct {
 export interface DashboardSummary {
   cashBalanceCentavos: number;
   totalSalesTodayCentavos: number;
+  totalSalesThisWeekCentavos: number;
   totalSalesThisMonthCentavos: number;
+  totalSalesCentavos: number;
   totalReceivablesCentavos: number;
   totalPayablesCentavos: number;
   topProducts: TopProduct[];

@@ -443,7 +443,9 @@ class DashboardSummary(BaseModel):
     """Snapshot of key numbers shown at the top of the dashboard."""
     cashBalanceCentavos: int
     totalSalesTodayCentavos: int
+    totalSalesThisWeekCentavos: int
     totalSalesThisMonthCentavos: int
+    totalSalesCentavos: int          # all-time, used for Money In
     totalReceivablesCentavos: int    # sum of unpaid + partial customer debts
     totalPayablesCentavos: int       # sum of unpaid store debts
     topProducts: List[TopProduct]    # top-5 by revenue, via Max-Heap

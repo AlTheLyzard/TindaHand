@@ -96,15 +96,15 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     ...localSummary,
     // Cash balance comes directly from the backend (includes opening cash + cash movements + sales tenders)
     cashCentavos: apiSummary.cashBalanceCentavos,
-    // Money in/out from real cash movement records
-    moneyIn: apiMoneyIn ?? localSummary.moneyIn,
+    // Money In = manual cash additions + all sales revenue
+    moneyIn: (apiMoneyIn ?? 0) + apiSummary.totalSalesCentavos,
     moneyOut: apiMoneyOut ?? localSummary.moneyOut,
-    // Sales totals: daily = today, monthly = this month; weekly has no backend equivalent (falls back to local)
+    // Sales totals per period — all three now come from the backend
     totalSalesCentavos: period === 'daily'
       ? apiSummary.totalSalesTodayCentavos
-      : period === 'monthly'
-        ? apiSummary.totalSalesThisMonthCentavos
-        : localSummary.totalSalesCentavos,
+      : period === 'weekly'
+        ? apiSummary.totalSalesThisWeekCentavos
+        : apiSummary.totalSalesThisMonthCentavos,
     // Best sellers from the backend top-K algorithm (quantitySold maps to quantity)
     bestSellers: apiSummary.topProducts.map(p => ({ id: p.productId, name: p.name, quantity: p.quantitySold })),
   } : localSummary;

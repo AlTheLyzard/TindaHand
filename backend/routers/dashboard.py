@@ -110,6 +110,9 @@ def dashboard_summary(
     # Manila is UTC+8, so "today in Manila" starts at UTC 00:00 - 8h = previous day 16:00 UTC.
     today_start_utc = datetime(today.year, today.month, today.day, tzinfo=timezone.utc) - MANILA_OFFSET
     today_end_utc   = today_start_utc + timedelta(days=1)
+    # Week starts on Monday in Manila time
+    week_start_manila = today - timedelta(days=today.weekday())
+    week_start_utc  = datetime(week_start_manila.year, week_start_manila.month, week_start_manila.day, tzinfo=timezone.utc) - MANILA_OFFSET
     month_start_utc = datetime(month_start.year, month_start.month, month_start.day, tzinfo=timezone.utc) - MANILA_OFFSET
 
     def _utc(dt: datetime) -> datetime:
@@ -125,12 +128,22 @@ def dashboard_summary(
         if today_start_utc <= _utc(s.occurred_at) < today_end_utc
     )
 
+    # This week's sales (Monday–Sunday, Manila time)
+    week_sales_centavos = sum(
+        s.total_centavos
+        for s in all_sales
+        if _utc(s.occurred_at) >= week_start_utc
+    )
+
     # This month's sales
     month_sales_centavos = sum(
         s.total_centavos
         for s in all_sales
         if _utc(s.occurred_at) >= month_start_utc
     )
+
+    # All-time sales total (for Money In)
+    all_time_sales_centavos = sum(s.total_centavos for s in all_sales)
 
     # Total outstanding receivables (what customers owe us)
     receivables_centavos = sum(
@@ -185,7 +198,9 @@ def dashboard_summary(
     return DashboardSummary(
         cashBalanceCentavos=base_cash,
         totalSalesTodayCentavos=today_sales_centavos,
+        totalSalesThisWeekCentavos=week_sales_centavos,
         totalSalesThisMonthCentavos=month_sales_centavos,
+        totalSalesCentavos=all_time_sales_centavos,
         totalReceivablesCentavos=receivables_centavos,
         totalPayablesCentavos=payables_centavos,
         topProducts=top_products,
