@@ -54,6 +54,7 @@ from routers.dashboard   import router as dashboard_router
 from routers.transactions import router as transactions_router
 from routers.quick_add   import router as quick_add_router
 from routers.settings    import router as settings_router
+from routers.classify    import router as classify_router
 
 app.include_router(auth_router)
 app.include_router(inventory_router)
@@ -65,6 +66,7 @@ app.include_router(dashboard_router)
 app.include_router(transactions_router)
 app.include_router(quick_add_router)
 app.include_router(settings_router)
+app.include_router(classify_router)
 
 
 @app.exception_handler(RequestValidationError)

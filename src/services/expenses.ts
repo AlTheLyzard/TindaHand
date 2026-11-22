@@ -11,8 +11,9 @@ export interface Expense {
 }
 
 export interface CategorySuggestion {
-  suggestedCategory: string;
+  category: string;
   confidence: number;   // 0.0–1.0
+  method: string;       // 'naive_bayes' | 'fuzzy_override' | 'fuzzy' | 'default'
 }
 
 /** List all expenses. */
@@ -40,12 +41,15 @@ export async function deleteExpense(id: number): Promise<void> {
 }
 
 /**
- * Suggest a category for an expense name using TF-IDF + Naive Bayes + Levenshtein.
- * Returns the best-match category and a confidence score.
+ * Suggest a category for an expense description using TF-IDF + Naive Bayes + Levenshtein.
+ * Accepts informal Tagalog/Taglish phrases and returns the best-match category with a
+ * confidence score (0–1) and the classification method used.
+ *
+ * Only call when MOCK_AUTH_ENABLED is false (confirmed/real session).
  */
-export async function suggestExpenseCategory(name: string): Promise<CategorySuggestion> {
-  return apiFetch<CategorySuggestion>('/expenses/suggest-category', {
+export async function suggestExpenseCategory(description: string): Promise<CategorySuggestion> {
+  return apiFetch<CategorySuggestion>('/classify/expense', {
     method: 'POST',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ description }),
   });
 }

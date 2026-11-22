@@ -18,7 +18,7 @@ export function SettingsLandingScreen() {
     <SettingsRow title="Language" description="English" icon="language" onPress={() => router.navigate(`${settingsRoot}/language`)} />
     <View className="h-1" /><SettingsSection>SECURITY</SettingsSection>
     <SettingsRow title="Security & Access" description="Change PIN" icon="security" onPress={() => router.navigate(`${settingsRoot}/security`)} />
-    <SettingsRow title="User Management" description="Add and manage your store's Operators." icon="security" onPress={() => router.navigate(`${settingsRoot}/users`)} />
+    <SettingsRow title="User Management" description="Add and manage your store's operators." icon="security" onPress={() => router.navigate(`${settingsRoot}/users`)} />
     <View className="h-1" /><SettingsSection>STORE TOOLS</SettingsSection>
     <SettingsRow title="Data Management" description="Data synchronization and device storage." icon="data" onPress={() => router.navigate(`${settingsRoot}/data`)} />
     <View className="h-1" /><SettingsSection>SUPPORT</SettingsSection>

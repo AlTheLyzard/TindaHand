@@ -1,7 +1,7 @@
 import tokens from '@/constants/design-tokens.json';
 import { router, useFocusEffect, usePreventRemove } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Keyboard, ScrollView, Text, View, type ScrollViewInstance, type TextInputInstance, type ViewInstance } from 'react-native';
+import { Keyboard, Pressable, ScrollView, Text, View, type ScrollViewInstance, type TextInputInstance, type ViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ExpenseCategoryField } from './expense-category-field';
 import { InventoryFrame, InvDateField, InvField } from '@/components/inventory/inventory-ui';
@@ -11,6 +11,8 @@ import { ConfirmationContent } from '@/components/ui/confirmation-content';
 import { MotionModal } from '@/components/ui/motion-modal';
 import { MotionRegion } from '@/components/ui/motion-content';
 import { useQuickAdd } from '@/state/quick-add';
+import { useExpenseClassifier } from '@/hooks/use-expense-classifier';
+import { expenseCategoryLabel } from '@/utils/expenses';
 import type { QuickAddDraft } from '@/types/quick-add';
 import { emptyQuickAddDraft, hasQuickAddChanges, quickAddErrors } from '@/utils/quick-add';
 import { todayInManila } from '@/utils/inventory';
@@ -38,6 +40,25 @@ export function ExpenseFormScreen() {
   const positions = useRef<Record<string, number>>({});
   const formTop = useRef(0);
   const dirty = hasQuickAddChanges(draft, baseline);
+
+  // Classifier — only active in confirmed (real) sessions.
+  // Watches the description field and suggests a category after a short debounce.
+  const { suggestion: categorySuggestion } = useExpenseClassifier(draft.details);
+  // Hide the suggestion once the user has explicitly picked a category.
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+  const showSuggestion =
+    !suggestionDismissed &&
+    !!categorySuggestion &&
+    !draft.category &&
+    !saving &&
+    !leaving;
+
+  function applySuggestion() {
+    if (!categorySuggestion) return;
+    update({ category: categorySuggestion.category });
+    setSuggestionDismissed(true);
+  }
+
   useFocusEffect(useCallback(() => {
     busy.current = false; setLeaving(false); setSaving(false);
   }, []));
@@ -61,6 +82,7 @@ export function ExpenseFormScreen() {
   }
   function reset() {
     setDraft({ ...baseline }); setSubmitted(false); setFailure(''); setCategoryOpen(false);
+    setSuggestionDismissed(false);
   }
   function confirm() {
     if (!confirmation || pending.current) return;
@@ -104,7 +126,36 @@ export function ExpenseFormScreen() {
     <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">Record and track your store&apos;s expenses.</Text>
     <View onLayout={event => { formTop.current = event.nativeEvent.layout.y; }} pointerEvents={saving || leaving ? 'none' : 'auto'} style={{ gap: 24 }}>
       <View onLayout={event => { positions.current.category = event.nativeEvent.layout.y; }} style={{ zIndex: categoryOpen ? 20 : 0 }}>
-        <ExpenseCategoryField triggerRef={categoryInput} value={draft.category} onChange={category => update({ category })} error={error('category')} open={categoryOpen} onOpenChange={setCategoryOpen} />
+        <ExpenseCategoryField triggerRef={categoryInput} value={draft.category} onChange={category => { update({ category }); setSuggestionDismissed(true); }} error={error('category')} open={categoryOpen} onOpenChange={setCategoryOpen} />
+        {showSuggestion && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 6 }}>
+            <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.textSecondary }}>Suggested:</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Apply suggested category: ${expenseCategoryLabel(categorySuggestion!.category)}`}
+              onPress={applySuggestion}
+              style={({ pressed }) => ({
+                backgroundColor: tokens.color.accentContainer,
+                borderRadius: 12,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text style={{ fontFamily: tokens.typography.weights.medium, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.accentBase }}>
+                {expenseCategoryLabel(categorySuggestion!.category)} ✓
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss suggestion"
+              onPress={() => setSuggestionDismissed(true)}
+              hitSlop={8}
+            >
+              <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.textSecondary }}>✕</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
       <View onLayout={event => { positions.current.amount = event.nativeEvent.layout.y; }}>
         <QuickAddField ref={amountInput} label="Amount" money large value={draft.amount} onChangeText={amount => update({ amount })} error={error('amount')} placeholder="0.00" inputMode="decimal" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => detailsInput.current?.focus()} />
