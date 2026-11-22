@@ -66,6 +66,13 @@ export function createReceivablesService(
 
 // ── Real API functions ────────────────────────────────────────────────────────────────────
 
+export interface CustomerDebtLine {
+  productId: string;
+  itemName: string;
+  unitPriceCentavos: number;
+  quantity: number;
+}
+
 export interface CustomerDebt {
   id: string;
   ownerId: string;
@@ -76,6 +83,8 @@ export interface CustomerDebt {
   amountCentavos: number;
   paidCentavos: number | null;
   borrowing: 'cash' | 'product' | null;
+  /** Product line items — present for product-borrowing debts, null/absent for cash */
+  items: Record<string, CustomerDebtLine> | null;
   dueDate: string | null;
   details: string | null;
   paymentStatus: 'paid' | 'partial' | 'unpaid';
@@ -107,6 +116,8 @@ export async function createReceivable(data: {
   customerId?: string;
   amountCentavos: number;
   borrowing: 'cash' | 'product';
+  /** Product line items — required when borrowing is 'product' */
+  items?: Record<string, CustomerDebtLine>;
   dueDate?: string;
   details?: string;
   occurredAt: string;

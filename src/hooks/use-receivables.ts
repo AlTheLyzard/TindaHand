@@ -28,7 +28,8 @@ function toQuickAddRecord(debt: ApiCustomerDebt, ownerId: string): QuickAddRecor
     expenseDate: null,
     dueDate: debt.dueDate ?? null,
     borrowing: debt.borrowing ?? "cash",
-    items: {},
+    // items is now returned by the backend for product debts; fall back to {}
+    items: debt.items ?? {},
     paymentStatus: debt.paymentStatus ?? "unpaid",
     customerId: debt.customerId ?? undefined,
     occurredAt: debt.occurredAt,

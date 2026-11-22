@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from auth import get_current_user, require_role
-from models import CustomerDebt, DebtPayment, Customer
+from models import CustomerDebt, CustomerDebtLine, DebtPayment, Customer
 from schemas import (
     CustomerDebtOut, CustomerDebtCreate,
     ReceivablePaymentOut, ReceivablePaymentCreate,
@@ -23,7 +23,16 @@ router = APIRouter(prefix="/receivables", tags=["receivables"])
 
 def _debt_to_out(d: CustomerDebt, owner_db_id: int) -> CustomerDebtOut:
     paid_centavos = sum(p.amount_centavos for p in d.payments)
-    # items reconstruction — stored only for product-borrowing debts
+    # Reconstruct ProductSelection dict from stored lines (empty dict for cash debts)
+    items = {
+        line.product_id or str(line.id): {
+            "productId": line.product_id or str(line.id),
+            "itemName": line.item_name,
+            "unitPriceCentavos": line.unit_price_centavos,
+            "quantity": line.quantity,
+        }
+        for line in d.lines
+    } if d.lines else None
     return CustomerDebtOut(
         id=d.id,
         ownerId=f"TH-MA-{owner_db_id:04d}",
@@ -34,7 +43,7 @@ def _debt_to_out(d: CustomerDebt, owner_db_id: int) -> CustomerDebtOut:
         amountCentavos=d.amount_centavos,
         paidCentavos=paid_centavos,
         borrowing=d.borrowing.value if d.borrowing else None,
-        items=None,   # product-level items are not stored server-side per schema
+        items=items,
         dueDate=d.due_date,
         details=d.details,
         paymentStatus=d.payment_status.value,
@@ -83,6 +92,19 @@ def create_debt(
         occurred_at=occurred_at,
     )
     db.add(debt)
+    db.flush()  # get debt.id before inserting lines
+
+    # Persist product line items for product-borrowing debts
+    if body.borrowing == "product" and body.items:
+        for line in body.items.values():
+            db.add(CustomerDebtLine(
+                debt_id=debt.id,
+                product_id=line.productId if line.productId else None,
+                item_name=line.itemName,
+                unit_price_centavos=line.unitPriceCentavos,
+                quantity=line.quantity,
+            ))
+
     db.commit()
     db.refresh(debt)
     return _debt_to_out(debt, owner_id)

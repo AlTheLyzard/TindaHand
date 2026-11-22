@@ -295,7 +295,26 @@ class CustomerDebt(Base):
 
     owner    = relationship("MayAri",   back_populates="customer_debts")
     customer = relationship("Customer", back_populates="debts")
-    payments = relationship("DebtPayment", back_populates="debt", cascade="all, delete-orphan")
+    payments = relationship("DebtPayment",    back_populates="debt", cascade="all, delete-orphan")
+    lines    = relationship("CustomerDebtLine", back_populates="debt", cascade="all, delete-orphan")
+
+
+class CustomerDebtLine(Base):
+    """
+    One product line within a product-borrowing customer debt.
+    item_name and unit_price_centavos are snapshots — they never change even
+    if the product is later edited or deleted.
+    """
+    __tablename__ = "customer_debt_line"
+
+    id                  = Column(Integer, primary_key=True, autoincrement=True)
+    debt_id             = Column(String(50), ForeignKey("customer_debt.id"), nullable=False)
+    product_id          = Column(String(50), nullable=True)   # snapshot FK — may be deleted later
+    item_name           = Column(String(200), nullable=False)   # snapshot
+    unit_price_centavos = Column(BigInteger, nullable=False)    # snapshot
+    quantity            = Column(Integer, nullable=False)
+
+    debt = relationship("CustomerDebt", back_populates="lines")
 
 
 class DebtPayment(Base):

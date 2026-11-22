@@ -58,6 +58,8 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
           customerId: undefined, // local mock IDs (e.g. "demo-customer-*") are not valid backend IDs
           amountCentavos: quickAddTotal(draft),
           borrowing: draft.borrowing,
+          // Send product line items so the backend stores and returns them
+          items: draft.borrowing === 'product' ? draft.items : undefined,
           dueDate: draft.dueDate || undefined,
           details: draft.details.trim() || undefined,
           occurredAt: new Date().toISOString(),
@@ -75,9 +77,8 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
           expenseDate: null,
           dueDate: result.dueDate ?? null,
           borrowing: result.borrowing ?? 'cash',
-          // Backend doesn't store product line items — preserve the draft's items
-          // so the details screen can show the breakdown in the same session.
-          items: draft.borrowing === 'product' ? draft.items : {},
+          // Use items returned by the backend (the backend now stores and returns them)
+          items: result.items ?? {},
           paymentStatus: 'unpaid',
           customerId: result.customerId ?? undefined,
           occurredAt: result.occurredAt,
