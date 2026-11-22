@@ -22,7 +22,7 @@ export function receivableBalance(debt: QuickAddRecord, payments: readonly Recei
 export function receivableLists(debts: readonly QuickAddRecord[], payments: readonly ReceivablePayment[], query: string, today = localCalendarDate()) {
   const rows = debts.filter(debt => debt.kind === 'customerDebt').map(debt => receivableBalance(debt, payments, today));
   const open = rows.filter(row => row.remainingCentavos > 0);
-  const matching = rows.filter(row => row.debt.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const matching = rows.filter(row => (row.debt.name ?? '').toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const paid = matching.filter(row => row.status === 'paid');
   return { overdue: matching.filter(row => row.status === 'overdue'), pending: matching.filter(row => row.status === 'pending'), partial: matching.filter(row => row.status === 'partial'), paid,
     outstandingCentavos: open.reduce((sum, row) => sum + row.remainingCentavos, 0), transactionCount: open.length,
