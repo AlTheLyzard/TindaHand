@@ -6,7 +6,7 @@ import { MotionContent, MotionLayout, MotionRegion } from '@/components/ui/motio
 import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Keyboard, Platform, Text, View, useWindowDimensions } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
