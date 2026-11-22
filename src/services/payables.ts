@@ -151,8 +151,9 @@ export interface StoreDebt {
 }
 
 export interface StoreDebtPayment {
-  id: number;
-  debtId: number;
+  id: string;
+  ownerId: string;
+  debtId: string;
   amountCentavos: number;
   occurredAt: string;
 }
@@ -195,8 +196,9 @@ export async function getPayablePayments(): Promise<StoreDebtPayment[]> {
 
 /** Record a payment against a store debt. */
 export async function createPayablePayment(data: {
-  debtId: number;
+  debtId: string;
   amountCentavos: number;
+  occurredAt: string;
 }): Promise<StoreDebtPayment> {
   return apiFetch<StoreDebtPayment>("/payables/payments", {
     method: "POST",

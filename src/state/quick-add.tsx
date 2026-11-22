@@ -11,6 +11,7 @@ import { payableAsQuickAdd } from '@/utils/payables';
 import type { PayablesLedger, PayablePayment } from '@/types/payables';
 import type { ReceivablePayment } from '@/types/receivables';
 import { createReceivablesService, createReceivable, createReceivablePayment } from '@/services/receivables';
+import { createPayablePayment } from '@/services/payables';
 
 type ExpenseFeedback = { recordId: string; expiresAt: number } | null;
 type TransactionLedger = { records: readonly QuickAddRecord[]; receivablePayments: readonly ReceivablePayment[]; payables: PayablesLedger };
@@ -127,6 +128,21 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
     return record;
   }
   async function confirmPayablePayment(token: string, debtId: string, amount: string) {
+    if (!MOCK_AUTH_ENABLED && owner?.mode === 'confirmed') {
+      if (!owner) throw new Error('An owner session is required.');
+      const amountCentavos = Math.round(parseFloat(amount) * 100);
+      const occurredAt = new Date().toISOString();
+      const result = await createPayablePayment({ debtId, amountCentavos, occurredAt });
+      const payment: PayablePayment = {
+        id: String(result.id),
+        ownerId: owner.id,
+        debtId: String(result.debtId),
+        amountCentavos: result.amountCentavos,
+        occurredAt: result.occurredAt,
+      };
+      setPayableFeedback({ ownerId: owner.id, message: 'Payment recorded. Debt balance updated.' });
+      return payment;
+    }
     const payment = service.confirmPayablePayment(owner, token, debtId, amount);
     setRevision(previous => previous + 1);
     setPayableFeedback({ ownerId: payment.ownerId, message: 'Payment recorded. Debt balance updated.' });
