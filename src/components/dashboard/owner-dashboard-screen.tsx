@@ -179,6 +179,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
                           : t.type === 'customerPayment' ? 'payment'
                           : t.type === 'expense' ? 'expense'
                           : t.type === 'supplierPayment' ? 'storeDebt'
+                          : t.type === 'customerDebt' ? 'customerDebt'
                           : 'payment',
                       direction: t.direction,
                       label: t.description,
