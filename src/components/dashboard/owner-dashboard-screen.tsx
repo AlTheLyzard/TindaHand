@@ -3,7 +3,7 @@ import { MotionContent } from '@/components/ui/motion-content';
 import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { useTranslation } from '@/i18n/use-translation';
 import { Image as BackgroundImage } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ScrollViewInstance } from 'react-native';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -188,8 +188,5 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     </Modal>
     </SafeAreaView>
   </View>;
-}
-function useFocusEffect(arg0: () => void) {
-  throw new Error('Function not implemented.');
 }
 
