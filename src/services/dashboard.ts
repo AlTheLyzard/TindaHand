@@ -21,9 +21,12 @@ export interface TopProduct {
 export interface DashboardSummary {
   cashBalanceCentavos: number;
   totalSalesTodayCentavos: number;
+  totalSalesThisWeekCentavos: number;
   totalSalesThisMonthCentavos: number;
+  totalSalesCentavos: number;
   totalReceivablesCentavos: number;
   totalPayablesCentavos: number;
+  totalMoneyOutCentavos: number;
   topProducts: TopProduct[];
 }
 
@@ -49,6 +52,6 @@ export async function addCashMovement(
 ): Promise<CashMovement> {
   return apiFetch<CashMovement>("/dashboard/cash-movements", {
     method: "POST",
-    body: JSON.stringify({ amountCentavos, note }),
+    body: JSON.stringify({ amountCentavos, note, occurredAt: new Date().toISOString() }),
   });
 }

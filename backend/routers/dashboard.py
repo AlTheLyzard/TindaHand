@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from auth import get_current_user, require_role
-from models import Sale, SaleLine, CustomerDebt, StoreDebt, StoreDebtPayment, CashMovement, Asset
+from models import Sale, SaleLine, CustomerDebt, StoreDebt, StoreDebtPayment, CashMovement, Asset, Expense
 from schemas import (
     DashboardSummary, TopProduct,
     CashMovementOut, CashMovementCreate,
@@ -106,19 +106,49 @@ def dashboard_summary(
     # All sales for this owner
     all_sales = db.query(Sale).filter(Sale.owner_id == owner_id).all()
 
-    # Today's sales (Manila time)
+    # Convert today and month_start to UTC boundaries for safe comparison.
+    # Manila is UTC+8, so "today in Manila" starts at UTC 00:00 - 8h = previous day 16:00 UTC.
+    today_start_utc = datetime(today.year, today.month, today.day, tzinfo=timezone.utc) - MANILA_OFFSET
+    today_end_utc   = today_start_utc + timedelta(days=1)
+    # Week starts on Monday in Manila time
+    week_start_manila = today - timedelta(days=today.weekday())
+    week_start_utc  = datetime(week_start_manila.year, week_start_manila.month, week_start_manila.day, tzinfo=timezone.utc) - MANILA_OFFSET
+    month_start_utc = datetime(month_start.year, month_start.month, month_start.day, tzinfo=timezone.utc) - MANILA_OFFSET
+
+    def _utc(dt: datetime) -> datetime:
+        """Return dt as UTC-aware, handling both naive (assume UTC) and aware datetimes."""
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+
+    # Helper: amount actually received for a sale (total minus any unpaid remainder).
+    # This matches what Transaction History shows and what the customer actually paid.
+    def _received(s) -> int:
+        return s.total_centavos - s.remaining_centavos
+
+    # Today's sales (Manila time) — sum of amounts actually received
     today_sales_centavos = sum(
-        s.total_centavos
+        _received(s)
         for s in all_sales
-        if (s.occurred_at.astimezone(timezone.utc) + MANILA_OFFSET).date() == today
+        if today_start_utc <= _utc(s.occurred_at) < today_end_utc
+    )
+
+    # This week's sales (Monday–Sunday, Manila time)
+    week_sales_centavos = sum(
+        _received(s)
+        for s in all_sales
+        if _utc(s.occurred_at) >= week_start_utc
     )
 
     # This month's sales
     month_sales_centavos = sum(
-        s.total_centavos
+        _received(s)
         for s in all_sales
-        if (s.occurred_at.astimezone(timezone.utc) + MANILA_OFFSET).date() >= month_start
+        if _utc(s.occurred_at) >= month_start_utc
     )
+
+    # All-time sales total (for Money In)
+    all_time_sales_centavos = sum(_received(s) for s in all_sales)
 
     # Total outstanding receivables (what customers owe us)
     receivables_centavos = sum(
@@ -150,19 +180,42 @@ def dashboard_summary(
         )
         .first()
     )
-    # Cash inflows from cash tenders in sales, minus cash change given
-    cash_sales = sum(
-        sum(t.received_centavos for t in s.tenders if t.method == "cash")
-        - max(0, sum(t.received_centavos for t in s.tenders if t.method == "cash")
-              - (s.total_centavos - sum(t.received_centavos for t in s.tenders if t.method == "gcash")))
-        for s in all_sales
-    )
+    # Total revenue received from sales (all payment methods: cash, GCash, split).
+    # = total amount paid to the store, regardless of tender method.
+    # For a fully paid sale: total_centavos - 0 = full price.
+    # For a partial payment: total_centavos - remaining_centavos = amount actually received.
+    cash_sales = sum(s.total_centavos - s.remaining_centavos for s in all_sales)
     # Manual cash movements (additions)
     cash_movements = db.query(CashMovement).filter(CashMovement.owner_id == owner_id).all()
     cash_added = sum(m.amount_centavos for m in cash_movements)
 
     # Base cash: initial Cash on Hand asset value + movements + sales
     base_cash = (cash_asset.value_centavos if cash_asset else 0) + cash_added + cash_sales
+
+    # ── Money Out ──────────────────────────────────────────────────────────────
+    # 1. Expenses — all operating costs recorded by the owner
+    all_expenses = db.query(Expense).filter(Expense.owner_id == owner_id).all()
+    total_expenses_centavos = sum(e.amount_centavos for e in all_expenses)
+
+    # 2. Store debt payments — cash actually paid out to suppliers
+    all_store_debt_payments = db.query(StoreDebtPayment).filter(
+        StoreDebtPayment.owner_id == owner_id
+    ).all()
+    total_store_debt_payments_centavos = sum(p.amount_centavos for p in all_store_debt_payments)
+
+    # 3. Customer utang (AR) — value extended on credit to customers
+    #    Use original_amount_centavos: the full debt at the moment it was created,
+    #    regardless of how much has been paid back.
+    all_customer_debts = db.query(CustomerDebt).filter(
+        CustomerDebt.owner_id == owner_id
+    ).all()
+    total_customer_debts_centavos = sum(d.original_amount_centavos for d in all_customer_debts)
+
+    total_money_out_centavos = (
+        total_expenses_centavos
+        + total_store_debt_payments_centavos
+        + total_customer_debts_centavos
+    )
 
     # Top products by revenue (Max-Heap Top-K)
     all_lines = []
@@ -173,9 +226,12 @@ def dashboard_summary(
     return DashboardSummary(
         cashBalanceCentavos=base_cash,
         totalSalesTodayCentavos=today_sales_centavos,
+        totalSalesThisWeekCentavos=week_sales_centavos,
         totalSalesThisMonthCentavos=month_sales_centavos,
+        totalSalesCentavos=all_time_sales_centavos,
         totalReceivablesCentavos=receivables_centavos,
         totalPayablesCentavos=payables_centavos,
+        totalMoneyOutCentavos=total_money_out_centavos,
         topProducts=top_products,
     )
 

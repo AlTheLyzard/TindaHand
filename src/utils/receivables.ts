@@ -15,14 +15,14 @@ export function receivableBalance(debt: QuickAddRecord, payments: readonly Recei
   const history = payments.filter(payment => payment.debtId === debt.id && payment.ownerId === debt.ownerId);
   const originalCentavos = debt.originalAmountCentavos ?? debt.amountCentavos;
   const paidCentavos = history.reduce((sum, payment) => sum + payment.amountCentavos, 0);
-  const remainingCentavos = originalCentavos - paidCentavos;
+  const remainingCentavos = Math.max(0, originalCentavos - paidCentavos);
   const status: ReceivableStatus = remainingCentavos === 0 ? 'paid' : debt.dueDate && debt.dueDate < today ? 'overdue' : paidCentavos > 0 ? 'partial' : 'pending';
-  return { debt, originalCentavos, paidCentavos, remainingCentavos, status, history, progress: paidCentavos / originalCentavos * 100 };
+  return { debt, originalCentavos, paidCentavos: Math.min(paidCentavos, originalCentavos), remainingCentavos, status, history, progress: Math.min(100, paidCentavos / originalCentavos * 100) };
 }
 export function receivableLists(debts: readonly QuickAddRecord[], payments: readonly ReceivablePayment[], query: string, today = localCalendarDate()) {
   const rows = debts.filter(debt => debt.kind === 'customerDebt').map(debt => receivableBalance(debt, payments, today));
   const open = rows.filter(row => row.remainingCentavos > 0);
-  const matching = rows.filter(row => row.debt.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const matching = rows.filter(row => (row.debt.name ?? '').toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const paid = matching.filter(row => row.status === 'paid');
   return { overdue: matching.filter(row => row.status === 'overdue'), pending: matching.filter(row => row.status === 'pending'), partial: matching.filter(row => row.status === 'partial'), paid,
     outstandingCentavos: open.reduce((sum, row) => sum + row.remainingCentavos, 0), transactionCount: open.length,

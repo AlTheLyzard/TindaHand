@@ -202,6 +202,7 @@ class Customer(Base):
     name       = Column(String(200), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    sales = relationship("Sale",         back_populates="customer")
     debts = relationship("CustomerDebt", back_populates="customer")
 
 
@@ -226,6 +227,7 @@ class Sale(Base):
     created_at         = Column(DateTime(timezone=True), server_default=func.now())
 
     owner    = relationship("MayAri", back_populates="sales")
+    customer = relationship("Customer", back_populates="sales")
     lines    = relationship("SaleLine",    back_populates="sale", cascade="all, delete-orphan")
     tenders  = relationship("SaleTender",  back_populates="sale", cascade="all, delete-orphan")
 

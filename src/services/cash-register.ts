@@ -1,19 +1,24 @@
-import { getDashboardData } from '@/services/dashboard';
+import { addCashMovement, getDashboardData } from '@/services/dashboard';
+import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import type { OwnerIdentity } from '@/types/auth';
 import { createCashRegisterStore } from '@/utils/cash-register';
+import { parsePaymentAmount } from '@/utils/pos-payment';
 import { summarizeDashboard } from '@/utils/dashboard';
 
-// TODO(backend): Replace session-only cash adjustments with an authoritative register service.
-// - Method/Action: GET / Fetch register balance; POST / Record cash movement
-// - Expected Input/Payload: Authenticated Owner session, amount, and durable idempotency key
-// - Expected Response: Confirmed movement and updated cash balance in integer centavos
-// - UI State to Wire: Refresh dashboard cash from the response and map failures to retryable feedback
 export function createCashRegisterService() {
   const store = createCashRegisterStore();
   return {
     begin: () => store.begin(),
     async add(owner: OwnerIdentity | null, token: number, value: string): Promise<number | null> {
       if (!owner) return null;
+      if (!MOCK_AUTH_ENABLED && owner.mode === 'confirmed') {
+        // Real path: POST to backend, return a non-null sentinel so the caller
+        // knows it succeeded. The dashboard screen re-fetches the live totals.
+        const centavos = parsePaymentAmount(value);
+        if (centavos === null || centavos <= 0) return null;
+        await addCashMovement(centavos, 'Cash added');
+        return centavos;
+      }
       return store.add(token, value, summarizeDashboard('daily', getDashboardData()).cashCentavos);
     },
   };

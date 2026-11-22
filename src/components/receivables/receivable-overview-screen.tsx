@@ -1,5 +1,5 @@
-import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { router, useLocalSearchParams, useFocusEffect, type Href } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, View, type ScrollViewInstance } from 'react-native';
 import { InventoryFrame } from '@/components/inventory/inventory-ui';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,7 @@ export function ReceivableOverviewScreen({ pendingOnly = false }: { pendingOnly?
   const push = usePushOnce();
   useEffect(() => { const timer = setInterval(() => setToday(localCalendarDate()), 30000); return () => clearInterval(timer); }, []);
   // Refresh real API data each time screen gains focus (e.g. after recording a new debt).
-  useEffect(() => { if (confirmedMode) refreshReceivables(); }, [confirmedMode, refreshReceivables]);
+  useFocusEffect(useCallback(() => { if (confirmedMode) refreshReceivables(); }, [confirmedMode, refreshReceivables]));
   const lists = receivableLists(receivableRecords, receivablePayments, query, today);
   const groups = paid ? [{ title: '', category: null, rows: lists.paid, color: colors.green, surface: tokens.color.surfaceCard }] : pendingOnly ? [{ title: 'Pending', category: 'pending', rows: lists.pending, color: colors.blue, surface: colors.pendingGroup }] : [
     { title: 'Overdue', category: 'overdue', rows: lists.overdue, color: colors.red, surface: colors.overdueGroup },

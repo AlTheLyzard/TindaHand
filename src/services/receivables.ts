@@ -67,19 +67,27 @@ export function createReceivablesService(
 // ── Real API functions ────────────────────────────────────────────────────────────────────
 
 export interface CustomerDebt {
-  id: number;
-  customerId: number;
-  customerName: string;
+  id: string;
+  ownerId: string;
+  customerId: string | null;
+  saleId: string | null;
+  name: string;
+  originalAmountCentavos: number;
   amountCentavos: number;
+  paidCentavos: number | null;
+  borrowing: 'cash' | 'product' | null;
   dueDate: string | null;
-  details: string;
+  details: string | null;
+  paymentStatus: 'paid' | 'partial' | 'unpaid';
   occurredAt: string;
 }
 
 export interface DebtPayment {
-  id: number;
-  debtId: number;
+  id: string;
+  ownerId: string;
+  debtId: string;
   amountCentavos: number;
+  reference: string | null;
   occurredAt: string;
 }
 
@@ -95,10 +103,13 @@ export async function getReceivables(): Promise<CustomerDebt[]> {
 
 /** Record a new customer debt. */
 export async function createReceivable(data: {
-  customerName: string;
+  name: string;
+  customerId?: string;
   amountCentavos: number;
+  borrowing: 'cash' | 'product';
   dueDate?: string;
   details?: string;
+  occurredAt: string;
 }): Promise<CustomerDebt> {
   return apiFetch<CustomerDebt>("/receivables", {
     method: "POST",
@@ -113,11 +124,27 @@ export async function getReceivablePayments(): Promise<DebtPayment[]> {
 
 /** Record a payment against a customer debt. */
 export async function createReceivablePayment(data: {
-  debtId: number;
+  debtId: string;
   amountCentavos: number;
+  occurredAt: string;
 }): Promise<DebtPayment> {
   return apiFetch<DebtPayment>("/receivables/payments", {
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+/** List customers for the current owner. */
+export async function getCustomers(): Promise<Customer[]> {
+  const data = await apiFetch<{ id: string; ownerId: string; name: string }[]>("/pos/customers");
+  return data.map(c => ({ id: c.id, name: c.name }));
+}
+
+/** Create a new customer. */
+export async function createCustomer(name: string): Promise<Customer> {
+  const data = await apiFetch<{ id: string; ownerId: string; name: string }>("/pos/customers", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+  return { id: data.id, name: data.name };
 }
