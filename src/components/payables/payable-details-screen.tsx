@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/content-state';
 import { usePushOnce } from '@/hooks/use-push-once';
 import { useQuickAdd } from '@/state/quick-add';
+import { useAuthFlow } from '@/state/auth-flow';
+import { useApiPayables } from '@/hooks/use-payables';
 import { formatPesos } from '@/utils/dashboard';
 import { formatCalendarDate } from '@/utils/date';
 import { todayInManila } from '@/utils/inventory-stock';
@@ -22,7 +24,12 @@ function manilaDateTime(value: string) {
 
 export function PayableDetailsScreen() {
   const { debtId } = useLocalSearchParams<{ debtId?: string }>();
-  const { payables } = useQuickAdd();
+  const { payables: localPayables } = useQuickAdd();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { ledger: apiPayables } = useApiPayables(confirmedMode ? owner?.id : undefined);
+  // Use API ledger in confirmed mode so details screen can find debts saved to backend
+  const payables = confirmedMode ? apiPayables : localPayables;
   const debt = payables.debts.find(row => row.id === debtId);
   const today = todayInManila();
   const selectedBalance = debt ? payableBalance(debt, payables.payments) : null;

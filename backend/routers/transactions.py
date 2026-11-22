@@ -145,7 +145,24 @@ def list_transactions(
             debtId=debt.id,
         ))
 
-    # 5. Store debt payments (money out to suppliers)
+    # 5. Store debts (money owed to suppliers — recorded when debt is created)
+    for sd in store_debts:
+        rows.append(TransactionOut(
+            id=f"storeDebt:{sd.id}",
+            sourceId=sd.id,
+            ownerId=f"TH-MA-{owner_id:04d}",
+            transactionNumber=sd.id,
+            type="storeDebt",
+            occurredAt=sd.occurred_at.isoformat(),
+            description=f"Store Debt — {sd.name}",
+            partyName=sd.name,
+            paymentMethod=None,
+            amountCentavos=sd.original_amount_centavos,
+            direction="out",
+            debtId=sd.id,
+        ))
+
+    # 6. Store debt payments (money out to suppliers)
     store_debt_map = {sd.id: sd for sd in store_debts}
     for sdp in store_debt_payments:
         sd = store_debt_map.get(sdp.debt_id)

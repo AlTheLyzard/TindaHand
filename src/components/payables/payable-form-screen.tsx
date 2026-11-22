@@ -13,6 +13,8 @@ import { MotionRegion } from '@/components/ui/motion-content';
 import { PartySelectionSheet } from '@/components/ui/party-selection-sheet';
 import { useQuickAdd } from '@/state/quick-add';
 import { newPayableDraft, usePayableDraft } from '@/state/payable-draft';
+import { useAuthFlow } from '@/state/auth-flow';
+import { useApiPayables } from '@/hooks/use-payables';
 import { quickAddErrors, quickAddTotal } from '@/utils/quick-add';
 import { formatPesos } from '@/utils/dashboard';
 import { formatCalendarDate } from '@/utils/date';
@@ -25,6 +27,11 @@ import tokens from '@/constants/design-tokens.json';
 export function PayableFormScreen() {
   const { draft, setDraft, setSearchQuery } = usePayableDraft();
   const { save, payables } = useQuickAdd();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { ledger: apiPayables } = useApiPayables(confirmedMode ? owner?.id : undefined);
+  // In confirmed mode use real API creditors; fall back to local seed for mock/preview
+  const creditors = confirmedMode ? apiPayables.creditors : payables.creditors;
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState('');
@@ -64,7 +71,7 @@ export function PayableFormScreen() {
     setCreditorPickerOpen(false);
   }
   function selectCreditor(creditor: Creditor) {
-    setDraft(previous => selectDraftCreditor(previous, payables.creditors, creditor.id));
+    setDraft(previous => selectDraftCreditor(previous, creditors, creditor.id));
     setFailure('');
     closeCreditorPicker();
   }
@@ -127,7 +134,7 @@ export function PayableFormScreen() {
   const overlay = <>
     <PartySelectionSheet visible={creditorPickerOpen} title="Select Creditor/Supplier"
       subtitle="Choose an existing name. Your debt details are kept." onClose={closeCreditorPicker} disabled={saving} testID="creditor-picker">
-      <CreditorList key={creditorPickerSession} creditors={payables.creditors} onSelect={selectCreditor} />
+      <CreditorList key={creditorPickerSession} creditors={creditors} onSelect={selectCreditor} />
     </PartySelectionSheet>
     <MotionModal visible={confirmationOpen} backdropColor={quickAddColors.backdrop}
       onRequestClose={() => { if (!busy.current) setConfirmationOpen(false); }} onHidden={afterConfirmationHidden}>
