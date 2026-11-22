@@ -101,21 +101,44 @@ def create_store_debt(
     current_user = Depends(require_role("owner")),
 ):
     owner_id = current_user["db_id"]
-    creditor = db.query(StoreCreditor).filter(
-        StoreCreditor.id == body.creditorId,
-        StoreCreditor.owner_id == owner_id,
-    ).first()
-    if not creditor:
-        raise HTTPException(404, "Creditor not found")
 
-    occurred_at = datetime.fromisoformat(body.occurredAt.replace("Z", "+00:00"))
+    # Resolve creditor: use creditorId if provided, otherwise find-or-create by creditorName
+    creditor_name = (body.creditorName or "").strip() or (body.name or "").strip()
+    if body.creditorId:
+        creditor = db.query(StoreCreditor).filter(
+            StoreCreditor.id == body.creditorId,
+            StoreCreditor.owner_id == owner_id,
+        ).first()
+        if not creditor:
+            raise HTTPException(404, "Creditor not found")
+    elif creditor_name:
+        creditor = db.query(StoreCreditor).filter(
+            StoreCreditor.owner_id == owner_id,
+            StoreCreditor.name == creditor_name,
+        ).first()
+        if not creditor:
+            creditor = StoreCreditor(
+                id=f"creditor-{uuid.uuid4().hex[:10]}",
+                owner_id=owner_id,
+                name=creditor_name,
+            )
+            db.add(creditor)
+            db.flush()
+    else:
+        raise HTTPException(422, "creditorName or creditorId is required")
+
+    # Accept either amountCentavos (frontend) or originalAmountCentavos (direct API)
+    amount = body.originalAmountCentavos or body.amountCentavos or 0
+    # Accept either occurredAt or default to now
+    occurred_at_str = body.occurredAt or datetime.utcnow().isoformat()
+    occurred_at = datetime.fromisoformat(occurred_at_str.replace("Z", "+00:00"))
 
     debt = StoreDebt(
         id=f"storedebt-{uuid.uuid4().hex[:10]}",
         owner_id=owner_id,
-        creditor_id=body.creditorId,
-        name=body.name.strip(),
-        original_amount_centavos=body.originalAmountCentavos,
+        creditor_id=creditor.id,
+        name=creditor.name,
+        original_amount_centavos=amount,
         due_date=body.dueDate,
         details=body.details,
         occurred_at=occurred_at,

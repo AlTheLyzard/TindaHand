@@ -315,12 +315,17 @@ class StoreDebtOut(BaseModel):
     occurredAt: str
 
 class StoreDebtCreate(BaseModel):
-    creditorId: str
-    name: str
-    originalAmountCentavos: int
+    # Legacy direct-API fields
+    creditorId: Optional[str] = None
+    name: Optional[str] = None
+    originalAmountCentavos: Optional[int] = None
+    occurredAt: Optional[str] = None
+    # Frontend Quick Add fields
+    creditorName: Optional[str] = None
+    amountCentavos: Optional[int] = None
+    # Shared optional fields
     dueDate: Optional[str] = None
     details: Optional[str] = None
-    occurredAt: str
 
 class StoreDebtPaymentOut(BaseModel):
     id: str
