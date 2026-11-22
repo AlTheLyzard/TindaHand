@@ -121,11 +121,9 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   const hasSales = summary.totalSalesCentavos > 0 || summary.saleCount > 0;
   // For confirmed (real backend) accounts, don't show the demo sparkline or "Demo trend" label —
   // we don't have a real growth series from the backend yet, so pass null to show "No comparison".
-  console.log('[TH-DEBUG] owner.mode=', owner.mode, 'hasSales=', hasSales, 'period=', period, 'growthPeriod=', growthPreview.reportingPeriod);
   const growthMetrics = owner.mode !== 'confirmed' && hasSales && period === growthPreview.reportingPeriod
     ? { ...growthPreview, percentageChange: summary.growth }
     : null;
-  console.log('[TH-DEBUG] growthMetrics=', growthMetrics === null ? 'null (no demo trend)' : 'SET (demo trend showing)');
   const [todayDate] = useState(() => new Date());
   const dateOptions = { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' } as const;
   const today = todayDate.toLocaleDateString(getLocaleFormats().date, dateOptions);
