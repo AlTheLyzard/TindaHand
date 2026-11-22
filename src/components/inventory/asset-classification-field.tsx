@@ -5,7 +5,6 @@ import { MotionRegion } from '@/components/ui/motion-content';
 import { FieldLabel } from '@/components/ui/field-label';
 import tokens from '@/constants/design-tokens.json';
 import type { AssetClassification } from '@/types/inventory';
-import { assetLabels } from '@/utils/inventory';
 
 export const assetClassificationIllustrations = {
   current: require('@/assets/images/inventory/asset-current.svg'),
@@ -17,6 +16,11 @@ const descriptions: Record<AssetClassification, string> = {
   equipment: 'Machines, tools, and business equipment.',
   furniture: 'Tables, chairs, shelves, and store fixtures.',
 };
+const optionLabels: Record<AssetClassification, string> = {
+  current: 'Cash On Hand',
+  equipment: 'Equipment',
+  furniture: 'Furniture & Fixtures',
+};
 
 /** MA-AST-002 uses visible radio cards; it has no dropdown or chevron. */
 export function AssetClassificationField({ label, value, onChange, error }: {
@@ -24,23 +28,20 @@ export function AssetClassificationField({ label, value, onChange, error }: {
 }) {
   return <View style={{ gap: tokens.spacing.two }}>
     <FieldLabel label={label} style={{ fontFamily: tokens.typography.weights.bold, color: tokens.button.primary.default }} />
-    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ gap: tokens.spacing.three }}>
-      {(Object.keys(assetLabels) as AssetClassification[]).map(key => {
-        const selected = key === value, current = key === 'current';
+    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ gap: tokens.spacing.two }}>
+      {(['current', 'equipment', 'furniture'] as AssetClassification[]).map(key => {
+        const selected = key === value;
         return <MotionPressable key={key} testID={`asset-classification-${key}`} accessibilityRole="radio"
-          accessibilityLabel={assetLabels[key]} accessibilityHint={descriptions[key]} accessibilityState={{ checked: selected }} aria-checked={selected}
+          accessibilityLabel={optionLabels[key]} accessibilityHint={descriptions[key]} accessibilityState={{ checked: selected }} aria-checked={selected}
           onPress={() => { Keyboard.dismiss(); onChange(key); }}
-          style={{ minHeight: 100, flexDirection: 'row', alignItems: 'center', gap: 20, padding: tokens.spacing.three,
+          style={{ minHeight: 78, flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.two, padding: tokens.spacing.three,
             borderWidth: 1, borderColor: error ? tokens.color.errorBase : tokens.color.borderOutline, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard }}>
           <Image source={assetClassificationIllustrations[key]} accessible={false} contentFit="contain" style={{ width: 26, height: 26, flexShrink: 0 }} />
-          <View style={{ flex: 1, minWidth: 0, gap: 4, paddingRight: 20 }}>
-            <Text style={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.microFinancialRate.fontSize, lineHeight: 21, color: tokens.button.primary.default }}>{assetLabels[key]}</Text>
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <Text style={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.microFinancialRate.fontSize, lineHeight: 21, color: tokens.button.primary.default }}>{optionLabels[key]}</Text>
             <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microCaption.fontSize, lineHeight: 18, color: tokens.color.textSecondary }}>{descriptions[key]}</Text>
-            <View style={{ alignSelf: 'flex-start', borderWidth: 1, borderColor: current ? tokens.color.successBase : tokens.color.brightBlue, borderRadius: tokens.radius.pill, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: current ? tokens.color.successTint : tokens.color.surfaceSubtle }}>
-              <Text style={{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.helper.fontSize, lineHeight: 14, color: current ? tokens.color.successBase : tokens.button.primary.default }}>{current ? 'Current Asset' : 'Non-Current Asset'}</Text>
-            </View>
           </View>
-          <View accessible={false} style={{ position: 'absolute', right: 16, top: 16, width: 20, height: 20, borderWidth: 2, borderColor: tokens.button.primary.default, borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center' }}>
+          <View accessible={false} style={{ width: 20, height: 20, flexShrink: 0, borderWidth: 2, borderColor: tokens.button.primary.default, borderRadius: tokens.radius.pill, alignItems: 'center', justifyContent: 'center' }}>
             {selected && <View style={{ width: 12, height: 12, borderRadius: tokens.radius.pill, backgroundColor: tokens.button.primary.default }} />}
           </View>
         </MotionPressable>;

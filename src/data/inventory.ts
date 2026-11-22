@@ -23,7 +23,7 @@ export const inventoryProducts: readonly InventoryProduct[] = [
 // - Expected Response: BusinessAsset[] with stable IDs, centavo values, classifications, and date-only recordedDate
 // - UI State to Wire: Populate asset screens and recompute displayed totals from the response
 export const businessAssets: readonly BusinessAsset[] = [
-  { id: 'demo-cash', name: 'Cash on Hand', valueCentavos: 1245000, usefulLifeYears: 0, classification: 'current', recordedDate: '2026-10-19' },
+  { id: 'demo-cash', name: 'Cash On Hand', valueCentavos: 1245000, usefulLifeYears: 0, classification: 'current', recordedDate: '2026-10-19' },
   { id: 'demo-shelves', name: 'Shelves', valueCentavos: 209000, usefulLifeYears: 5, classification: 'furniture', recordedDate: '2026-03-02' },
   { id: 'demo-refrigerator', name: 'Refrigerator', valueCentavos: 1599900, usefulLifeYears: 10, classification: 'equipment', recordedDate: '2026-03-02' },
 ];

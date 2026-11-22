@@ -5,7 +5,6 @@ import tokens from '@/constants/design-tokens.json';
 import type { BusinessAsset } from '@/types/inventory';
 import { formatPesos } from '@/utils/dashboard';
 import { formatCalendarDate } from '@/utils/date';
-import { assetLabels } from '@/utils/inventory';
 import { InventoryPopover } from './inventory-popover';
 
 export function AssetCard({ asset, onEdit }: {
@@ -15,22 +14,22 @@ export function AssetCard({ asset, onEdit }: {
   const pendingAction = useRef<(() => void) | null>(null);
   const [open, setOpen] = useState(false);
   function choose(action: () => void) { pendingAction.current = action; setOpen(false); }
-  return <View testID={`asset-card-${asset.id}`} style={{ width: '100%', padding: tokens.spacing.four,
-    gap: tokens.spacing.three, borderWidth: 1, borderColor: tokens.color.navigationBorder,
+  return <View testID={`asset-card-${asset.id}`} style={{ width: '100%', padding: tokens.spacing.three,
+    gap: tokens.spacing.one, borderWidth: 1, borderColor: tokens.color.navigationBorder,
     borderRadius: tokens.radius.control, backgroundColor: tokens.color.surfaceCard }}>
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spacing.two }}>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontFamily: tokens.button.fontFamily, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 30, color: tokens.color.textPrimary }}>{asset.name}</Text>
-        <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microCaption.fontSize, lineHeight: 18, color: tokens.color.textSecondary }}>{assetLabels[asset.classification]}</Text>
-      </View>
+      <Text numberOfLines={2} style={{ flex: 1, minWidth: 0, fontFamily: tokens.typography.weights.semibold,
+        fontSize: tokens.typography.h3Heading.fontSize, lineHeight: tokens.typography.h3Heading.lineHeight, color: tokens.color.textPrimary }}>{asset.name}</Text>
       <IconButton ref={trigger} accessibilityLabel={`Actions for ${asset.name}`} accessibilityState={{ expanded: open }}
         onPress={() => { Keyboard.dismiss(); setOpen(true); }}
-        style={{ flexShrink: 0, marginTop: -tokens.spacing.two, marginRight: -tokens.spacing.three }}
+        style={{ flexShrink: 0, marginTop: -tokens.spacing.two, marginRight: -tokens.spacing.two, marginLeft: -tokens.spacing.two }}
         icon={() => <View accessible={false} style={{ gap: 3 }}>{[0, 1, 2].map(dot => <View key={dot} style={{ width: 4, height: 4, borderRadius: tokens.radius.pill, backgroundColor: tokens.color.textPrimary }} />)}</View>} />
     </View>
-    <View>
-      <Text style={{ fontFamily: tokens.button.fontFamily, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 30, color: tokens.button.primary.pressed }}>{formatPesos(asset.valueCentavos)}</Text>
-      <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microFinancialRate.fontSize, lineHeight: 21, color: tokens.color.textSecondary }}>Recorded {formatCalendarDate(asset.recordedDate)}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: tokens.spacing.two }}>
+      <Text style={{ flex: 1, fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microFinancialRate.fontSize,
+        lineHeight: tokens.typography.microFinancialRate.lineHeight, color: tokens.color.textSecondary }}>{formatCalendarDate(asset.recordedDate)}</Text>
+      <Text style={{ flexShrink: 0, textAlign: 'right', fontFamily: tokens.typography.weights.bold,
+        fontSize: tokens.typography.listFinancial.fontSize, lineHeight: tokens.typography.listFinancial.lineHeight, color: tokens.color.darkNavy }}>{formatPesos(asset.valueCentavos)}</Text>
     </View>
     <InventoryPopover visible={open} anchorRef={trigger} label={`actions for ${asset.name}`} testID={`asset-actions-${asset.id}`} width={tokens.size.touchTarget * 2 + tokens.spacing.four} placement="below"
       onClose={() => setOpen(false)} onHidden={() => {

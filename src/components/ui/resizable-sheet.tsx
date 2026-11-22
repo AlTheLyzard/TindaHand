@@ -1,6 +1,6 @@
 import { KeyboardAwareScrollView as ScrollView } from '@/components/ui/keyboard-aware-scroll-view';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions, type ScrollViewInstance } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions, type ScrollViewInstance, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture, type PanGestureActiveEvent } from 'react-native-gesture-handler';
 import Animated, { cancelAnimation, ReduceMotion, useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -15,12 +15,14 @@ import { usePresentationVisible } from '@/state/presentation';
 import { releaseSheet, sheetHeights, type SheetPosition } from '@/utils/sheet';
 
 /** One scroll body and a pinned footer. Only the generous handle owns resize gestures. */
-export function ResizableSheet({ title, subtitle, children, footer, onClose, disabled = false, testID = 'quick-add', onCompactChange, alwaysShowSubtitle = false, fullWidth = false, compactHeight = 360 }: {
+export function ResizableSheet({ title, subtitle, children, footer, onClose, disabled = false, testID = 'quick-add', onCompactChange, alwaysShowSubtitle = false, fullWidth = false, compactHeight = 360, titleStyle, subtitleStyle }: {
   title: string; subtitle?: string; children: ReactNode; footer?: ReactNode | ((compact: boolean) => ReactNode);
   onClose: () => void; disabled?: boolean; testID?: string; onCompactChange?: (compact: boolean) => void;
   alwaysShowSubtitle?: boolean;
   fullWidth?: boolean;
   compactHeight?: number;
+  titleStyle?: TextStyle;
+  subtitleStyle?: TextStyle;
 }) {
   const window = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -135,11 +137,11 @@ export function ResizableSheet({ title, subtitle, children, footer, onClose, dis
           <View pointerEvents="none" style={{ width: 36, height: 4, borderRadius: tokens.radius.pill, backgroundColor: tokens.color.surfaceSubtle }} />
         </Animated.View></GestureDetector>
         <View style={{ paddingRight: 40 }}>
-          <Text accessibilityRole="header" style={{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 33, color: tokens.color.textPrimary }}>{title}</Text>
+          <Text accessibilityRole="header" style={[{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 33, color: tokens.color.textPrimary }, titleStyle]}>{title}</Text>
           <IconButton accessibilityLabel={testID === 'quick-add' ? 'Close Quick Add' : `Close ${title}`} disabled={disabled} onPress={onClose}
             style={{ position: 'absolute', right: -8, top: -8 }} icon={({ color }) => <PosIcon name="close" size={24} color={color} />} />
         </View>
-        {!!subtitle && (alwaysShowSubtitle || !short) && <Text className="mt-1 type-micro-caption leading-[18px] text-text-secondary">{subtitle}</Text>}
+        {!!subtitle && (alwaysShowSubtitle || !short) && <Text className="mt-1 type-micro-caption leading-[18px] text-text-secondary" style={subtitleStyle}>{subtitle}</Text>}
       </View>
       <ScrollView ref={body} scrollEnabled={!resizing} keyboardScrollEnabled={!resizing && !disabled} testID={`${testID}-body`} style={{ flex: 1, minHeight: 0 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: 8, paddingBottom: bodyBottom }}>

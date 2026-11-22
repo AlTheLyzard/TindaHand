@@ -26,14 +26,15 @@ export function useContentPreview(states: readonly PreviewState[] = basicStates)
     </View> : null };
 }
 
-export function EmptyState({ title, description, icon = 'inventory', action, onAction }: {
+export function EmptyState({ title, description, icon = 'inventory', action, onAction, actionVariant, actionTextColor }: {
   title: string; description: string; icon?: ComponentProps<typeof PosIcon>['name']; action?: string; onAction?: () => void;
+  actionVariant?: ComponentProps<typeof Button>['variant']; actionTextColor?: string;
 }) {
   return <MotionRegion className="gap-3 rounded-card bg-white p-5">
     <View accessible={false} className="h-10 w-10 items-center justify-center rounded-pill bg-ice-container"><PosIcon name={icon} color={tokens.color.royalBlue} /></View>
     <Text accessibilityRole="header" className=" type-h3-heading text-brand">{title}</Text>
     <Text accessibilityLiveRegion="polite" className=" type-micro-financial-rate leading-[21px] text-text-secondary">{description}</Text>
-    {action && onAction && <Button onPress={onAction}>{action}</Button>}
+    {action && onAction && <Button variant={actionVariant} textColor={actionTextColor} onPress={onAction}>{action}</Button>}
   </MotionRegion>;
 }
 

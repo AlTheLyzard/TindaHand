@@ -8,7 +8,7 @@ import { useFocusEffect } from 'expo-router';
 import { Image, Keyboard, View, type ScrollViewInstance } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { PosIcon } from '@/components/pos/pos-icon';
-import { InvCard, InvModal, InvSelect, InvText } from './inventory-ui';
+import { InvCard, InvModal, InvText } from './inventory-ui';
 import { getInventorySales } from '@/services/inventory';
 import { useInventory } from '@/state/inventory';
 import type { InventoryFilters } from '@/types/inventory';
@@ -18,9 +18,9 @@ import { EmptyState, LoadingSlot, Skeleton, listPreviewStates, useContentPreview
 import { RecordSkeleton } from '@/components/ui/content-skeletons';
 import { inventoryStatusAppearance } from './inventory-status';
 import { InventoryFilterControl } from './inventory-filter-control';
+import { InventoryFilterSheet } from './inventory-filter-sheet';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 
-const sorting = { stockDesc: 'High-to-Low Stock', stockAsc: 'Low-to-High Stock', fast: 'Fast-selling', slow: 'Slow-selling', expiry: 'Expiring Soon' } as const;
 const statuses = { good: 'In Stock', low: 'Low Stock', out: 'Out of Stock' } as const;
 const productPageSize = 5;
 type InventoryRouteBase = '/owner-inventory' | '/operator-inventory';
@@ -104,6 +104,7 @@ export function ProductInventoryContent({
     title={!store.products.length ? 'No products yet' : searching ? 'No products match your search' : 'No products in these filters'}
     description={!store.products.length ? canAdd ? 'Add your first product to start tracking stock.' : 'Ask the store owner to add products to inventory.' : 'Try another name or reset search and filters.'}
     action={store.products.length ? 'Reset search and filters' : canAdd ? 'Add Product' : undefined}
+    actionVariant={store.products.length ? 'text' : undefined} actionTextColor={store.products.length ? tokens.color.royalBlue : undefined}
     onAction={store.products.length ? resetResults : canAdd ? () => push({ pathname: productPath, params: { mode: 'add' } }) : undefined} />;
   const showTopActions = canAdd || canRestock;
   const topActionRow = canAdd && canRestock ? <View className="flex-row gap-3"><View className="flex-1"><Button compact onPress={() => push({ pathname: productPath, params: { mode: 'add' } })}>Add Product</Button></View><View className="flex-1"><Button compact variant="secondary" disabled={preview.loading || !store.products.length} onPress={() => { Keyboard.dismiss(); setRestockQuery(''); setRestockOpen(true); }}>Restock</Button></View></View>
@@ -113,7 +114,7 @@ export function ProductInventoryContent({
 
   if (!visible) return null;
   return <ProductContentWrapper animate={animate} changeKey={preview.mode}>
-    <View className="flex-row gap-4 rounded-card border border-accent bg-ice-container p-3">
+    <View className="flex-row gap-4 rounded-card border border-accent bg-ice-container p-4">
       <View className="min-w-0 flex-1 gap-2"><InvText bold size={11} color={tokens.color.royalBlue}>Total products</InvText><SkeletonMetric loading={preview.loading}><InvText bold size={26} color={tokens.color.royalBlue}>{summary.total}</InvText></SkeletonMetric></View>
       <View className="min-w-0 flex-[1.65] items-end gap-2"><InvText bold size={11} color={tokens.color.royalBlue}>Total inventory value</InvText><SkeletonMetric loading={preview.loading}><InvText bold size={26} color={tokens.color.royalBlue}>{formatPesos(summary.valueCentavos)}</InvText></SkeletonMetric></View>
     </View>
@@ -129,7 +130,8 @@ export function ProductInventoryContent({
       return <InvCard key={product.id}>
         <Pressable accessibilityRole="button" accessibilityLabel={'View ' + product.name} onPress={() => productRoute(product.id, 'details')} className="flex-row items-center gap-3">
           <View className="h-20 w-20 overflow-hidden rounded-control bg-ice-container">{product.photoUri && <Image source={{ uri: product.photoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />}</View>
-          <View className="min-w-0 flex-1 gap-2"><InvText bold size={13} color={tokens.color.textPrimary}>{product.name}</InvText><View className="flex-row flex-wrap items-start justify-between gap-x-2 gap-y-1"><View className="min-w-[60px] flex-1"><InvText size={11}>{categoryLabels[product.category]}</InvText></View><InvText size={11}>{productStock(product)} PCS</InvText></View><View className="flex-row flex-wrap items-center gap-x-2 gap-y-1"><InvText bold color={tokens.color.darkNavy}>{formatPesos(product.unitPriceCentavos)}</InvText><InvText bold size={11} color={tokens.color.textSecondary}>|</InvText><InvText bold size={11} color={inventoryStatusAppearance(status).color}>{statuses[status]}</InvText></View></View>
+          <View className="min-w-0 flex-1 gap-1"><InvText bold size={16} color={tokens.color.textPrimary}>{product.name}</InvText><InvText size={14}>{categoryLabels[product.category]}</InvText><View className="flex-row flex-wrap items-center gap-x-1"><InvText bold size={16} color={tokens.color.darkNavy}>{formatPesos(product.unitPriceCentavos)}</InvText><InvText size={14} color={tokens.color.textSecondary}>|</InvText><InvText size={14} color={inventoryStatusAppearance(status).color}>{statuses[status]}</InvText></View></View>
+          <View className="min-w-[56px] items-center justify-center"><InvText size={14} color={tokens.color.textPrimary}>{productStock(product)} PCS</InvText></View>
         </Pressable>
         {(expiry.expired || expiry.nearExpiry) && <View className="flex-row flex-wrap gap-2">{expiry.expired && <InvText size={11} color={tokens.color.errorBase}>● Expired stock</InvText>}{expiry.nearExpiry && <InvText size={11} color={tokens.color.warningText}>● Nearing expiry</InvText>}</View>}
         {(canEdit || canRestock) && <View className="flex-row gap-3">{canEdit && <View className="min-w-0 flex-1"><Button compact variant="secondary" onPress={() => productRoute(product.id, 'edit')}>Edit</Button></View>}{canRestock && <View className="min-w-0 flex-1"><Button compact onPress={() => productRoute(product.id, 'restock')}>Restock</Button></View>}</View>}
@@ -137,12 +139,8 @@ export function ProductInventoryContent({
     })}
     {!preview.loading && visibleProducts.length > productPageSize && <PaginationControls pageIndex={pageIndex} pageCount={pageCount} itemName="product" onPageChange={goToPage} />}
     {preview.control}
-    <InvModal visible={filterOpen} sheet title="Sort & Filter" subtitle="Choose how to sort and filter your products." onClose={() => setFilterOpen(false)} footer={<View className="flex-row gap-3"><View className="flex-1"><Button compact variant="secondary" onPress={() => setDraft({ ...defaultFilters })}>Reset</Button></View><View className="flex-[2]"><Button compact onPress={() => { setFilters({ ...draft }); setFilterOpen(false); }}>Apply Filter</Button></View></View>}>
-      <InvSelect key={String(filterOpen)} anchored label="Category" value={draft.category} options={{ all: 'All Categories', ...categoryLabels }} onChange={category => setDraft({ ...draft, category })} />
-      {Object.entries(sorting).map(([key, label]) => <Pressable key={key} accessibilityRole="radio" accessibilityState={{ checked: draft.sort === key }} aria-checked={draft.sort === key} onPress={() => setDraft({ ...draft, sort: key as InventoryFilters['sort'] })} className="min-h-12 flex-row items-center gap-3 rounded-control bg-white px-3 py-3"><InvText size={22} color={tokens.color.royalBlue}>{draft.sort === key ? '◉' : '○'}</InvText><InvText color={tokens.color.textPrimary}>{label}</InvText></Pressable>)}
-      <InvText bold color={tokens.color.darkNavy}>Stock Status</InvText><View className="flex-row flex-wrap gap-2">{Object.entries(statuses).map(([key, label]) => <Pressable key={key} accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: draft.status === key }} aria-checked={draft.status === key} onPress={() => setDraft({ ...draft, status: draft.status === key ? 'all' : key as InventoryFilters['status'] })} className="min-h-12 min-w-[88px] flex-1 flex-row items-center justify-center gap-1 rounded-control border p-2" style={inventoryStatusAppearance(key)}><InvText color={inventoryStatusAppearance(key).color}>{draft.status === key ? '◉' : '○'}</InvText><View className="min-w-0 flex-shrink"><InvText size={11} color={inventoryStatusAppearance(key).color}>{label}</InvText></View></Pressable>)}</View>
-      {(draft.status === 'expired' || draft.status === 'nearExpiry') && <Button compact variant="text" onPress={() => setDraft({ ...draft, status: 'all' })}>{'Clear ' + (draft.status === 'expired' ? 'expired' : 'nearing expiry') + ' alert filter'}</Button>}
-    </InvModal>
+    <InventoryFilterSheet visible={filterOpen} draft={draft} onChange={setDraft} onClose={() => setFilterOpen(false)}
+      onApply={() => { setFilters({ ...draft }); setFilterOpen(false); }} />
     {canRestock && <InvModal visible={restockOpen} sheet title="Choose a product to restock" subtitle="Select a product to add stock batches." onClose={() => setRestockOpen(false)}>
       <InvFieldSearch value={restockQuery} onChange={setRestockQuery} />
       <View className="flex-row items-center justify-between gap-2"><InvText bold color={tokens.color.royalBlue}>Products</InvText><InvText size={10}>{restockProducts.length} {restockProducts.length === 1 ? 'product' : 'products'}</InvText></View>

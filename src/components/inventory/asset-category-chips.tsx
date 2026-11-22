@@ -20,7 +20,7 @@ export function AssetCategoryChips({ value, onChange }: { value: string; onChang
     keyboardShouldPersistTaps="handled" decelerationRate="fast" snapToOffsets={snaps}
     contentContainerStyle={{ gap: gutter, paddingHorizontal: gutter, paddingVertical: tokens.spacing.half, alignItems: 'center' }}
     style={{ flexGrow: 0, marginHorizontal: -gutter }} onContentSizeChange={updateSnaps}>
-    {Object.entries({ all: 'All', ...assetLabels }).map(([key, label]) => <View key={key} style={{ flexShrink: 0 }}
+    {Object.entries({ all: 'All', equipment: assetLabels.equipment, furniture: assetLabels.furniture, current: 'Cash on hand' }).map(([key, label]) => <View key={key} style={{ flexShrink: 0 }}
       onLayout={event => { offsets.current[key] = event.nativeEvent.layout.x; updateSnaps(); }}>
       <PosChip singleLine label={label} selected={value === key} onPress={() => {
         onChange(key);

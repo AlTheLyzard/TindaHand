@@ -7,6 +7,7 @@ import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Image, Keyboard, Text, View } from 'react-native';
 import { Button } from '@/components/ui/button';
+import { PosIcon } from '@/components/pos/pos-icon';
 import { MotionModal } from '@/components/ui/motion-modal';
 import { ConfirmationContent } from '@/components/ui/confirmation-content';
 import { InvCard, InvDateField, InvField, InventoryFrame, InvText, InvSelect, inventoryIllustrations } from './inventory-ui';
@@ -46,7 +47,6 @@ export function ProductScreen() {
   const [initial] = useState(draft);
   const [baselineProduct] = useState(() => product ? JSON.stringify(product) : '');
   const [step, setStep] = useState<Step>('details');
-  const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
   const costInput = useRef<TextInputInstance>(null);
   const sellingInput = useRef<TextInputInstance>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof ProductDraft, string>>>({});
@@ -63,7 +63,8 @@ export function ProductScreen() {
   const today = todayInManila();
   const readonly = mode === 'details' || mode === 'delete';
   const dirty = !readonly && JSON.stringify(draft) !== JSON.stringify(initial);
-  const title = mode === 'add' ? step === 'review' ? 'Review Product Details' : step === 'stock' ? 'Stock & Expiry' : 'Add Product' : mode === 'edit' ? 'Edit Product' : mode === 'restock' ? 'Restock Product' : mode === 'delete' ? 'Delete Product' : 'Product Details';
+  const title = mode === 'add' ? step === 'review' ? 'Review Details' : step === 'stock' ? 'Add Expiry Date' : 'Add Product' : mode === 'edit' ? 'Edit Product' : mode === 'restock' ? 'Restock Product' : mode === 'delete' ? 'Delete Product' : 'Product Details';
+  const subtitle = mode === 'add' && step === 'review' ? 'Please review the details before saving.' : 'Product details for your store.';
   const total = draftQuantity(draft.batches);
   const disablePrevention = usePreventRemove(!leaving && !readonly && (dirty || (mode === 'add' && step !== 'details')), ({ repeat }) => {
     if (busy.current || confirmation) return;
@@ -132,7 +133,6 @@ export function ProductScreen() {
     setBatchValidation(validation);
     const invalid = draft.batches.find(b => Object.keys(validation[b.id]).length > 0);
     if (invalid || total > inventoryRules.maxStock || (mode !== 'edit' && !draft.batches.length)) {
-      if (invalid) setExpandedBatch(invalid.id);
       setError(total > inventoryRules.maxStock ? 'Total stock cannot exceed 1,000,000 units.' : 'Please correct the highlighted batch fields.'); return false;
     }
     if (mode === 'restock' && (!validDate(draft.details.stockDate) || draft.details.stockDate > today)) {
@@ -252,84 +252,89 @@ export function ProductScreen() {
     if (confirmation.kind === 'restock') { save(); return; }
     if (confirmation.kind === 'productDelete') { removeProduct(); return; }
     if (confirmation.kind === 'clear') resetStep();
-    if (confirmation.kind === 'batchDelete') { setDraft(d => ({ ...d, batches: d.batches.filter(b => b.id !== confirmation.batchId) })); setExpandedBatch(null); }
+    if (confirmation.kind === 'batchDelete') setDraft(d => ({ ...d, batches: d.batches.filter(b => b.id !== confirmation.batchId) }));
     if (confirmation.kind === 'discard') { disablePrevention(); setLeaving(true); pending.current = confirmation.action ?? null; }
     setConfirmation(null);
   }
-  const productHeader = (p: Pick<InventoryProduct, 'name' | 'category' | 'photoUri' | 'unitPriceCentavos'>) => <View className="flex-row items-center gap-4"><ProductPhoto uri={p.photoUri} /><View className="min-w-0 flex-1 gap-1"><InvText bold size={15} color={tokens.color.textPrimary}>{p.name || 'Product Name'}</InvText><InvText>{categoryLabels[p.category]} · {formatPesos(p.unitPriceCentavos)}</InvText></View></View>;
-  const photoControl = <Pressable accessibilityRole="button" accessibilityLabel="Choose a product photo, optional" accessibilityState={{ disabled: picking }} disabled={picking} onPress={pickPhoto} className="min-h-[130px] items-center justify-center gap-2 rounded-control border border-outline bg-white p-4">
-    {draft.details.photoUri ? <ProductPhoto uri={draft.details.photoUri} /> : <View className="h-9 w-9 items-center justify-center rounded-pill bg-brand"><InvText size={22} color={tokens.color.surfaceCard}>+</InvText></View>}
+  const productHeader = (p: Pick<InventoryProduct, 'name' | 'category' | 'photoUri' | 'unitPriceCentavos'>) => <View className="flex-row items-center gap-4"><ProductPhoto uri={p.photoUri} size={96} /><View className="min-w-0 flex-1 gap-1"><InvText bold size={15} color={tokens.color.textPrimary}>{p.name || 'Product Name'}</InvText><InvText>{categoryLabels[p.category]} · {formatPesos(p.unitPriceCentavos)}</InvText></View></View>;
+  const photoControl = <Pressable accessibilityRole="button" accessibilityLabel="Choose a product photo, optional" accessibilityState={{ disabled: picking }} disabled={picking} onPress={pickPhoto} className="min-h-[150px] items-center justify-center gap-2 rounded-control border border-outline bg-white p-4">
+    {draft.details.photoUri ? <ProductPhoto uri={draft.details.photoUri} size={72} /> : <View className="h-9 w-9 items-center justify-center rounded-pill bg-brand"><InvText size={22} color={tokens.color.surfaceCard}>+</InvText></View>}
     <InvText bold color={tokens.color.textPrimary}>{picking ? 'Opening photo picker...' : 'Choose or upload a photo'}</InvText><InvText size={10}>Max file size: 2 MB. Supported formats: JPG & PNG</InvText>
   </Pressable>;
   const detailsFields = <>
     <InvField label="Product Name *" value={draft.details.name} onChangeText={v => update('name', v)} error={errors.name} placeholder="Enter product name" returnKeyType="next" onSubmitEditing={() => costInput.current?.focus()} maxLength={120} />
     <InvSelect label="Category *" value={draft.details.category} options={categoryLabels} onChange={v => update('category', v)} error={errors.category} />
-    <InvText bold color={tokens.color.royalBlue}>Pricing Details</InvText>
-    <View className="flex-row flex-wrap gap-3"><View className="min-w-[130px] flex-1"><InvField money label="Cost / Capital Price *" inputRef={costInput} value={draft.details.cost} onChangeText={v => update('cost', v)} error={errors.cost} placeholder="₱0.00" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => sellingInput.current?.focus()} /></View><View className="min-w-[130px] flex-1"><InvField money label="Selling Price *" inputRef={sellingInput} value={draft.details.sellingPrice} onChangeText={v => update('sellingPrice', v)} error={errors.sellingPrice} placeholder="₱0.00" keyboardType="decimal-pad" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} /></View></View>
-    <View className="gap-2 rounded-control border border-accent bg-ice-container p-3"><InvText bold color={tokens.color.royalBlue}>Estimated profit per item</InvText><InvText bold color={tokens.color.textPrimary}>{parsePaymentAmount(draft.details.sellingPrice) !== null && parsePaymentAmount(draft.details.cost) !== null ? formatPesos(parsePaymentAmount(draft.details.sellingPrice)! - parsePaymentAmount(draft.details.cost)!) : '₱0.00'}</InvText><InvText size={10}>Calculated from selling price minus cost price.</InvText></View>
+    <InvText bold size={11} color={tokens.color.textSecondary}>PRICING DETAILS</InvText>
+    <View className="flex-row flex-wrap gap-3"><View className="min-w-[130px] flex-1"><InvField money label="Cost / Capital Price *" inputRef={costInput} value={draft.details.cost} onChangeText={v => update('cost', v)} error={errors.cost} placeholder="0.00" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => sellingInput.current?.focus()} /></View><View className="min-w-[130px] flex-1"><InvField money label="Selling Price *" inputRef={sellingInput} value={draft.details.sellingPrice} onChangeText={v => update('sellingPrice', v)} error={errors.sellingPrice} placeholder="0.00" keyboardType="decimal-pad" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} /></View></View>
+    <View className="flex-row flex-wrap items-center justify-between gap-3 rounded-control border border-accent bg-ice-container p-3"><InvText bold color={tokens.color.royalBlue}>Estimated profit per item</InvText><InvText bold color={tokens.color.textPrimary}>{parsePaymentAmount(draft.details.sellingPrice) !== null && parsePaymentAmount(draft.details.cost) !== null ? formatPesos(parsePaymentAmount(draft.details.sellingPrice)! - parsePaymentAmount(draft.details.cost)!) : '₱0.00'}</InvText></View>
   </>;
   const batchCards = <>
-    {draft.batches.map((batch, index) => <BatchCard key={batch.id} batch={batch} index={index} errors={batchValidation[batch.id]} expanded={mode !== 'edit' || expandedBatch === batch.id} onChange={updateBatch} onExpand={() => setExpandedBatch(batch.id)} onUpdate={mode === 'edit' ? () => { const validation = batchErrors(batch, baseline.batches.some(b => b.id === batch.id)); setBatchValidation(v => ({ ...v, [batch.id]: validation })); if (!Object.keys(validation).length) setExpandedBatch(null); } : undefined} onRemove={() => setConfirmation({ kind: 'batchDelete', batchId: batch.id })} />)}
-    <Button compact variant="text" fullWidth={false} onPress={() => { const batch = newBatch(makeId()); setDraft(d => ({ ...d, batches: [...d.batches, batch] })); setExpandedBatch(batch.id); }}>+ Add Another Batch</Button>
-    <View className="flex-row flex-wrap justify-between gap-2 rounded-control bg-ice-container p-3"><InvText bold>{mode === 'restock' ? 'Quantity to add' : mode === 'edit' ? 'Total Stock' : 'Total Initial Stock'}</InvText><InvText bold>{total} PCS</InvText></View>
+    {draft.batches.map((batch, index) => <BatchCard key={batch.id} batch={batch} index={index} errors={batchValidation[batch.id]} expanded onChange={updateBatch} onRemove={() => setConfirmation({ kind: 'batchDelete', batchId: batch.id })} />)}
+    <Button compact variant="text" fullWidth={false} onPress={() => { const batch = newBatch(makeId()); setDraft(d => ({ ...d, batches: [...d.batches, batch] })); }}>+ Add Another Batch</Button>
+    <View className="flex-row flex-wrap justify-between gap-2 rounded-control border border-accent bg-ice-container p-3"><InvText bold color={tokens.color.royalBlue}>{mode === 'restock' ? 'Quantity to add' : mode === 'edit' ? 'Total Stock' : 'Total Initial Stock'}</InvText><InvText bold color={tokens.color.textPrimary}>{total} PCS</InvText></View>
   </>;
-  const footer = !readonly ? mode === 'edit' ? <View className="flex-row gap-3"><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} variant="secondary" disabled={saving || picking} onPress={() => navigate(() => router.canGoBack() ? router.back() : router.replace(inventoryRoot))}>Cancel</Button></View><View className="min-w-0 flex-1"><Button style={{ flexGrow: 1 }} loading={saving} disabled={picking} onPress={save}>Save Changes</Button></View></View>
-    : <><Button loading={saving} disabled={picking} onPress={mode === 'restock' || step === 'review' ? save : advance}>{mode === 'restock' ? 'Confirm Restock' : step === 'review' ? 'Confirm & Save' : step === 'stock' ? 'Review Product' : 'Stock & Expiry'}</Button><Button variant="secondary" disabled={saving || picking} onPress={step === 'review' ? () => setStep('details') : clearStep}>{step === 'review' ? 'Edit Details' : 'Clear'}</Button></> : undefined;
+  const actions = !readonly ? mode === 'edit' ? <View className="gap-3"><Button loading={saving} disabled={picking} onPress={save}>Save Changes</Button><Button variant="secondary" disabled={saving || picking} onPress={() => navigate(() => router.canGoBack() ? router.back() : router.replace(inventoryRoot))}>Cancel</Button></View>
+    : <><Button loading={saving} disabled={picking} onPress={mode === 'restock' || step === 'review' ? save : advance}>{mode === 'restock' ? 'Confirm Restock' : step === 'review' ? 'Confirm & Save' : step === 'stock' ? 'Review Product' : 'Add Expiration'}</Button><Button variant="secondary" disabled={saving || picking} onPress={step === 'review' ? () => setStep('details') : clearStep}>{step === 'review' ? 'Edit Details' : 'Clear'}</Button></> : undefined;
   if (mode !== 'add' && preview.loading) return <InventoryFrame title={title} back hideNavigation inlineTitle background>{preview.control}<RecordSkeleton kind={readonly ? 'details' : 'form'} form={mode === 'restock' ? 'restock' : 'product'} deleting={mode === 'delete'} /></InventoryFrame>;
   // Keep the confirmation mounted after our own delete until onHidden completes
   // navigation/feedback. External deletions still show the unavailable state.
   if (mode !== 'add' && (!liveProduct || preview.empty) && !leaving) return <InventoryFrame title="Product unavailable" back hideNavigation inlineTitle background>{preview.control}<EmptyState title="Product unavailable" description="This product is no longer available. Return to Inventory to choose another product." action="Return to Inventory" onAction={() => { preview.reset(); router.replace(inventoryRoot); }} /></InventoryFrame>;
   const restocks = store.restocks.filter(r => r.productId === product?.id).slice().reverse();
   const reviewProduct = step === 'review' ? buildDraftProduct(id, draft) : null;
-  return <InventoryFrame title={title} back inlineTitle hideNavigation background subtitle="Product details for your store." illustration={mode === 'edit' ? inventoryIllustrations.editProduct : mode === 'restock' ? inventoryIllustrations.restock : mode === 'add' && step !== 'review' ? step === 'stock' ? inventoryIllustrations.expiry : inventoryIllustrations.addProduct : undefined} onBack={back} onNavigate={navigate} footer={footer} overlay={<MotionModal visible={!!confirmation} onRequestClose={() => { if (!busy.current) setConfirmation(null); }} onHidden={() => { const action = pending.current; pending.current = null; action?.(); }}>
+  return <InventoryFrame title={title} back inlineTitle hideNavigation background subtitle={subtitle} illustration={mode === 'edit' ? inventoryIllustrations.editProduct : mode === 'restock' ? inventoryIllustrations.restock : mode === 'add' && step !== 'review' ? step === 'stock' ? inventoryIllustrations.expiry : inventoryIllustrations.addProduct : undefined} onBack={back} onNavigate={navigate} overlay={<MotionModal visible={!!confirmation} onRequestClose={() => { if (!busy.current) setConfirmation(null); }} onHidden={() => { const action = pending.current; pending.current = null; action?.(); }}>
     <View className="flex-1 justify-center px-5">
       {confirmation?.kind === 'productDelete' && <Pressable accessible={false} focusable={false} tabIndex={-1} onPress={() => { if (!busy.current) setConfirmation(null); }} style={{ position: 'absolute', inset: 0 }} />}
-      {confirmation?.kind === 'restock' ? <View accessibilityViewIsModal className="w-full max-w-[412px] gap-4 self-center rounded-control bg-white p-5"><InvText bold size={18} color={tokens.color.darkNavy}>Confirm Restock?</InvText><InvText>Add {total} PCS to {product?.name}?</InvText><InvText>Resulting total: {(product ? productStock(product) : 0) + total} PCS</InvText><InvText size={11}>Existing batches keep their quantities and expiry dates.</InvText><Button loading={saving} onPress={save}>Confirm</Button><Button variant="secondary" disabled={saving} onPress={() => setConfirmation(null)}>Cancel</Button></View>
+      {confirmation?.kind === 'restock' ? <ConfirmationContent stackedActions title="Confirm Restock?"
+        message="Are you sure you want to add these new stock batches to your inventory? Your product's total stock will be updated."
+        leadingIcon={<PosIcon name="alert" size={24} color={tokens.color.brightBlue} />} titleColor={tokens.color.darkNavy} iconTone="blue"
+        destructive={false} cancelVariant="secondary" confirmLabel="Confirm" cancelLabel="Cancel" busy={saving} onCancel={() => setConfirmation(null)} onConfirm={confirm} />
       : confirmation && <ConfirmationContent stackedActions title={confirmation.kind === 'clear' ? 'Clear All Fields?' : confirmation.kind === 'discard' ? 'Discard Changes?' : confirmation.kind === 'batchDelete' ? 'Delete Batch ' + (draft.batches.findIndex(b => b.id === confirmation.batchId) + 1) + '?' : 'Delete Product?'}
-        message={confirmation.kind === 'clear' ? 'Clear the inputs in this step? Your other product details will be kept.' : confirmation.kind === 'discard' ? 'Your unsaved changes will be discarded.' : confirmation.kind === 'batchDelete' ? 'Remove this batch from the draft? Inventory changes only when you save the product.' : 'Delete ' + product?.name + ' from inventory? This cannot be undone. Historical transactions will be kept.'}
-        confirmLabel={confirmation.kind === 'clear' ? 'Clear' : confirmation.kind === 'discard' ? 'Discard Changes' : confirmation.kind === 'batchDelete' ? 'Delete Batch' : 'Delete'} cancelLabel={confirmation.kind === 'discard' ? 'Keep Editing' : 'Cancel'} onCancel={() => setConfirmation(null)} onConfirm={confirm} />}
+        message={confirmation.kind === 'clear' ? 'Are you sure you want to clear all information? This action cannot be undone.' : confirmation.kind === 'discard' ? 'Your unsaved changes will be discarded.' : confirmation.kind === 'batchDelete' ? 'Are you sure you want to delete batch ' + (draft.batches.findIndex(b => b.id === confirmation.batchId) + 1) + '? This action cannot be undone.' : 'Are you sure you want to delete this product from your inventory? This action cannot be undone.'}
+        confirmLabel={confirmation.kind === 'discard' ? 'Discard Changes' : 'Remove'} cancelLabel={confirmation.kind === 'discard' ? 'Keep Editing' : 'Cancel'} onCancel={() => setConfirmation(null)} onConfirm={confirm} />}
     </View>
   </MotionModal>}>
     {!!error && <Text accessibilityRole="alert" className=" type-micro-caption text-error-base">{error}</Text>}
     {readonly && product ? <>
       <ProductReview product={product} />
       {mode === 'delete' ? <><Button variant="destructiveOutline" onPress={() => setConfirmation({ kind: 'productDelete' })}>Delete Product</Button><Button variant="secondary" onPress={back}>Cancel</Button></> : <>
-        <Button onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'edit' } })}>Edit Product</Button><Button variant="secondary" onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'restock' } })}>Restock</Button>
         <InvText bold color={tokens.color.darkNavy}>Restock history</InvText>
         {!restocks.length ? <InvText>No restocks yet.</InvText> : restocks.map(r => <InvCard key={r.id}><InvText bold>+{r.quantity} PCS · {r.stockDate}</InvText>{r.batches ? r.batches.map(b => <InvText key={b.id}>{b.quantity} PCS | {batchExpiryLabel(b)}</InvText>) : <InvText>Expires {r.expirationDate}</InvText>}<InvText size={11}>Recorded {new Date(r.recordedAt).toLocaleString('en-PH', { timeZone: inventoryRules.timeZone })}</InvText></InvCard>)}
+        <Button onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'edit' } })}>Edit Product</Button><Button variant="secondary" onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'restock' } })}>Restock</Button>
       </>}
     </> : mode === 'restock' && product ? <>
       {productHeader(product)}
-      <View className="flex-row flex-wrap gap-4 rounded-control border border-accent bg-ice-container p-4"><View className="flex-1 gap-2"><InvText size={11}>Available</InvText><InvText bold size={20} color={tokens.color.royalBlue}>{productStock(product)} PCS</InvText></View><View className="min-w-[120px] flex-1 gap-2"><InvText size={11}>Earliest Expiry</InvText><InvText bold color={tokens.color.royalBlue}>{earliestExpiry(product) ? batchExpiryLabel({ noExpiry: false, expirationDate: earliestExpiry(product) }) : 'No expiry date'}</InvText></View></View>
-      <InvText bold color={tokens.color.royalBlue}>Stock Batches ({productBatches(product).length})</InvText>{productBatches(product).map((batch, index) => <ExistingBatchCard key={batch.id} batch={batch} index={index} />)}
-      <InvText bold color={tokens.color.royalBlue}>Restock Product</InvText>{batchCards}
+      <View className="flex-row flex-wrap items-center rounded-control border border-accent bg-ice-container p-3"><View className="min-w-[120px] flex-1 items-center gap-1"><InvText size={11}>Available</InvText><InvText size={20} color={tokens.color.royalBlue}>{productStock(product)} PCS</InvText></View><View className="h-12 w-px bg-outline" /><View className="min-w-[120px] flex-1 items-center gap-1"><InvText size={11}>Earliest Expiry</InvText><InvText color={tokens.color.royalBlue}>{earliestExpiry(product) ? batchExpiryLabel({ noExpiry: false, expirationDate: earliestExpiry(product) }) : 'No expiry date'}</InvText></View></View>
+      <InvText bold size={11} color={tokens.color.textSecondary}>STOCK BATCHES</InvText>{productBatches(product).map((batch, index) => <ExistingBatchCard key={batch.id} batch={batch} index={index} />)}
+      {batchCards}
       <InvDateField compact label="Stock date" value={draft.details.stockDate} onChange={v => update('stockDate', v)} error={errors.stockDate} />
       <InvText size={10}>Existing batch dates stay unchanged.</InvText>
-    </> : mode === 'add' && step === 'review' && reviewProduct ? <><ProductReview product={reviewProduct} /><InvCard><InvText bold color={tokens.color.royalBlue}>Before saving</InvText><InvText size={11}>Review product details, prices, and batch information.</InvText></InvCard></>
+    </> : mode === 'add' && step === 'review' && reviewProduct ? <ProductReview product={reviewProduct} />
     : mode === 'add' && step === 'stock' ? <>{productHeader({ name: draft.details.name, category: draft.details.category as InventoryProduct['category'], unitPriceCentavos: parsePaymentAmount(draft.details.sellingPrice) ?? 0, photoUri: draft.details.photoUri })}{batchCards}</>
     : <>
-      {mode === 'edit' && <View className="items-center gap-2 pb-2"><Pressable accessibilityRole="button" accessibilityLabel="Edit product photo" disabled={picking} onPress={pickPhoto}><ProductPhoto uri={draft.details.photoUri} /><View className="absolute bottom-1 right-1 rounded bg-white px-2 py-1"><InvText bold size={11} color={tokens.color.royalBlue}>Edit</InvText></View></Pressable>{!!draft.details.photoUri && <Button compact fullWidth={false} variant="text" onPress={() => update('photoUri', undefined)}>Remove photo</Button>}</View>}
+      {mode === 'edit' && <View className="items-center gap-2 pb-2"><Pressable accessibilityRole="button" accessibilityLabel="Edit product photo" disabled={picking} onPress={pickPhoto}><ProductPhoto uri={draft.details.photoUri} size={112} /><View className="absolute bottom-1 right-1 rounded-pill bg-white p-1"><PosIcon name="edit" size={20} color={tokens.color.textPrimary} /></View></Pressable>{!!draft.details.photoUri && <Button compact fullWidth={false} variant="text" onPress={() => update('photoUri', undefined)}>Remove photo</Button>}</View>}
+      {mode === 'edit' && <InvText bold size={11} color={tokens.color.textSecondary}>PRODUCT INFORMATION</InvText>}
       {detailsFields}
-      {mode === 'add' ? <><InvText bold color={tokens.color.royalBlue}>Product Photo</InvText>{photoControl}{!!draft.details.photoUri && <Button variant="text" onPress={() => update('photoUri', undefined)}>Remove photo</Button>}</>
-      : <><InvText bold color={tokens.color.royalBlue}>Stock Batches</InvText>{batchCards}<View className="mt-8 gap-2 border-t border-outline pt-4"><InvText size={10}>This action cannot be undone.</InvText><Button variant="destructiveOutline" disabled={saving || picking} onPress={() => setConfirmation({ kind: 'productDelete' })}>Delete Product</Button></View></>}
+      {mode === 'add' ? <><InvText bold size={11} color={tokens.color.textSecondary}>PRODUCT PHOTO</InvText>{photoControl}{!!draft.details.photoUri && <Button variant="text" onPress={() => update('photoUri', undefined)}>Remove photo</Button>}</>
+      : <><InvText bold size={11} color={tokens.color.textSecondary}>STOCK BATCHES</InvText>{batchCards}<View className="mt-8 gap-2 border-t border-outline pt-4"><InvText size={10}>This action cannot be undone.</InvText><Button variant="destructiveOutline" disabled={saving || picking} onPress={() => setConfirmation({ kind: 'productDelete' })}>Delete Product</Button></View></>}
     </>}
     {mode !== 'add' && preview.control}
+    {actions && <View className="mt-2 gap-3">{actions}</View>}
   </InventoryFrame>;
 }
-function ProductPhoto({ uri }: { uri?: string }) {
-  return <View className="h-32 w-28 overflow-hidden rounded-control bg-ice-container">{uri && <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />}</View>;
+function ProductPhoto({ uri, size = 96 }: { uri?: string; size?: number }) {
+  return <View className="overflow-hidden rounded-control bg-ice-container" style={{ width: size, height: size, flexShrink: 0 }}>{uri && <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />}</View>;
 }
 function ProductReview({ product }: { product: InventoryProduct }) {
   const status = stockCategory(productStock(product));
   const expiry = productExpiry(product, todayInManila());
   return <>
-    <View className="items-center gap-2 py-2"><ProductPhoto uri={product.photoUri} /><Text className="text-center type-h3-heading text-brand">{product.name}</Text><InvText>{categoryLabels[product.category]}</InvText></View>
-    <InvText bold color={tokens.color.royalBlue}>Product Information</InvText><InvCard><ReviewRow label="Product Name" value={product.name} /><ReviewRow label="Category" value={categoryLabels[product.category]} /></InvCard>
-    <InvText bold color={tokens.color.royalBlue}>Pricing Details</InvText><InvCard><ReviewRow label="Cost / Capital Price" value={formatPesos(product.costCentavos)} /><ReviewRow label="Selling Price" value={formatPesos(product.unitPriceCentavos)} /><View className="border-t border-outline pt-3"><ReviewRow label="Estimated profit per item" value={formatPesos(product.unitPriceCentavos - product.costCentavos)} /></View></InvCard>
-    <InvText bold color={tokens.color.royalBlue}>Initial Stock & Batches</InvText><InvCard><ReviewRow label="Total Stock" value={productStock(product) + ' PCS'} /><ReviewRow label="Stock status" value={status === 'good' ? 'In Stock' : status === 'low' ? 'Low Stock' : 'Out of Stock'} /></InvCard>
+    <View className="flex-row items-center gap-4 rounded-control border border-outline bg-white p-3"><ProductPhoto uri={product.photoUri} size={84} /><View className="min-w-0 flex-1 gap-1"><InvText bold size={15} color={tokens.color.textPrimary}>{product.name}</InvText><InvText>{categoryLabels[product.category]} · {formatPesos(product.unitPriceCentavos)}</InvText></View></View>
+    <InvText bold size={11} color={tokens.color.textSecondary}>PRODUCT INFORMATION</InvText><InvCard><ReviewRow label="Product Name" value={product.name} /><ReviewRow label="Category" value={categoryLabels[product.category]} /></InvCard>
+    <InvText bold size={11} color={tokens.color.textSecondary}>PRICING DETAILS</InvText><InvCard><ReviewRow label="Cost / Capital Price" value={formatPesos(product.costCentavos)} /><ReviewRow label="Selling Price" value={formatPesos(product.unitPriceCentavos)} /><View className="flex-row flex-wrap justify-between gap-3 border-t border-outline pt-3"><View className="min-w-[120px] flex-1"><InvText size={11}>Estimated profit per item</InvText></View><Text className="text-right type-label-nav text-text-primary">{formatPesos(product.unitPriceCentavos - product.costCentavos)}</Text></View></InvCard>
+    <InvText bold size={11} color={tokens.color.textSecondary}>INITIAL STOCK &amp; BATCHES</InvText><InvCard><ReviewRow label="Total Stock" value={productStock(product) + ' PCS'} /><ReviewRow label="Stock status" value={status === 'good' ? 'In Stock' : status === 'low' ? 'Low Stock' : 'Out of Stock'} /></InvCard>
     {expiry.expired && <InvText bold color={tokens.color.errorBase}>This product has expired stock.</InvText>}
     {expiry.nearExpiry && <InvText bold color={tokens.color.warningText}>This product has stock nearing expiry.</InvText>}
-    {productBatches(product).map((batch, index) => <View key={batch.id} className="w-full overflow-hidden rounded-control border border-outline bg-white"><View className="min-h-9 justify-center bg-brand px-3 py-2"><InvText bold color={tokens.color.surfaceCard}>Batch {index + 1}</InvText></View><View className="min-h-20 justify-center gap-1 p-3"><InvText bold>{batch.quantity} PCS</InvText><InvText>{batch.noExpiry ? 'No expiry date' : 'Expires ' + batchExpiryLabel(batch)}</InvText></View></View>)}
+    {productBatches(product).map((batch, index) => <View key={batch.id} className="w-full overflow-hidden rounded-control border border-outline bg-white"><View className="min-h-9 justify-center px-3 py-2" style={{ backgroundColor: tokens.color.darkNavy }}><InvText bold color={tokens.color.surfaceCard}>Batch {index + 1}</InvText></View><View className="min-h-16 flex-row flex-wrap items-center justify-between gap-2 p-3"><InvText bold>{batch.quantity} PCS</InvText><InvText>{batch.noExpiry ? 'No expiry date' : 'Expires ' + batchExpiryLabel(batch)}</InvText></View></View>)}
   </>;
 }
 function ReviewRow({ label, value }: { label: string; value: string }) {

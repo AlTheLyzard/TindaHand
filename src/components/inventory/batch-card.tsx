@@ -19,14 +19,14 @@ export function BatchCard({ batch, index, expanded = true, onChange, onExpand, o
 }) {
   const { fontScale } = useWindowDimensions();
   return <View className="w-full overflow-hidden rounded-control border border-outline bg-white">
-    <View className="min-h-9 justify-center bg-brand px-3 py-2"><InvText bold color={tokens.color.surfaceCard}>Batch {index + 1}</InvText></View>
+    <View className="min-h-9 justify-center px-3 py-2" style={{ backgroundColor: tokens.color.darkNavy }}><InvText bold color={tokens.color.surfaceCard}>Batch {index + 1}</InvText></View>
     {expanded ? <View className="gap-3 p-3">
       <View className="flex-row flex-wrap items-start gap-2">
         <View className="flex-1" style={{ minWidth: fontScale > 1.2 ? '100%' : 88 }}><InvField batch label="Quantity *" accessibilityLabel={'Batch ' + (index + 1) + ' quantity, required'} value={batch.quantity} onChangeText={quantity => onChange({ ...batch, quantity })} keyboardType="number-pad" placeholder="0" trailing={<View className="pr-2"><InvText size={10}>PCS</InvText></View>} maxLength={7} error={errors.quantity} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} /></View>
         <View className="flex-[1.4]" style={{ minWidth: fontScale > 1.2 ? '100%' : 140 }}><InvDateField compact displayLabel="Expiry Date" label={'Batch ' + (index + 1) + ' expiry date'} value={batch.expirationDate} required={!batch.noExpiry} disabled={batch.noExpiry} onChange={expirationDate => onChange({ ...batch, expirationDate })} error={errors.expirationDate} /></View>
       </View>
       <View className="min-h-12 flex-row items-center gap-3">
-        <View className="min-w-0 flex-1"><InvText>No expiry date</InvText></View>
+        <View className="min-w-0 flex-1"><InvText bold size={11} color={tokens.color.textPrimary}>No expiry date</InvText></View>
         <View className="min-h-12 items-center justify-center">
           <Switch style={{ alignSelf: 'center' }} accessibilityLabel={'Batch ' + (index + 1) + ': No expiry date'} value={batch.noExpiry} onValueChange={value => onChange(setBatchNoExpiry(batch, value))}
           trackColor={{ false: tokens.color.borderOutline, true: tokens.color.royalBlue }} ios_backgroundColor={tokens.color.borderOutline} />
@@ -43,14 +43,12 @@ export function ExistingBatchCard({ batch, index }: { batch: StockBatch; index: 
   const expiryColor = expiry === 'expired' ? tokens.color.errorBase : expiry === 'nearExpiry' ? tokens.color.warningText : tokens.color.textSecondary;
   return <View className="min-h-20 w-full flex-row items-center gap-3 rounded-control border border-ice-container bg-white p-3" style={{ borderLeftWidth: 4, borderLeftColor: accent }}>
     <View className="min-w-0 flex-1 gap-1">
-      <View className="flex-row items-center justify-between gap-3">
-        <InvText bold size={12} color={tokens.color.textSecondary}>B{String(index + 1).padStart(3, '0')}</InvText>
-        <InvText bold size={11} color={tokens.color.textSecondary}>{batch.quantity} PCS</InvText>
-      </View>
+      <InvText bold size={12} color={tokens.color.textSecondary}>B{String(index + 1).padStart(3, '0')}</InvText>
       <View className="flex-row flex-wrap items-center gap-x-1">
         <InvText size={11} color={expiryColor}>{batch.noExpiry ? 'No expiry date' : 'Expiry: ' + batchExpiryLabel(batch)}</InvText>
         {batch.quantity > 0 && expiry !== 'fresh' && <InvText bold size={10} color={expiryColor}>{expiry === 'expired' ? '· Expired' : '· Nearing expiry'}</InvText>}
       </View>
     </View>
+    <View className="min-w-[68px] self-stretch items-center justify-center"><InvText size={14} color={tokens.color.textPrimary}>{batch.quantity} PCS</InvText></View>
   </View>;
 }
