@@ -15,7 +15,7 @@ export function payableBalance(debt: PayableDebt, payments: readonly PayablePaym
 export function payableLists(ledger: PayablesLedger, query: string, today = todayInManila()) {
   const rows = ledger.debts.map(debt => ({ debt, ...payableBalance(debt, ledger.payments) }));
   const open = rows.filter(row => row.remainingCentavos > 0);
-  const matching = rows.filter(row => row.debt.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const matching = rows.filter(row => (row.debt.name ?? '').toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const paid = matching.filter(row => row.status === 'paid');
   const overdue = matching.filter(row => row.remainingCentavos > 0 && !!row.debt.dueDate && row.debt.dueDate < today);
   const overdueIds = new Set(overdue.map(row => row.debt.id));
