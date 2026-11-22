@@ -138,12 +138,15 @@ export interface StoreCreditor {
 }
 
 export interface StoreDebt {
-  id: number;
-  creditorId: number;
-  creditorName: string;
-  amountCentavos: number;
+  id: string;
+  ownerId: string;
+  creditorId: string;
+  name: string;                    // creditor name — matches StoreDebtOut.name from backend
+  originalAmountCentavos: number;  // matches StoreDebtOut.originalAmountCentavos
+  paidCentavos: number;
+  remainingCentavos: number;
   dueDate: string | null;
-  details: string;
+  details: string | null;
   occurredAt: string;
 }
 
