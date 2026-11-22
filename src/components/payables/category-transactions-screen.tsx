@@ -8,6 +8,7 @@ import { usePushOnce } from '@/hooks/use-push-once';
 import { useQuickAdd } from '@/state/quick-add';
 import { useAuthFlow } from '@/state/auth-flow';
 import { useApiReceivables } from '@/hooks/use-receivables';
+import { useApiPayables } from '@/hooks/use-payables';
 import { usePayableDraft } from '@/state/payable-draft';
 import { useReceivableDraft } from '@/state/receivable-draft';
 import { localCalendarDate, receivableLists } from '@/utils/receivables';
@@ -81,7 +82,11 @@ function ReceivableCategoryTransactions({ category }: { category: Category }) {
 }
 
 function PayableCategoryTransactions({ category }: { category: Category }) {
-  const { payables } = useQuickAdd();
+  const { payables: localPayables } = useQuickAdd();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { ledger: apiPayables } = useApiPayables(confirmedMode ? owner?.id : undefined);
+  const payables = confirmedMode ? apiPayables : localPayables;
   const { searchQuery: query, setSearchQuery: setQuery } = usePayableDraft();
   const [today, setToday] = useState(todayInManila);
   const push = usePushOnce();

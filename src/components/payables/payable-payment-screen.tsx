@@ -11,6 +11,8 @@ import { MotionModal } from '@/components/ui/motion-modal';
 import { MotionLayout, MotionRegion } from '@/components/ui/motion-content';
 import { SuccessContent } from '@/components/ui/success-content';
 import { useQuickAdd } from '@/state/quick-add';
+import { useAuthFlow } from '@/state/auth-flow';
+import { useApiPayables } from '@/hooks/use-payables';
 import { usePayableDraft } from '@/state/payable-draft';
 import { payableAmountInput, payableBalance, payablePaymentError } from '@/utils/payables';
 import { parsePaymentAmount } from '@/utils/pos-payment';
@@ -26,7 +28,11 @@ type PendingPaymentCommand = { debtId: string; amount: string; outstanding: numb
 
 export function PayablePaymentScreen() {
   const { debtId } = useLocalSearchParams<{ debtId?: string }>();
-  const { payables, confirmPayablePayment } = useQuickAdd();
+  const { payables: localPayables, confirmPayablePayment } = useQuickAdd();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { ledger: apiPayables } = useApiPayables(confirmedMode ? owner?.id : undefined);
+  const payables = confirmedMode ? apiPayables : localPayables;
   const { setSearchQuery } = usePayableDraft();
   const debt = payables.debts.find(row => row.id === debtId);
   const [amount, setAmount] = useState('');
