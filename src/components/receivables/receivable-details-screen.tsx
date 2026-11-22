@@ -31,8 +31,12 @@ export function ReceivableDetailsScreen() {
   const today = localCalendarDate();
   const selectedBalance = debt ? receivableBalance(debt, receivablePayments, today) : null;
   const paidDetails = selectedBalance?.status === 'paid';
+  // For confirmed owners, customerId is undefined on all debts (not sent to backend),
+  // so grouping by customerId would merge every debtor together. Show only the clicked debt.
   const customerDebts = debt
-    ? receivableRecords.filter(record => record.kind === 'customerDebt' && record.customerId === debt.customerId)
+    ? (confirmedMode || !debt.customerId
+        ? [debt]
+        : receivableRecords.filter(record => record.kind === 'customerDebt' && record.customerId === debt.customerId))
     : [];
   const allBalances = customerDebts.map(item => receivableBalance(item, receivablePayments, today));
   const stillLoading = confirmedMode && apiLoading && !debt;
