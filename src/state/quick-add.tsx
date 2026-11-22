@@ -12,6 +12,7 @@ import type { PayablesLedger, PayablePayment } from '@/types/payables';
 import type { ReceivablePayment } from '@/types/receivables';
 import { createReceivablesService, createReceivable, createReceivablePayment } from '@/services/receivables';
 import { createPayablePayment } from '@/services/payables';
+import { createExpense } from '@/services/expenses';
 
 type ExpenseFeedback = { recordId: string; expiresAt: number } | null;
 type TransactionLedger = { records: readonly QuickAddRecord[]; receivablePayments: readonly ReceivablePayment[]; payables: PayablesLedger };
@@ -116,6 +117,37 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
         occurredAt: result.occurredAt,
       };
       setPayableFeedback({ ownerId: owner.id, message: `Debt saved for ${record.name}.` });
+      return record;
+    }
+    if (draft.kind === 'expense' && !MOCK_AUTH_ENABLED && owner?.mode === 'confirmed') {
+      // Real path: POST to backend. ExpenseListScreen re-fetches via useFocusEffect.
+      if (!owner) throw new Error('An owner session is required.');
+      const result = await createExpense({
+        name: draft.category, // backend uses name as the display label; category is the type
+        category: draft.category,
+        amountCentavos: quickAddTotal(draft),
+        expenseDate: draft.expenseDate,
+        details: draft.details.trim() || undefined,
+        occurredAt: new Date().toISOString(),
+      });
+      const record: QuickAddRecord = {
+        id: result.id,
+        ownerId: result.ownerId,
+        kind: 'expense',
+        name: result.name,
+        amountCentavos: result.amountCentavos,
+        originalAmountCentavos: result.amountCentavos,
+        paidCentavos: 0,
+        category: result.category ?? null,
+        details: result.details ?? '',
+        expenseDate: result.expenseDate,
+        dueDate: null,
+        borrowing: null,
+        items: {},
+        paymentStatus: null,
+        occurredAt: result.occurredAt,
+      };
+      setFeedback({ recordId: record.id, ownerId: record.ownerId, expiresAt: Date.now() + 5000 });
       return record;
     }
     const saved = await service.save(owner, token, draft);

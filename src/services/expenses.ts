@@ -1,12 +1,13 @@
 import { apiFetch } from '@/services/api';
 
 export interface Expense {
-  id: number;
+  id: string;
+  ownerId: string;
   name: string;
   category: string;
   amountCentavos: number;
   expenseDate: string;
-  details: string;
+  details: string | null;
   occurredAt: string;
 }
 
@@ -28,6 +29,7 @@ export async function createExpense(data: {
   amountCentavos: number;
   expenseDate: string;
   details?: string;
+  occurredAt: string;
 }): Promise<Expense> {
   return apiFetch<Expense>('/expenses', {
     method: 'POST',
