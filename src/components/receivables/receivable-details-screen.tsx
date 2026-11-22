@@ -1,10 +1,13 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { Text, View } from 'react-native';
 import { InventoryFrame } from '@/components/inventory/inventory-ui';
 import { BalancePanel } from '@/components/payables/payables-ui';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/content-state';
 import { useQuickAdd } from '@/state/quick-add';
+import { useAuthFlow } from '@/state/auth-flow';
+import { useApiReceivables } from '@/hooks/use-receivables';
 import { formatPesos } from '@/utils/dashboard';
 import { formatCalendarDate } from '@/utils/date';
 import { localCalendarDate, receivableBalance } from '@/utils/receivables';
@@ -17,13 +20,22 @@ function paymentDate(value: string) {
 
 export function ReceivableDetailsScreen() {
   const { debtId } = useLocalSearchParams<{ debtId?: string }>();
-  const { records, receivablePayments } = useQuickAdd();
-  const debt = records.find(record => record.kind === 'customerDebt' && record.id === debtId);
+  const { records, receivablePayments: localPayments } = useQuickAdd();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { debts: apiDebts, payments: apiPayments, loading: apiLoading, refresh } = useApiReceivables(confirmedMode ? owner?.id : undefined);
+  useFocusEffect(useCallback(() => { if (confirmedMode) refresh(); }, [confirmedMode, refresh]));
+  const receivableRecords = confirmedMode ? apiDebts : records;
+  const receivablePayments = confirmedMode ? apiPayments : localPayments;
+  const debt = receivableRecords.find(record => record.kind === 'customerDebt' && record.id === debtId);
   const today = localCalendarDate();
   const selectedBalance = debt ? receivableBalance(debt, receivablePayments, today) : null;
   const paidDetails = selectedBalance?.status === 'paid';
-  const customerDebts = debt ? records.filter(record => record.kind === 'customerDebt' && record.customerId === debt.customerId) : [];
+  const customerDebts = debt
+    ? receivableRecords.filter(record => record.kind === 'customerDebt' && record.customerId === debt.customerId)
+    : [];
   const allBalances = customerDebts.map(item => receivableBalance(item, receivablePayments, today));
+  const stillLoading = confirmedMode && apiLoading && !debt;
   const detailBalances = paidDetails ? allBalances.filter(row => row.status === 'paid') : allBalances;
   const originalCentavos = detailBalances.reduce((sum, row) => sum + row.originalCentavos, 0);
   const paidCentavos = detailBalances.reduce((sum, row) => sum + row.paidCentavos, 0);
@@ -50,7 +62,8 @@ export function ReceivableDetailsScreen() {
   }
 
   return <InventoryFrame title={paidDetails ? 'Paid Details' : 'Customer Debt Details'} back inlineTitle onBack={back}>
-    {!debt || !selectedBalance ? <EmptyState title="Debt not available" description="Return to Account Balances and choose an existing customer debt." action="Back to Account Balances" onAction={back} /> : <View className="gap-5">
+    {stillLoading ? <EmptyState title="Loading debt details…" description="Please wait a moment." /> :
+    !debt || !selectedBalance ? <EmptyState title="Debt not available" description="Return to Account Balances and choose an existing customer debt." action="Back to Account Balances" onAction={back} /> : <View className="gap-5">
       <View className="flex-row flex-wrap items-center justify-between gap-3">
         <Text accessibilityRole="header" className="min-w-0 flex-1 type-title-accent leading-[30px] text-text-primary">{debt.name}</Text>
         <ReceivableStatusPill status={status} />

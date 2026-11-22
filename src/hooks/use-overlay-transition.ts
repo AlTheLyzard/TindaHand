@@ -51,7 +51,9 @@ export function useOverlayTransition(visible: boolean, onHidden?: () => void, du
     cancelAnimation(progress);
     if (!phase.presented) { shown.current = false; progress.set(0); }
     else if (visible) {
-      if (shown.current || !nativeWindow) animate(1, version);
+      // On iOS, wait for onShow before animating so the native modal is ready.
+      // On Android and web, onShow is unreliable on first open — animate immediately.
+      if (shown.current || !nativeWindow || Platform.OS !== 'ios') animate(1, version);
       else progress.set(0);
     } else animate(0, version);
     return () => { cancelAnimation(progress); };
