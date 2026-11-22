@@ -145,7 +145,7 @@ def list_transactions(
             debtId=debt.id,
         ))
 
-    # 5. Store debts (money owed to suppliers — recorded when debt is created)
+    # 5. Store debts (liability recorded when debt is created — neutral, not a cash outflow)
     for sd in store_debts:
         rows.append(TransactionOut(
             id=f"storeDebt:{sd.id}",
@@ -158,7 +158,7 @@ def list_transactions(
             partyName=sd.name,
             paymentMethod=None,
             amountCentavos=sd.original_amount_centavos,
-            direction="out",
+            direction="neutral",
             debtId=sd.id,
         ))
 
