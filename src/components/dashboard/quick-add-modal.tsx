@@ -27,6 +27,8 @@ import { formatPesos } from '@/utils/dashboard';
 import { CreditorList, CreditorNameField } from '@/components/payables/payables-ui';
 import { CustomerList, CustomerNameField } from '@/components/receivables/receivables-ui';
 import { useInventory } from '@/state/inventory';
+import { useAuthFlow } from '@/state/auth-flow';
+import { useApiCustomers } from '@/hooks/use-customers';
 import { customerDebtErrors } from '@/utils/receivables';
 import tokens from '@/constants/design-tokens.json';
 import { useOverlayTransition } from '@/hooks/use-overlay-transition';
@@ -37,6 +39,9 @@ type Confirmation = { title: string; message: string; label: string; action: () 
 export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddKind; onClose: () => void }) {
   const { save, payables } = useQuickAdd();
   const { store } = useInventory();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { customers: apiCustomers } = useApiCustomers(confirmedMode ? owner?.id : undefined);
   const [open, setOpen] = useState(true);
   const dismiss = () => setOpen(false);
   const [baseline, setBaseline] = useState(() => emptyQuickAddDraft(initialKind, todayInManila()));
@@ -149,7 +154,7 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
               </View>
             </View>}>
               <MotionContent changeKey={picker ?? `${draft.kind}:${draft.borrowing}`}>
-                {picker ? picker === 'customer' ? <CustomerList customers={store.pos?.customers ?? []} onSelect={selected => { update({ name: selected.name, customerId: selected.id }); Keyboard.dismiss(); setPicker(null); }} />
+                {picker ? picker === 'customer' ? <CustomerList customers={confirmedMode ? apiCustomers : (store.pos?.customers ?? [])} onSelect={selected => { update({ name: selected.name, customerId: selected.id }); Keyboard.dismiss(); setPicker(null); }} />
                   : <CreditorList creditors={payables.creditors} onSelect={selected => { setDraft(previous => selectDraftCreditor(previous, payables.creditors, selected.id)); Keyboard.dismiss(); setPicker(null); }} /> : <>
 
                 <MotionLayout style={{ gap: tokens.spacing.two }}>
