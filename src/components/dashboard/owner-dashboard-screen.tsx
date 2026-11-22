@@ -119,7 +119,9 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   // Growth metrics: use real sales presence (totalSalesCentavos > 0) so that
   // stores with actual backend sales but no local mock data still show trends.
   const hasSales = summary.totalSalesCentavos > 0 || summary.saleCount > 0;
-  const growthMetrics = hasSales && period === growthPreview.reportingPeriod ? { ...growthPreview, percentageChange: summary.growth } : null;
+  // Use 'live' source for confirmed accounts so "Demo trend" label is hidden.
+  const growthSource = owner.mode === 'confirmed' ? 'live' : 'demo';
+  const growthMetrics = hasSales && period === growthPreview.reportingPeriod ? { ...growthPreview, source: growthSource as 'live' | 'demo', percentageChange: summary.growth } : null;
   const [todayDate] = useState(() => new Date());
   const dateOptions = { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' } as const;
   const today = todayDate.toLocaleDateString(getLocaleFormats().date, dateOptions);

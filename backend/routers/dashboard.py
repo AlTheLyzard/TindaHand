@@ -106,18 +106,30 @@ def dashboard_summary(
     # All sales for this owner
     all_sales = db.query(Sale).filter(Sale.owner_id == owner_id).all()
 
+    # Convert today and month_start to UTC boundaries for safe comparison.
+    # Manila is UTC+8, so "today in Manila" starts at UTC 00:00 - 8h = previous day 16:00 UTC.
+    today_start_utc = datetime(today.year, today.month, today.day, tzinfo=timezone.utc) - MANILA_OFFSET
+    today_end_utc   = today_start_utc + timedelta(days=1)
+    month_start_utc = datetime(month_start.year, month_start.month, month_start.day, tzinfo=timezone.utc) - MANILA_OFFSET
+
+    def _utc(dt: datetime) -> datetime:
+        """Return dt as UTC-aware, handling both naive (assume UTC) and aware datetimes."""
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+
     # Today's sales (Manila time)
     today_sales_centavos = sum(
         s.total_centavos
         for s in all_sales
-        if (s.occurred_at.astimezone(timezone.utc) + MANILA_OFFSET).date() == today
+        if today_start_utc <= _utc(s.occurred_at) < today_end_utc
     )
 
     # This month's sales
     month_sales_centavos = sum(
         s.total_centavos
         for s in all_sales
-        if (s.occurred_at.astimezone(timezone.utc) + MANILA_OFFSET).date() >= month_start
+        if _utc(s.occurred_at) >= month_start_utc
     )
 
     # Total outstanding receivables (what customers owe us)
