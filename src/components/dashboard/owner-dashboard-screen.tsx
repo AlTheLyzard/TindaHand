@@ -1,44 +1,39 @@
-import type { ScrollViewInstance } from 'react-native';
-import { MotionContent } from '@/components/ui/motion-content';
 import { FocusRise } from '@/components/ui/focus-rise';
+import { MotionContent } from '@/components/ui/motion-content';
 import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { useTranslation } from '@/i18n/use-translation';
+import { Image as BackgroundImage } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-<<<<<<< HEAD
-import { ScrollView, Text, View, useWindowDimensions, StyleSheet } from 'react-native';
-import { Image as BackgroundImage } from 'expo-image';
-=======
-import { useFocusEffect } from 'expo-router';
-import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
->>>>>>> b02a199c3ee2e3a6b86d7ee9519802bf7495149d
+import type { ScrollViewInstance } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { RegistrationToast } from '@/components/auth/registration-toast';
+import { AddCashModal } from '@/components/dashboard/add-cash-modal';
 import { BestSellersCard, CashCard, RecentActivityCard, SalesCard, StockCard } from '@/components/dashboard/dashboard-cards';
-import { MainHeader } from '@/components/dashboard/main-header';
 import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation';
 import { DashboardQuickAdd, type QuickAddAction } from '@/components/dashboard/dashboard-quick-add';
+import { MainHeader } from '@/components/dashboard/main-header';
+import { QuickAddModal } from '@/components/dashboard/quick-add-modal';
 import { Button } from '@/components/ui/button';
+import { useContentPreview } from '@/components/ui/content-state';
 import tokens from '@/constants/design-tokens.json';
-import { getDashboardData, getDashboardSummary, getCashMovements } from '@/services/dashboard';
-import type { DashboardSummary, CashMovement } from '@/services/dashboard';
+import { emptyDashboardDemo } from '@/data/content-preview';
 import { growthPreview } from '@/data/growth-preview';
-import { useNavigationHeight } from '@/state/navigation-motion';
 import { getLocaleFormats, type NavigationLabelKey } from '@/i18n';
+import type { CashMovement, DashboardSummary } from '@/services/dashboard';
+import { getCashMovements, getDashboardData, getDashboardSummary } from '@/services/dashboard';
+import { useCashRegister } from '@/state/cash-register';
+import { useInventory } from '@/state/inventory';
+import { useNavigationHeight } from '@/state/navigation-motion';
+import { useQuickAdd } from '@/state/quick-add';
 import type { OwnerIdentity } from '@/types/auth';
 import type { DashboardActivity, SalesPeriod } from '@/types/dashboard';
-import { quickAddDashboardActivity, summarizeDashboard } from '@/utils/dashboard';
-import { useInventory } from '@/state/inventory';
-import { inventorySummary, todayInManila } from '@/utils/inventory';
-import { useContentPreview } from '@/components/ui/content-state';
-import { emptyDashboardDemo } from '@/data/content-preview';
-import { AddCashModal } from '@/components/dashboard/add-cash-modal';
-import { RegistrationToast } from '@/components/auth/registration-toast';
-import { useCashRegister } from '@/state/cash-register';
-import { useQuickAdd } from '@/state/quick-add';
-import { isInitialSaleReceipt } from '@/utils/transactions';
-import { QuickAddModal } from '@/components/dashboard/quick-add-modal';
 import type { QuickAddKind } from '@/types/quick-add';
+import { quickAddDashboardActivity, summarizeDashboard } from '@/utils/dashboard';
+import { inventorySummary, todayInManila } from '@/utils/inventory';
+import { isInitialSaleReceipt } from '@/utils/transactions';
 
 export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity; onLogout?: () => void }) {
   const { store: { products, pos } } = useInventory();
