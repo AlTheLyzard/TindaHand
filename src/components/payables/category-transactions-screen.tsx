@@ -6,6 +6,8 @@ import { EmptyState } from '@/components/ui/content-state';
 import { MotionContent } from '@/components/ui/motion-content';
 import { usePushOnce } from '@/hooks/use-push-once';
 import { useQuickAdd } from '@/state/quick-add';
+import { useAuthFlow } from '@/state/auth-flow';
+import { useApiReceivables } from '@/hooks/use-receivables';
 import { usePayableDraft } from '@/state/payable-draft';
 import { useReceivableDraft } from '@/state/receivable-draft';
 import { localCalendarDate, receivableLists } from '@/utils/receivables';
@@ -42,7 +44,12 @@ export function CategoryTransactionsScreen() {
 }
 
 function ReceivableCategoryTransactions({ category }: { category: Category }) {
-  const { records, receivablePayments } = useQuickAdd();
+  const { records, receivablePayments: localPayments } = useQuickAdd();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { debts: apiDebts, payments: apiPayments } = useApiReceivables(confirmedMode ? owner?.id : undefined);
+  const receivableRecords = confirmedMode ? apiDebts : records;
+  const receivablePayments = confirmedMode ? apiPayments : localPayments;
   const { query, setQuery } = useReceivableDraft();
   const [today, setToday] = useState(localCalendarDate);
   const push = usePushOnce();
@@ -51,7 +58,7 @@ function ReceivableCategoryTransactions({ category }: { category: Category }) {
     return () => clearInterval(timer);
   }, []);
 
-  const lists = receivableLists(records, receivablePayments, query, today);
+  const lists = receivableLists(receivableRecords, receivablePayments, query, today);
   const rows = category === 'remaining' ? lists.partial : lists[category];
   const color = category === 'overdue' ? receivableColors.red : category === 'pending' ? receivableColors.blue : receivableColors.orange;
   const back = () => router.dismissTo({ pathname: receivablesRoot, params: { section: 'receivable', status: 'unpaid' } });
