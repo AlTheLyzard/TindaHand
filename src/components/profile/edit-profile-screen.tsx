@@ -7,6 +7,7 @@ import { authenticationService } from '@/services/authentication';
 import { AVATAR_IN_USE, avatarInUse } from '@/services/avatars';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { updateOwnerProfile } from '@/services/settings';
+import { ApiError } from '@/services/api';
 import { FormField } from '@/components/ui/form-field';
 import { Button } from '@/components/ui/button';
 import { PosDialog } from '@/components/pos/pos-dialog';
@@ -95,11 +96,12 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
         setLeaving(true); disablePrevention();
         router.dismissTo({ pathname: profileRoot, params: { updated: result.value.pendingEmail ? 'pending' : 'complete' } });
       } else {
-        // Real path: call PATCH /settings/profile — no PIN needed (backend uses JWT).
+        // Real path: call PATCH /settings/profile with current PIN for identity verification.
         await updateOwnerProfile({
           name: state.draft.name.trim(),
           storeName: state.draft.storeName.trim(),
           avatarId: state.draft.avatarId ?? undefined,
+          currentPin: currentPin,
         });
         if (!active.current) return;
         // Refresh the in-memory session so the new name propagates app-wide
@@ -109,7 +111,16 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
         setLeaving(true); disablePrevention();
         router.dismissTo({ pathname: profileRoot, params: { updated: 'complete' } });
       }
-    } catch { if (active.current) setFailure('Unable to save your profile. Please check your connection and try again.'); }
+    } catch (err) {
+      if (!active.current) return;
+      if (err instanceof ApiError && err.status === 401) {
+        // Wrong PIN — stay on Verify screen so the user can retry.
+        setFailure(err.message || 'Incorrect PIN. Please try again.');
+        dispatch({ type: 'verify' });
+      } else {
+        setFailure('Unable to save your profile. Please check your connection and try again.');
+      }
+    }
     finally { requestLock.current = false; if (active.current) setBusy(false); }
   }
   if (state.phase === 'avatar') return <ProfilePhotoSelectionScreen storeId={profile.ownerId} accountId={profile.ownerId}
@@ -146,13 +157,8 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
     </>}
     <PosDialog visible={dialog === 'save'} title="Save Changes?" message="Are you sure you want to save these changes to this profile?" confirmLabel="Save Changes" onClose={() => setDialog(null)} onConfirm={() => {
       setDialog(null); clearPin(); setFailure('');
-      if (MOCK_AUTH_ENABLED) {
-        // Mock mode: proceed to Verify Identity (PIN) screen.
-        dispatch({ type: 'verify' });
-      } else {
-        // Real session: backend uses JWT — no PIN needed. Save directly.
-        void save();
-      }
+      // Both modes require PIN verification before saving (AC-08).
+      dispatch({ type: 'verify' });
     }} />
     <PosDialog visible={dialog === 'discard'} title="Discard Changes?" message="Your unsaved profile changes will be discarded." confirmLabel="Discard Changes" cancelLabel="Keep Editing" destructive onClose={() => setDialog(null)} onConfirm={() => { setDialog(null); clearPin(); dispatch({ type: 'discard' }); setLeaving(true); disablePrevention(); pendingExit.current(); }} />
   </ProfileFrame>;

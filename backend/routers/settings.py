@@ -51,6 +51,12 @@ def update_profile(
     if not owner:
         raise HTTPException(404, "Owner not found")
 
+    # Verify identity via current PIN before allowing profile changes.
+    if not body.current_pin:
+        raise HTTPException(401, "Current PIN is required to save profile changes.")
+    if not owner.pin_hash or not verify_pin(body.current_pin, owner.pin_hash):
+        raise HTTPException(401, "Incorrect PIN. Please try again.")
+
     if body.full_name is not None:
         owner.full_name = body.full_name.strip()
     if body.store_name is not None:

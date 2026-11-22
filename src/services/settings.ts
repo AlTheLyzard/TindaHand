@@ -364,16 +364,18 @@ export async function getOwnerProfile(): Promise<OwnerProfile> {
   return apiFetch<OwnerProfile>('/settings/profile');
 }
 
-/** Update name, storeName, or avatarId. Converts to snake_case for the backend. */
+/** Update name, storeName, or avatarId. Requires current PIN for identity verification. */
 export async function updateOwnerProfile(data: Partial<{
   name: string;
   storeName: string;
   avatarId: string;
+  currentPin: string;
 }>): Promise<OwnerProfile> {
   const payload: Record<string, string> = {};
   if (data.name !== undefined) payload['full_name'] = data.name;
   if (data.storeName !== undefined) payload['store_name'] = data.storeName;
   if (data.avatarId !== undefined) payload['avatar_id'] = data.avatarId;
+  if (data.currentPin !== undefined) payload['current_pin'] = data.currentPin;
   return apiFetch<OwnerProfile>('/settings/profile', {
     method: 'PATCH',
     body: JSON.stringify(payload),

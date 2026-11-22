@@ -477,6 +477,7 @@ class ProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     store_name: Optional[str] = None
     avatar_id: Optional[str] = None
+    current_pin: Optional[str] = None  # required for identity verification before saving
 
 class PinChangeRequest(BaseModel):
     current_pin: str
