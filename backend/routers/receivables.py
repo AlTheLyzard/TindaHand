@@ -11,12 +11,32 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from auth import get_current_user, require_role
-from models import CustomerDebt, CustomerDebtLine, DebtPayment, Customer
+from models import CustomerDebt, CustomerDebtLine, DebtPayment, Customer, Product, StockBatch
 from schemas import (
     CustomerDebtOut, CustomerDebtCreate,
     ReceivablePaymentOut, ReceivablePaymentCreate,
     OkResponse,
 )
+
+
+def _deduct_stock(product: Product, quantity: int) -> None:
+    """
+    Deduct stock using FEFO (First Expiry, First Out).
+    Mirrors the same helper in pos.py.
+    """
+    expiring = sorted(
+        [b for b in product.batches if not b.no_expiry and b.expiration_date and b.quantity > 0],
+        key=lambda b: b.expiration_date,
+    )
+    no_exp = [b for b in product.batches if b.no_expiry and b.quantity > 0]
+    remaining = quantity
+    for batch in expiring + no_exp:
+        if remaining <= 0:
+            break
+        take = min(batch.quantity, remaining)
+        batch.quantity -= take
+        remaining -= take
+    product.stock = sum(b.quantity for b in product.batches)
 
 router = APIRouter(prefix="/receivables", tags=["receivables"])
 
@@ -116,7 +136,7 @@ def create_debt(
     db.add(debt)
     db.flush()  # get debt.id before inserting lines
 
-    # Persist product line items for product-borrowing debts
+    # Persist product line items and deduct inventory for product-borrowing debts
     if body.borrowing == "product" and body.items:
         for line in body.items.values():
             db.add(CustomerDebtLine(
@@ -126,6 +146,20 @@ def create_debt(
                 unit_price_centavos=line.unitPriceCentavos,
                 quantity=line.quantity,
             ))
+            # Deduct from inventory if we have a valid product ID
+            if line.productId:
+                product = db.query(Product).filter(
+                    Product.id == line.productId,
+                    Product.owner_id == owner_id,
+                ).first()
+                if product:
+                    if product.stock < line.quantity:
+                        raise HTTPException(
+                            422,
+                            f"Not enough stock for {product.name} "
+                            f"(have {product.stock}, need {line.quantity})",
+                        )
+                    _deduct_stock(product, line.quantity)
 
     db.commit()
     db.refresh(debt)
