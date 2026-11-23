@@ -5,7 +5,7 @@ import { BackButton } from '@/components/ui/back-button';
 import { KeyboardAwareScrollView as ScrollView, KeyboardViewport } from '@/components/ui/keyboard-aware-scroll-view';
 import tokens from '@/constants/design-tokens.json';
 
-export function ProfilePageLayout({ header, title, subtitle, children, footer, onBack, busy = false }: {
+export function ProfilePageLayout({ header, title, subtitle, children, footer, onBack, busy = false, headerWave = false }: {
   header?: ReactNode;
   title: string;
   subtitle?: string;
@@ -13,14 +13,15 @@ export function ProfilePageLayout({ header, title, subtitle, children, footer, o
   footer?: ReactNode;
   onBack: () => void;
   busy?: boolean;
+  headerWave?: boolean;
 }) {
   const { fontScale } = useWindowDimensions();
-  return <AuthBackground>
+  return <AuthBackground headerWave={headerWave}>
     <View className="flex-1">
       {header}
       <KeyboardViewport className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ flexGrow: 1 }}>
-          <View className="w-full max-w-[460px] flex-1 self-center px-5 pb-6" style={{ paddingTop: tokens.spacing.headerTitleGap }}>
+          <View className="w-full max-w-[460px] flex-1 self-center px-6 pb-6" style={{ paddingTop: tokens.spacing.headerTitleGap }}>
             <View className="mb-2 flex-row items-center gap-1">
               <BackButton accessibilityLabel="Go back" disabled={busy} onPress={onBack} />
               <Text accessibilityRole="header" className="min-w-0 flex-1 type-h1-display text-brand"

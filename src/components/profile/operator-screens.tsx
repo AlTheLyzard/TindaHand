@@ -60,19 +60,28 @@ export function OperatorListScreen() {
   if (!owner) return null;
   const storeName = profiles.get(owner.id)?.storeName;
   return (
-    <ProfileFrame title="Manage Operators" subtitle="Control access to your store"
-      footer={<Button onPress={() => router.push(`${operatorsRoot}/new`)}>Add Operator</Button>}>
+    <ProfileFrame title="Kahera Management" subtitle="Control access to your store"
+      footer={<Button onPress={() => router.push(`${operatorsRoot}/new`)}>Add Kahera</Button>}>
       <View className="mt-4 gap-3">
         {operators.length ? (
           operators.map((operator) => (
-            <SettingsCard key={operator.id}>
-              <OperatorIdentity operator={operator} />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`View Account for ${operator.name}, ${operator.status}`}
-                className="mt-3 min-h-12 flex-row items-center gap-3"
-                onPress={() => openOperator(operator.id)}
-              >
+            <Pressable
+              key={operator.id}
+              accessibilityRole="button"
+              accessibilityLabel={`View Account for ${operator.name}, ${operator.status}`}
+              className="rounded-control active:opacity-90"
+              style={{
+                shadowColor: tokens.color.darkNavy,
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.16,
+                shadowRadius: 5,
+                elevation: 4,
+              }}
+              onPress={() => openOperator(operator.id)}
+            >
+              <SettingsCard>
+                <OperatorIdentity operator={operator} />
+                <View className="mt-3 min-h-12 flex-row items-center gap-3">
                 <View className="flex-1">
                   <ProfileText bold>View Account</ProfileText>
                   <ProfileText small>
@@ -80,8 +89,9 @@ export function OperatorListScreen() {
                   </ProfileText>
                 </View>
                 <PosIcon name="chevronRight" size={20} color={tokens.color.royalBlue} />
-              </Pressable>
-            </SettingsCard>
+                </View>
+              </SettingsCard>
+            </Pressable>
           ))
         ) : (
           <SettingsCard>
@@ -123,7 +133,7 @@ export function OperatorDetailsScreen() {
       <ProfileFrame title="View Account">
         <ProfileError message="This Kahera is unavailable or does not belong to your store." />
         <Button onPress={() => router.dismissTo(operatorsRoot)}>
-          Back to Manage Operators
+          Back to Kahera Management
         </Button>
       </ProfileFrame>
     );
@@ -403,20 +413,6 @@ function OperatorDetails({
           </ProfileNotice>
         </View>
       )}
-      <View className="my-5">
-        <Button
-          variant="secondary"
-          disabled={saving || statusBusy}
-          onPress={() =>
-            router.push({
-              pathname: "/owner-menu/profile/operators/reset-pin",
-              params: { operatorId: operator.id },
-            })
-          }
-        >
-          Set / Reset Kahera PIN
-        </Button>
-      </View>
       <PosDialog
         visible={confirm}
         title={

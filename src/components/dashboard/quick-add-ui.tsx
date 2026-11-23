@@ -15,6 +15,11 @@ import { expenseCategoryLabel } from '@/utils/expenses';
 export const quickAddLabels: Record<QuickAddKind, string> = { customerDebt: 'Customer Debt', storeDebt: 'Store Debt', expense: 'Expense' };
 export const quickAddColors = { ink: tokens.color.textPrimary, muted: tokens.color.textSecondary, primary: tokens.color.royalBlue, backdrop: tokens.overlay.navySoft };
 const quickAddExpenseCategories = ['Water Expense', 'Electricity Expense', 'Others Expense'] as const;
+const quickAddExpenseCategoryIcons = {
+  'Water Expense': 'droplet',
+  'Electricity Expense': 'lightning',
+  'Others Expense': 'briefcase',
+} as const;
 /** Equal-width segments share one neutral track; full segments expose selection to assistive tech. */
 export function QuickAddChips({ kind, onSelect }: { kind: QuickAddKind; onSelect: (kind: QuickAddKind) => void }) {
   return <View testID="quick-add-chips" accessibilityRole="tablist" accessibilityLabel="Quick Add form" style={{ flexDirection: 'row', flexShrink: 0, gap: 4, padding: 4, borderRadius: 12, backgroundColor: tokens.color.surfaceSubtle }}>
@@ -45,10 +50,12 @@ export function QuickAddExpenseCategoryField({ value, onChange, error }: {
             backgroundColor: selected ? tokens.color.royalBlue : tokens.color.appBackground,
             borderColor: selected ? tokens.color.royalBlue : tokens.color.borderOutline, boxShadow: tokens.shadow.chip,
           }}>
-          {({ color }) => <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={{
-            maxWidth: '100%', textAlign: 'center', fontFamily: tokens.typography.weights.semibold,
-            fontSize: tokens.typography.labelNav.fontSize, lineHeight: tokens.typography.labelNav.lineHeight, color,
-          }}>{label}</Text>}
+          {({ color }) => <View style={{ maxWidth: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            <PosIcon name={quickAddExpenseCategoryIcons[category]} color={color} size={16} />
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ flexShrink: 1, textAlign: 'center', fontFamily: tokens.typography.weights.semibold,
+              fontSize: tokens.typography.labelNav.fontSize, lineHeight: tokens.typography.labelNav.lineHeight, color,
+            }}>{label}</Text>
+          </View>}
         </ButtonSurface>;
       })}
     </View>

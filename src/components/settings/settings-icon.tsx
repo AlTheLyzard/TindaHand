@@ -4,9 +4,9 @@ import { PosIcon } from '@/components/pos/pos-icon';
 const icons = {
   settings: 'settings',
   profile: 'profile',
-  manageOperators: 'userPlus',
-  language: 'book',
-  security: 'shieldCheck',
+  manageOperators: 'users',
+  language: 'info',
+  security: 'lock',
   lock: 'lock',
   data: 'download',
   help: 'book',
