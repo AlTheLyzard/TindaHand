@@ -605,8 +605,16 @@ export function createAuthenticationService(
             },
           };
         } catch (err: unknown) {
-          const message = err instanceof Error ? err.message : "Could not save your profile. Please try again.";
-          return { ok: false, message };
+          if (err instanceof ApiError) {
+            if (err.status === 404)
+              return { ok: false, message: "Profile update is not yet available. Please ask your May-Ari to update your name from Settings." };
+            if (err.status === 403 || err.status === 401)
+              return { ok: false, message: "You don't have permission to edit this profile. Please log out and log back in." };
+            if (err.status >= 500)
+              return { ok: false, message: "The server couldn't save your changes. Please try again in a moment." };
+            return { ok: false, message: err.message };
+          }
+          return { ok: false, message: "Could not save your profile. Please try again." };
         }
       }
 
