@@ -94,17 +94,17 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   // Real POS sales committed this session — these are the only source of truth for best sellers.
   const realSales = pos?.sales ?? [];
 
-  // Payable payments reduce cash (store debt repayments paid in cash).
-  const payablePaymentsCentavos = preview.empty ? 0
-    : quickAdd.payables.payments.reduce((sum, p) => sum + p.amountCentavos, 0);
-
-  // Use summarizeDashboard for local data, passing quick-add records so expenses deduct from cash.
+  // Use summarizeDashboard for local data:
+  // - expenses reduce Pera sa Kaha (money out)
+  // - POS cash tenders and receivable payments add to Pera sa Kaha (money in)
   const localSummary = summarizeDashboard(
     period,
     data,
     preview.empty ? 0 : addedCentavos,
     preview.empty ? [] : quickAdd.records,
-    preview.empty ? 0 : payablePaymentsCentavos,
+    0, // payablePaymentsCentavos — no longer deducted; payables aren't cash expenses
+    preview.empty ? [] : realSales,
+    preview.empty ? [] : quickAdd.receivablePayments,
   );
 
   // Best sellers come from real POS sales only — no demo data injected.

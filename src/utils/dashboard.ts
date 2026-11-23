@@ -3,6 +3,7 @@ import { getLocaleFormats } from '@/i18n';
 import type { DashboardActivity, DemoSale, SalesPeriod } from '@/types/dashboard';
 import type { LocalSale } from '@/types/pos';
 import type { QuickAddRecord } from '@/types/quick-add';
+import type { ReceivablePayment } from '@/types/receivables';
 
 /** Copy before sorting: the full history and its source order remain untouched. */
 export function recentDashboardActivity(activity: readonly DashboardActivity[]) {
@@ -53,7 +54,9 @@ export function summarizeDashboard(
   data: Omit<typeof dashboardDemo, 'sales' | 'activity'> & { sales: readonly DemoSale[]; activity: readonly DashboardActivity[] } = dashboardDemo,
   cashAddedCentavos = 0,
   quickAddRecords: readonly QuickAddRecord[] = [],
-  payablePaymentsCentavos = 0,
+  _payablePaymentsCentavos = 0, // kept for backward-compat; no longer deducted (not an expense)
+  localSales: readonly LocalSale[] = [],
+  receivablePayments: readonly ReceivablePayment[] = [],
 ) {
   const end = new Date(data.asOf);
   const start = new Date(end.getTime() + 8 * 60 * 60 * 1000);
@@ -68,15 +71,25 @@ export function summarizeDashboard(
     const existing = ranked.get(sale.productId);
     ranked.set(sale.productId, { id: sale.productId, name: sale.itemName, quantity: (existing?.quantity ?? 0) + sale.quantity });
   }
-  const moneyIn = data.movements.reduce((total, movement) => total + Math.max(0, movement.amountCentavos), cashAddedCentavos);
+
+  // Cash received from real POS sales (tenders paid, minus change given back).
+  const posCashInCentavos = localSales.reduce((sum, sale) => {
+    const tendered = sale.payment.tenders.reduce((t, tender) => t + tender.receivedCentavos, 0);
+    return sum + tendered - sale.payment.cashChangeCentavos;
+  }, 0);
+
+  // Cash received from customer debt repayments.
+  const receivableCashInCentavos = receivablePayments.reduce((sum, p) => sum + p.amountCentavos, 0);
+
+  const baseMoneyIn = data.movements.reduce((total, movement) => total + Math.max(0, movement.amountCentavos), cashAddedCentavos);
+  const moneyIn = baseMoneyIn + posCashInCentavos + receivableCashInCentavos;
   const moneyOut = data.movements.reduce((total, movement) => total + Math.max(0, -movement.amountCentavos), 0);
 
-  // Expenses and cash-lent debts recorded via Quick Add reduce the cash on hand.
+  // Only expenses reduce Pera sa Kaha (cash lent to customers is tracked as receivables, not cash out).
   const expenseOutCentavos = quickAddRecords
-    .filter(r => r.kind === 'expense' || (r.kind === 'customerDebt' && r.borrowing === 'cash'))
+    .filter(r => r.kind === 'expense')
     .reduce((sum, r) => sum + r.amountCentavos, 0);
-  // Payable payments (store debt repayments) also reduce cash.
-  const totalCashOut = moneyOut + expenseOutCentavos + payablePaymentsCentavos;
+  const totalCashOut = moneyOut + expenseOutCentavos;
 
   return {
     saleCount: new Set(sales.map(sale => sale.saleId ?? sale.id)).size,
