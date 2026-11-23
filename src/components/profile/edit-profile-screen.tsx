@@ -104,6 +104,20 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
           currentPin: currentPin,
         });
         if (!active.current) return;
+        // Immediately sync the new avatar/name into the shared profile snapshot so
+        // OwnerAvatar in the header re-renders everywhere — without this, the update
+        // is not visible until the profile screen is visited (its useFocusEffect
+        // calls getOwnerProfile → syncFromApi, which is what we do here directly).
+        if (owner) {
+          authenticationService.profile.syncFromApi({
+            ownerId: owner.id,
+            name: state.draft.name.trim(),
+            storeName: state.draft.storeName.trim(),
+            email: profile.email,
+            pendingEmail: profile.pendingEmail,
+            avatarId: state.draft.avatarId ?? null,
+          });
+        }
         // Refresh the in-memory session so the new name propagates app-wide
         // (dashboard greeting, header, etc.) without requiring a full re-login.
         await refreshSession();
