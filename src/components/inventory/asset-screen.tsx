@@ -16,6 +16,7 @@ import { PosIcon } from '@/components/pos/pos-icon';
 import { InvCard, InvField, InventoryFrame, InvText, inventoryIllustrations } from './inventory-ui';
 import { AssetClassificationField } from './asset-classification-field';
 import { useInventory } from '@/state/inventory';
+import { useCashRegister } from '@/state/cash-register';
 import { createAsset, updateAsset as updateAssetApi, deleteAsset as deleteAssetApi } from '@/services/inventory';
 import type { AssetClassification, BusinessAsset } from '@/types/inventory';
 import { assetLabels, todayInManila } from '@/utils/inventory';
@@ -33,6 +34,8 @@ export function AssetScreen() {
   useTranslation();
   const { id, mode } = useLocalSearchParams<{ id?: string; mode?: string }>();
   const { store, dispatch, setFeedback } = useInventory();
+  const cashRegister = useCashRegister();
+  const cashToken = useRef(cashRegister.begin());
   const preview = useContentPreview();
   const asset = store.assets.find(a => a.id === id);
   const adding = mode === 'add';
@@ -125,6 +128,12 @@ export function AssetScreen() {
     }
 
     if (dispatch({ type: 'saveAsset', asset: record })) {
+      // When adding Cash On Hand, mirror the amount into the cash register so
+      // the dashboard "Pera sa Kaha" total and the financial journal both reflect it.
+      if (adding && record.classification === 'current') {
+        const centavosStr = (record.valueCentavos / 100).toFixed(2);
+        void cashRegister.add(cashToken.current, centavosStr);
+      }
       setSaved(record);
       setSuccessVisible(true);
     } else {
