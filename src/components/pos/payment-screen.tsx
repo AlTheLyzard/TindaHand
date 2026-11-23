@@ -114,11 +114,8 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
         Alert.alert('Could not read image', 'Failed to process the photo. Try again.');
         return;
       }
-      const apiKey = process.env.EXPO_PUBLIC_OCR_SPACE_KEY ?? '';
-      if (!apiKey) {
-        Alert.alert('OCR not configured', 'Add EXPO_PUBLIC_OCR_SPACE_KEY to your .env and restart the dev server. Enter the reference number manually for now.');
-        return;
-      }
+      // TODO: move to env once EXPO_PUBLIC_ vars are confirmed loading
+      const apiKey = process.env.EXPO_PUBLIC_OCR_SPACE_KEY || 'K8288188399452188957';
       let ocrText = '';
       try {
         const body = new FormData();
