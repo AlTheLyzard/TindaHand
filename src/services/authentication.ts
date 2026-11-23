@@ -575,6 +575,15 @@ export function createAuthenticationService(
               operator: { ...session.operator, name: updated.name, avatarId: updated.avatarId },
             };
           }
+          // Also update the settings store so the profile screen's operator lookup
+          // sees the new name and avatar without waiting for a full session refresh.
+          settingsService.seedRealCashier({
+            id: updated.id,
+            ownerId: updated.ownerId,
+            name: updated.name,
+            status: updated.status,
+            avatarId: updated.avatarId,
+          });
           return {
             ok: true,
             value: {
