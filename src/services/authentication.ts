@@ -9,7 +9,7 @@ import { ownerPasswordKey, ownerPinKey } from "@/services/auth-storage-keys";
 import { loginKahera } from "@/services/mock-auth";
 import { createMockProfileService } from "@/services/profile";
 import { createRememberedIdentities } from "@/services/remembered-identities";
-import { settingsService, resetCashierPin as resetCashierPinApi } from "@/services/settings";
+import { settingsService, resetCashierPin as resetCashierPinApi, updateCashier as updateCashierApi, updateCashierPermissions, getCashierPermissions } from "@/services/settings";
 import { saveToken } from "@/services/token-storage";
 import type {
   AuthenticationService,
@@ -22,7 +22,7 @@ import type {
   OperatorPermission,
   RegisteredOwner,
 } from "@/types/auth";
-import { defaultOperatorPermissions } from "@/utils/operator-access";
+import { defaultOperatorPermissions, updatePermission } from "@/utils/operator-access";
 import { isOwnerId } from "@/utils/owner-id";
 import { validateEmail, validateRegistration } from "@/utils/registration";
 
@@ -415,6 +415,16 @@ export function createAuthenticationService(
         publishAccountDirectory();
       }
 
+      // Fetch the Kahera's real permissions from the backend so May-Ari's
+      // permission toggles take effect immediately on next login.
+      let permissions: readonly OperatorPermission[] = [...defaultOperatorPermissions];
+      try {
+        const fetched = await getCashierPermissions(result.kaheraId);
+        if (fetched.length > 0) permissions = fetched as OperatorPermission[];
+      } catch {
+        // Best-effort: fall back to defaults if the fetch fails.
+      }
+
       session = {
         ...issue(ownerAccount),
         role: "operator",
@@ -424,7 +434,7 @@ export function createAuthenticationService(
         operator: {
           id: result.kaheraId,
           name: result.name,
-          permissions: [...defaultOperatorPermissions],
+          permissions: [...permissions],
         },
       };
       remembered.remember("cashier", result.ownerId);
@@ -472,8 +482,12 @@ export function createAuthenticationService(
           } satisfies import('@/types/settings').Cashier;
           return { ok: true as const, value: cashier };
         } catch (err) {
-          const message = err instanceof Error ? err.message : 'Unable to reset PIN. Please try again.';
-          return { ok: false as const, message };
+          if (err instanceof ApiError) {
+            if (err.status === 404) return { ok: false as const, message: 'Kahera not found. Make sure this account still exists and try again.' };
+            if (err.status === 401 || err.status === 403) return { ok: false as const, message: 'Your current PIN is incorrect.' };
+            if (err.status < 500) return { ok: false as const, message: err.message };
+          }
+          return { ok: false as const, message: 'Unable to reset PIN. Please try again.' };
         }
       }
       const owner = authorizedOwner();
@@ -494,15 +508,37 @@ export function createAuthenticationService(
       // - Expected Response: Updated Cashier and any session-revocation status
       // - UI State to Wire: Refresh user lists and access gates after confirmation
       const owner = authorizedOwner();
+      if (!owner) return { ok: false, message: "An unlocked Owner session is required." };
+
+      if (!MOCK_AUTH_ENABLED) {
+        // Real backend path: PATCH /settings/cashiers/{operatorId} with { isActive }
+        try {
+          const updated = await updateCashierApi(operatorId, { isActive: active });
+          return {
+            ok: true as const,
+            value: {
+              id: updated.id,
+              name: updated.name ?? '',
+              ownerId: updated.ownerId ?? owner.id,
+              status: updated.status,
+              avatarId: (updated.avatarId ?? 'avatar-01') as import('@/types/profile').AvatarId,
+            },
+          };
+        } catch (err) {
+          const message = err instanceof ApiError && err.status < 500
+            ? err.message
+            : `Could not ${active ? 'activate' : 'deactivate'} this Kahera. Please try again.`;
+          return { ok: false as const, message };
+        }
+      }
+
       const sessionId = live()?.id;
-      return owner
-        ? settingsService.setOperatorActive(
-            owner,
-            operatorId,
-            active,
-            () => live()?.id === sessionId && !!authorizedOwner(),
-          )
-        : { ok: false, message: "An unlocked Owner session is required." };
+      return settingsService.setOperatorActive(
+        owner,
+        operatorId,
+        active,
+        () => live()?.id === sessionId && !!authorizedOwner(),
+      );
     },
     async updateOperatorProfile(input) {
       // TODO(backend): Save the current Operator's self-service profile under its authenticated session.
@@ -551,16 +587,37 @@ export function createAuthenticationService(
       // - Expected Response: Canonical capability list and updated authorization revision
       // - UI State to Wire: Refresh capability gates and operator settings after confirmation
       const owner = authorizedOwner();
-      const sessionId = live()?.id;
-      return owner
-        ? settingsService.setOperatorPermission(
-            owner,
-            operatorId,
+      if (!owner) return { ok: false, message: "An unlocked Owner session is required." };
+
+      if (!MOCK_AUTH_ENABLED) {
+        // Real backend path: read current permissions, apply the toggle, then persist.
+        try {
+          const current = await getCashierPermissions(operatorId);
+          const next = updatePermission(
+            (current as OperatorPermission[]).length > 0
+              ? (current as OperatorPermission[])
+              : [...defaultOperatorPermissions],
             group,
             allowed,
-            () => live()?.id === sessionId && !!authorizedOwner(),
-          )
-        : { ok: false, message: "An unlocked Owner session is required." };
+          );
+          await updateCashierPermissions(operatorId, next);
+          return { ok: true as const, value: next };
+        } catch (err) {
+          const message = err instanceof ApiError && err.status < 500
+            ? err.message
+            : 'Could not update permissions. Please try again.';
+          return { ok: false as const, message };
+        }
+      }
+
+      const sessionId = live()?.id;
+      return settingsService.setOperatorPermission(
+        owner,
+        operatorId,
+        group,
+        allowed,
+        () => live()?.id === sessionId && !!authorizedOwner(),
+      );
     },
     async restoreSession() {
       // TODO(backend): Restore and validate the secure server session on app startup/resume.
