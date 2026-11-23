@@ -9,10 +9,19 @@ import {
 import tokens from "@/constants/design-tokens.json";
 import { loginKahera, loginOwner } from "@/services/mock-auth";
 import {
+  clearOfflineKaheraPinHash,
+  clearOfflineOwnerPinHash,
+  getKaheraId,
+  getOfflineKaheraPinHash,
+  getOfflineOwnerPinHash,
+  getOwnerId,
   markHasKaheras,
   markHasOwner,
+  saveOfflineKaheraPinHash,
+  saveOfflineOwnerPinHash,
   saveToken,
 } from "@/services/token-storage";
+import { hashPin, kaheraPinScope, ownerPinScope, verifyPin } from "@/utils/pin-hash";
 import { useAuthFlow } from "@/state/auth-flow";
 import type { AccountRole } from "@/types/auth";
 import { validateLogin } from "@/utils/account-access";
@@ -140,6 +149,14 @@ export function RoleLoginScreen({
           const ownerId = id.trim().toUpperCase();
           await saveToken(result.token, result.name, ownerId, "owner");
           await markHasOwner();
+          // Cache a salted hash of the PIN for offline login on future network failures.
+          // This overwrites any stale hash from a previous session, keeping it fresh.
+          try {
+            const hash = await hashPin(ownerPinScope(ownerId), credential);
+            await saveOfflineOwnerPinHash(ownerId, hash);
+          } catch {
+            /* Hash storage failure is non-fatal — online login succeeded. */
+          }
           setCredential("");
           await flow.refreshSession();
           flow.setSelectedRole(role);
@@ -147,13 +164,42 @@ export function RoleLoginScreen({
           completed = true;
           onSuccess();
         } else if (result.status === "locked") {
+          // A locked account means the server rejected; also wipe the offline cache
+          // so an attacker with the device cannot bypass the lockout offline.
+          const ownerId = id.trim().toUpperCase();
+          void clearOfflineOwnerPinHash(ownerId);
           setNotice(
             "Account locked due to too many failed attempts. Try again later.",
           );
         } else if (result.status === "invalid") {
           setNotice("Invalid ID or PIN. Check your credentials and try again.");
         } else {
-          setNotice("Unable to log in. Please try again.");
+          // Network / server error — attempt offline login from cached PIN hash.
+          const ownerId = id.trim().toUpperCase();
+          const cached = await getOfflineOwnerPinHash(ownerId).catch(() => null);
+          if (cached && await verifyPin(ownerPinScope(ownerId), credential, cached)) {
+            if (!active.current) return;
+            // Build a minimal offline session. auth-flow's refreshSession will
+            // promote it to 'confirmed' once the network returns.
+            const session = await flow.refreshSession(true);
+            if (!active.current) return;
+            if (session) {
+              // refreshSession restored a valid JWT session — use that.
+              flow.setSelectedRole(role);
+              flow.notifyLogin();
+              completed = true;
+              onSuccess();
+            } else {
+              // No JWT available — trigger an offline-grace session.
+              flow.setOfflineGrace({ id: ownerId, name: '' }, 'owner');
+              flow.setSelectedRole(role);
+              flow.notifyLogin();
+              completed = true;
+              onSuccess();
+            }
+          } else {
+            setNotice("Unable to reach server. Connect to the internet and try again.");
+          }
         }
         return;
       }
@@ -169,6 +215,13 @@ export function RoleLoginScreen({
           result.kaheraId,
         );
         await markHasKaheras();
+        // Cache a salted hash of the PIN for offline login on future network failures.
+        try {
+          const hash = await hashPin(kaheraPinScope(result.ownerId, result.kaheraId), credential);
+          await saveOfflineKaheraPinHash(result.ownerId, result.kaheraId, hash);
+        } catch {
+          /* Hash storage failure is non-fatal — online login succeeded. */
+        }
         setCredential('');
         // showRestoring=true keeps the operator-pos layout in its "loading" state
         // while the new Kahera session is being built, preventing a premature
@@ -180,6 +233,10 @@ export function RoleLoginScreen({
         onSuccess();
       } else if (result.status === "locked") {
         setOperatorState("failed");
+        // Wipe the offline cache for the last known kaheraId so the lockout cannot be bypassed offline.
+        const cachedOwnerId = await getOwnerId().catch(() => null);
+        const cachedKaheraId = await getKaheraId().catch(() => null);
+        if (cachedOwnerId && cachedKaheraId) void clearOfflineKaheraPinHash(cachedOwnerId, cachedKaheraId);
         setNotice(
           "Account locked due to too many failed attempts. Try again later.",
         );
@@ -194,8 +251,41 @@ export function RoleLoginScreen({
           "Invalid May-Ari ID or PIN. Check your credentials and try again.",
         );
       } else {
-        setOperatorState("failed");
-        setNotice("Unable to log in. Please try again.");
+        // Network / server error — attempt offline login from cached PIN hash.
+        // We need the ownerId+kaheraId that were saved at the last successful login.
+        const cachedOwnerId = await getOwnerId().catch(() => null);
+        const cachedKaheraId = await getKaheraId().catch(() => null);
+        const ownerId = id.trim().toUpperCase();
+        if (
+          cachedOwnerId &&
+          cachedOwnerId === ownerId &&
+          cachedKaheraId
+        ) {
+          const cached = await getOfflineKaheraPinHash(cachedOwnerId, cachedKaheraId).catch(() => null);
+          if (cached && await verifyPin(kaheraPinScope(cachedOwnerId, cachedKaheraId), credential, cached)) {
+            if (!active.current) return;
+            const session = await flow.refreshSession(true);
+            if (!active.current) return;
+            if (session) {
+              flow.setSelectedRole(role);
+              flow.notifyLogin();
+              completed = true;
+              onSuccess();
+            } else {
+              flow.setOfflineGrace({ id: cachedOwnerId, name: '' }, 'cashier', cachedKaheraId);
+              flow.setSelectedRole(role);
+              flow.notifyLogin();
+              completed = true;
+              onSuccess();
+            }
+          } else {
+            setOperatorState("failed");
+            setNotice("Unable to reach server. Connect to the internet and try again.");
+          }
+        } else {
+          setOperatorState("failed");
+          setNotice("Unable to log in. Please try again.");
+        }
       }
     } catch {
       if (active.current) {

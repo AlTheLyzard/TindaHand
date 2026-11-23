@@ -16,8 +16,8 @@ export function releaseAuthLock()  { _lockSuppressed = false; }
 import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
 import { settingsService } from '@/services/settings';
-import { clearSessionLocked, getKaheraId, getOwnerId, getOwnerName, getRole, getSessionLocked, getToken, saveSessionLocked } from '@/services/token-storage';
-import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
+import { clearOfflineKaheraPinHash, clearOfflineOwnerPinHash, clearSessionLocked, getKaheraId, getOwnerId, getOwnerName, getRole, getSessionLocked, getToken, saveSessionLocked } from '@/services/token-storage';
+import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegisteredOwner, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
 import { defaultOperatorPermissions } from '@/utils/operator-access';
 
 const emptyDraft: RegistrationFormValues = {
@@ -37,6 +37,14 @@ type AuthFlow = {
   loginToastExpiresAt: number | null;
   dismissLoginToast: () => void;
   notifyLogin: () => void;
+  /**
+   * Establish an offline-grace session when the network is unavailable but
+   * the PIN was verified against the cached hash. The session allows local
+   * POS/inventory operations but blocks backend-only actions (settings, PIN reset).
+   * Automatically promoted to 'confirmed' once the network returns and
+   * refreshSession() succeeds.
+   */
+  setOfflineGrace: (owner: RegisteredOwner, role: 'owner' | 'cashier', kaheraId?: string) => void;
   draft: RegistrationFormValues;
   setDraft: Dispatch<SetStateAction<RegistrationFormValues>>;
   registrationPreview: boolean;
@@ -86,6 +94,49 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
     setSelectedOwnerId(null);
     setCompletion(null);
     setDashboardAccess(false);
+    // Clear offline PIN hash caches on explicit logout so a physically stolen
+    // device cannot re-enter the app offline using the last-known credentials.
+    void (async () => {
+      try {
+        const ownerId = await getOwnerId();
+        if (ownerId) await clearOfflineOwnerPinHash(ownerId);
+      } catch { /* Best-effort. */ }
+      try {
+        const ownerId = await getOwnerId();
+        const kaheraId = await getKaheraId();
+        if (ownerId && kaheraId) await clearOfflineKaheraPinHash(ownerId, kaheraId);
+      } catch { /* Best-effort. */ }
+    })();
+  }
+
+  /**
+   * Build a minimal offline-grace DeviceSession so the app can operate in
+   * offline mode after the PIN was verified against the cached hash.
+   */
+  function setOfflineGrace(owner: RegisteredOwner, role: 'owner' | 'cashier', kaheraId?: string) {
+    const baseSession: DeviceSession = {
+      kind: 'mock',
+      id: `offline-grace-${Date.now()}`,
+      owner,
+      expiresAt: Date.now() + 8 * 60 * 60 * 1000,
+      locked: false,
+      role: 'owner',
+    };
+    if (role === 'cashier' && kaheraId) {
+      const cashierSession: DeviceSession = {
+        ...baseSession,
+        role: 'operator',
+        ownerId: owner.id,
+        operatorId: kaheraId,
+        displayName: '',
+        operator: { id: kaheraId, name: '', permissions: [] },
+      };
+      authenticationService.seedRealOwner(owner);
+      setDeviceSession(cashierSession);
+    } else {
+      authenticationService.seedRealOwner(owner);
+      setDeviceSession(baseSession);
+    }
   }
 
   const refreshSession = useCallback(async (showRestoring = false): Promise<DeviceSession | null> => {
@@ -226,13 +277,18 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
   // SECURITY: Navigation gates only. Backend authorization is required for every
   // read/write. Neither registration completion nor a remembered ID grants access.
   const active = deviceSession && !deviceSession.locked;
-  // Real JWT sessions get mode 'confirmed'; only legacy mock sessions keep 'mock'.
-  const ownerMode: OwnerIdentity['mode'] = MOCK_AUTH_ENABLED ? 'mock' : 'confirmed';
+  // Determine session mode:
+  //   'mock'          — dev-only mock auth is enabled
+  //   'offline-grace' — PIN verified offline; no live JWT; network was unavailable at login
+  //   'confirmed'     — real JWT session backed by the server
+  // Offline-grace sessions are detected by an ID prefix set in setOfflineGrace().
+  const isOfflineGrace = typeof deviceSession?.id === 'string' && deviceSession.id.startsWith('offline-grace-');
+  const ownerMode: OwnerIdentity['mode'] = MOCK_AUTH_ENABLED ? 'mock' : isOfflineGrace ? 'offline-grace' : 'confirmed';
   const owner: OwnerIdentity | null = active && deviceSession.role === 'owner' ? { ...deviceSession.owner, name: profiles.get(deviceSession.owner.id)?.name ?? deviceSession.owner.name, mode: ownerMode } : null;
   const mockSession: MockOwnerSession | null = owner ? { kind: 'mock', role: 'owner', owner } : null;
 
   return (
-    <AuthFlowContext.Provider value={{ mockAuthEnabled: MOCK_AUTH_ENABLED, mockSession, deviceSession, restoring, rememberedIdentities, switchAccount, refreshSession, lock, loginToastExpiresAt, dismissLoginToast: () => setLoginToastExpiresAt(null), notifyLogin: () => setLoginToastExpiresAt(Date.now() + 15000), owner, draft, setDraft, registrationPreview, setRegistrationPreview, selectedRole, setSelectedRole, selectedOwnerId, setSelectedOwnerId, completion, setCompletion, dashboardAccess, setDashboardAccess, clear }}>
+    <AuthFlowContext.Provider value={{ mockAuthEnabled: MOCK_AUTH_ENABLED, mockSession, deviceSession, restoring, rememberedIdentities, switchAccount, refreshSession, lock, loginToastExpiresAt, dismissLoginToast: () => setLoginToastExpiresAt(null), notifyLogin: () => setLoginToastExpiresAt(Date.now() + 15000), setOfflineGrace, owner, draft, setDraft, registrationPreview, setRegistrationPreview, selectedRole, setSelectedRole, selectedOwnerId, setSelectedOwnerId, completion, setCompletion, dashboardAccess, setDashboardAccess, clear }}>
       {children}
     </AuthFlowContext.Provider>
   );

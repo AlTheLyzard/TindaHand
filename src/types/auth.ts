@@ -35,7 +35,7 @@ export type AuthSecretStorage = {
   remove(key: string): Promise<void>;
 };
 export type MockOwnerSession = { kind: 'mock'; role: 'owner'; owner: RegisteredOwner };
-export type OwnerIdentity = RegisteredOwner & { mode: 'confirmed' | 'preview' | 'mock' };
+export type OwnerIdentity = RegisteredOwner & { mode: 'confirmed' | 'preview' | 'mock' | 'offline-grace' };
 export type RegistrationResult =
   | { status: 'confirmed'; account: RegisteredOwner }
   | { status: 'error'; message: string; fields?: RegistrationErrors };

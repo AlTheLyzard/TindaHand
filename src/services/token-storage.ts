@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { kaheraOfflinePinHashKey, ownerOfflinePinHashKey } from '@/services/auth-storage-keys';
 
 const TOKEN_KEY = 'tindahand_jwt';
 const OWNER_NAME_KEY = 'tindahand_owner_name';
@@ -87,4 +88,40 @@ export async function getSessionLocked(): Promise<boolean> {
 /** Clear the locked flag — call when the user successfully unlocks with PIN. */
 export async function clearSessionLocked(): Promise<void> {
   await SecureStore.deleteItemAsync(SESSION_LOCKED_KEY).catch(() => {});
+}
+
+// ── Offline login cache ──────────────────────────────────────────────────────
+// Stores a salted SHA-256 hash of the last successfully authenticated PIN for
+// each identity so the app can verify credentials when the network is unavailable.
+// All hashes live in the OS keychain (expo-secure-store) and are cleared on
+// explicit logout, 5 consecutive wrong PINs, or successful online re-login (re-write).
+
+/** Persist a hashed May-Ari (owner) PIN after a successful online login. */
+export async function saveOfflineOwnerPinHash(ownerId: string, hash: string): Promise<void> {
+  await SecureStore.setItemAsync(ownerOfflinePinHashKey(ownerId), hash);
+}
+
+/** Retrieve the cached May-Ari PIN hash, or null if not present. */
+export async function getOfflineOwnerPinHash(ownerId: string): Promise<string | null> {
+  return SecureStore.getItemAsync(ownerOfflinePinHashKey(ownerId));
+}
+
+/** Remove the cached May-Ari PIN hash (called on explicit logout). */
+export async function clearOfflineOwnerPinHash(ownerId: string): Promise<void> {
+  await SecureStore.deleteItemAsync(ownerOfflinePinHashKey(ownerId)).catch(() => {});
+}
+
+/** Persist a hashed Kahera (cashier) PIN after a successful online login. */
+export async function saveOfflineKaheraPinHash(ownerId: string, kaheraId: string, hash: string): Promise<void> {
+  await SecureStore.setItemAsync(kaheraOfflinePinHashKey(ownerId, kaheraId), hash);
+}
+
+/** Retrieve the cached Kahera PIN hash, or null if not present. */
+export async function getOfflineKaheraPinHash(ownerId: string, kaheraId: string): Promise<string | null> {
+  return SecureStore.getItemAsync(kaheraOfflinePinHashKey(ownerId, kaheraId));
+}
+
+/** Remove the cached Kahera PIN hash (called on explicit logout). */
+export async function clearOfflineKaheraPinHash(ownerId: string, kaheraId: string): Promise<void> {
+  await SecureStore.deleteItemAsync(kaheraOfflinePinHashKey(ownerId, kaheraId)).catch(() => {});
 }
