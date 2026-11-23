@@ -52,49 +52,59 @@ export function useTransactions() {
     [scope, revision, pos, ledger],
   );
 
+  // ── Mock/preview path: re-project whenever the local data source changes ──
+  // This runs any time pos.sales, the ledger, or scope changes — including when
+  // pos.sales is hydrated from disk after a restart.  The confirmed path has its
+  // own effect below so the two never interfere.
   useEffect(() => {
+    if (confirmedMode) return;
     let active = true;
-    if (confirmedMode) {
-      // Real API path: fetch from backend; track loading separately.
-      // For cashier sessions, scope the results to this Kahera's own records so
-      // their history never shows another Kahera's or the May-Ari's transactions.
-      const kaheraId = operator?.operatorId ?? undefined;
-      setApiState(prev => ({ ...prev, loading: true, error: "" }));
-      void getTransactions({ kaheraId })
-        .then((rows) => {
-          if (active) setApiState({ rows, loading: false, error: "" });
-        })
-        .catch(() => {
-          if (active)
-            setApiState({ rows: [], loading: false, error: "Could not load transactions. Please try again." });
-        });
-    } else {
-      // Mock/preview path: project from local seed.
-      const request: Promise<TransactionRecord[]> = ownerId
-        ? readTransactions(ownerId, source)
-        : Promise.resolve([]);
-      void request
-        .then((rows) => {
-          if (active) setResult({ rows, source, error: "" });
-        })
-        .catch(() => {
-          if (active)
-            setResult({ rows: [], source, error: "Could not load transactions. Please try again." });
-        });
-    }
+    const request: Promise<TransactionRecord[]> = ownerId
+      ? readTransactions(ownerId, source)
+      : Promise.resolve([]);
+    void request
+      .then((rows) => {
+        if (active) setResult({ rows, source, error: "" });
+      })
+      .catch(() => {
+        if (active)
+          setResult({ rows: [], source, error: "Could not load transactions. Please try again." });
+      });
     return () => {
       active = false;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId, confirmedMode, scope, revision]);
+  // source is a stable useMemo ref — it only changes when pos, ledger, scope, or
+  // revision changes, so this effect is safe to track it directly.
+  }, [ownerId, confirmedMode, source]);
+
+  // ── Confirmed (real API) path: fetch from backend on revision bump ──────
+  useEffect(() => {
+    if (!confirmedMode) return;
+    let active = true;
+    const kaheraId = operator?.operatorId ?? undefined;
+    setApiState(prev => ({ ...prev, loading: true, error: "" }));
+    void getTransactions({ kaheraId })
+      .then((rows) => {
+        if (active) setApiState({ rows, loading: false, error: "" });
+      })
+      .catch(() => {
+        if (active)
+          setApiState({ rows: [], loading: false, error: "Could not load transactions. Please try again." });
+      });
+    return () => {
+      active = false;
+    };
+  }, [confirmedMode, operator?.operatorId, revision]);
 
   // Re-fetch when the screen comes back into focus (e.g. after recording a sale).
+  // For the confirmed path, bump revision so the API effect re-fires.
+  // For the mock path, source already reflects the latest pos.sales so a revision
+  // bump isn't strictly necessary — but it re-projects the seed in case new
+  // quick-add records landed while the screen was off-focus.
   useFocusEffect(
     useCallback(() => {
-      if (confirmedMode) {
-        setRevision((value) => value + 1);
-      }
-    }, [confirmedMode]),
+      setRevision((value) => value + 1);
+    }, []),
   );
 
   if (confirmedMode) {
