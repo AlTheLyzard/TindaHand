@@ -5,13 +5,15 @@ import {
   getAssets,
   loadMockInventory,
 } from '@/services/inventory';
+import { getCustomers } from '@/services/pos';
+import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { loadJson, persistJson } from '@/services/local-persist';
 import type { BusinessAsset } from '@/types/inventory';
 import { useAuthFlow } from '@/state/auth-flow';
 import type { InventoryProduct } from '@/types/inventory';
 import type { Customer, LocalSale } from '@/types/pos';
 import { inventoryReducer, type InventoryAction, type InventoryStore } from '@/utils/inventory';
-import { customerNameKey } from '@/utils/pos-checkout';
+import { customerNameKey, emptyPosLedger } from '@/utils/pos-checkout';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 const InventoryContext = createContext<{ store: InventoryStore; getStore: () => InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void; refetchProducts: () => Promise<void>; refetchAssets: () => Promise<void> } | null>(null);
@@ -48,7 +50,16 @@ function mapApiProduct(p: ReturnType<typeof Object.assign> & { id: string; name:
 
 function SessionInventory({ children, ownerId }: { children: ReactNode; ownerId: string }) {
   const auth = useAuthFlow();
-  const [store, setStore] = useState<InventoryStore>(() => loadMockInventory());
+  // Real backend: start with an empty customer list so no mock names appear in the
+  // partial-payment customer picker. Customers are populated from the backend on
+  // session start and registered locally as new names are entered.
+  const [store, setStore] = useState<InventoryStore>(() => {
+    const base = loadMockInventory();
+    if (!MOCK_AUTH_ENABLED && base.pos) {
+      return { ...base, pos: { ...base.pos, customers: [] } };
+    }
+    return base;
+  });
   const current = useRef(store);
 
   // Hydrate persisted POS sales on mount (runs once per session).
@@ -71,7 +82,15 @@ function SessionInventory({ children, ownerId }: { children: ReactNode; ownerId:
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Fetch products from the API and replace the store's product list with the result. */
+  /** Fetch products from the API and replace the store's product list with the result.
+   *
+   * When using the real backend, we merge remote stock with local stock by keeping
+   * the lower value for each product — this preserves optimistic deductions from local
+   * sales that the backend's products endpoint may not yet reflect (e.g. if /inventory/products
+   * caches stock counts separately from the checkout endpoint). This means a restock that
+   * the backend records will still appear, but a just-sold product won't have its stock
+   * silently bumped back up by the next focus-triggered refetch.
+   */
   const refetchProducts = useCallback(async () => {
     if (!auth.deviceSession || auth.deviceSession.locked) return;
     try {
@@ -81,7 +100,20 @@ function SessionInventory({ children, ownerId }: { children: ReactNode; ownerId:
       // We only keep existing data if the call throws (offline / server error).
       const realProducts: InventoryProduct[] = apiProducts.map(mapApiProduct);
       setStore(previous => {
-        const next = { ...previous, products: realProducts };
+        // Build a lookup of current local stock per product so we can keep
+        // the lower of (local, remote) — preserving any optimistic deductions
+        // that the backend products list hasn't caught up with yet.
+        const localStock = new Map(previous.products.map(p => [p.id, p.stock]));
+        const merged = realProducts.map(p => {
+          const local = localStock.get(p.id);
+          if (!MOCK_AUTH_ENABLED && local !== undefined && local < p.stock) {
+            // Local has a lower count — keep it so the UI doesn't flicker upward
+            // while waiting for the backend products endpoint to catch up.
+            return { ...p, stock: local };
+          }
+          return p;
+        });
+        const next = { ...previous, products: merged };
         current.current = next;
         return next;
       });
@@ -113,10 +145,10 @@ function SessionInventory({ children, ownerId }: { children: ReactNode; ownerId:
     }
   }, [auth.deviceSession]);
 
-  // Try to load real products and assets from the API on session start.
-  // The store always starts with mock data (loadMockInventory), so if the API
-  // is unreachable or returns an error, the mock data remains visible.
-  // On success, real data replaces the mock so the app uses real IDs.
+  // Try to load real products, assets, and (when using the real backend) customers
+  // from the API on session start. The store always starts with mock data
+  // (loadMockInventory), so if the API is unreachable or returns an error the mock
+  // data remains visible. On success, real data replaces the mock.
   useEffect(() => {
     // Only fetch when there's an active authenticated session (owner or kahera).
     if (!auth.deviceSession || auth.deviceSession.locked) return;
@@ -150,6 +182,26 @@ function SessionInventory({ children, ownerId }: { children: ReactNode; ownerId:
     }).catch(() => {
       // Offline or server error — keep whatever is already in state.
     });
+    // Real backend only: seed the POS customer picker with the store's real customers
+    // so existing names appear as suggestions in partial payment.
+    if (!MOCK_AUTH_ENABLED) {
+      getCustomers().then(apiCustomers => {
+        if (cancelled) return;
+        setStore(previous => {
+          const ledger = previous.pos ?? emptyPosLedger();
+          // Merge: keep any locally-registered customers (from this session's sales)
+          // that aren't already in the backend list.
+          const remoteIds = new Set(apiCustomers.map(c => c.id));
+          const localOnly = ledger.customers.filter(c => !remoteIds.has(c.id));
+          const merged = [...apiCustomers, ...localOnly];
+          const next = { ...previous, pos: { ...ledger, customers: merged } };
+          current.current = next;
+          return next;
+        });
+      }).catch(() => {
+        // Not critical — the picker will just show no prior customers.
+      });
+    }
     return () => { cancelled = true; };
   // Re-fetch whenever the user's session changes (e.g. owner logs in then kahera logs in).
   // eslint-disable-next-line react-hooks/exhaustive-deps

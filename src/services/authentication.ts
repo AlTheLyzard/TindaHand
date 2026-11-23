@@ -554,6 +554,43 @@ export function createAuthenticationService(
       // - Expected Input/Payload: { name, avatarId }; operator identity derived from session
       // - Expected Response: Canonical updated Cashier profile
       // - UI State to Wire: Refresh profile/session snapshots after confirmation and retain drafts on failure
+
+      // Real backend path — session is validated by the backend JWT, not by the
+      // mock service's in-memory cashier list (which is empty in production).
+      if (!MOCK_AUTH_ENABLED) {
+        if (!session || session.role !== "operator" || session.locked)
+          return { ok: false, message: "An active Operator session is required." };
+        const operatorId = session.operatorId;
+        const currentSessionId = session.id;
+        try {
+          const updated = await updateCashierApi(operatorId, {
+            name: input.name,
+            avatarId: input.avatarId,
+          });
+          // Patch the in-memory session so profile header reflects the new name immediately.
+          if (session?.id === currentSessionId && session.role === "operator") {
+            session = {
+              ...session,
+              displayName: updated.name,
+              operator: { ...session.operator, name: updated.name, avatarId: updated.avatarId },
+            };
+          }
+          return {
+            ok: true,
+            value: {
+              id: updated.id,
+              ownerId: updated.ownerId,
+              name: updated.name,
+              avatarId: updated.avatarId,
+              status: updated.status,
+            },
+          };
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Could not save your profile. Please try again.";
+          return { ok: false, message };
+        }
+      }
+
       const current = live();
       if (!current || current.role !== "operator" || current.locked)
         return {
