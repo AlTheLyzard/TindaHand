@@ -12,7 +12,7 @@ import { ConfirmationActions } from './confirmation-actions';
 export function ConfirmationContent({ title, message, cancelLabel, confirmLabel, onCancel, onConfirm, variant = 'default', balancedActions = false, stackedActions = true, leadingIcon, titleColor, destructive = true, cancelVariant, iconTone = 'danger', busy = false, confirmDisabled = false }: {
   title: string; message: string; cancelLabel: string; confirmLabel: string;
   onCancel: () => void; onConfirm: () => void;
-  variant?: 'default' | 'quickAdd';
+  variant?: 'default' | 'quickAdd' | 'quickAddDialog';
   balancedActions?: boolean;
   stackedActions?: boolean;
   leadingIcon?: ReactNode;
@@ -31,6 +31,15 @@ export function ConfirmationContent({ title, message, cancelLabel, confirmLabel,
   }, []);
   const iconColor = iconTone === 'blue' ? tokens.color.brightBlue : tokens.color.errorBase;
   const iconSurface = iconTone === 'blue' ? tokens.color.softBlue : tokens.color.errorSoft;
+  if (variant === 'quickAddDialog') return <View accessibilityViewIsModal className="w-full max-w-[340px] self-center rounded-card bg-white p-4">
+      <View className="mb-4 flex-row items-center gap-2 border-b border-outline pb-3 pr-5">
+      {leadingIcon ?? <PosIcon name="alert" size={24} color={iconColor} />}
+      <Text accessibilityRole="header" className="flex-1 type-list-financial leading-6" style={{ color: titleColor ?? tokens.color.errorBase }}>{title}</Text>
+      <IconButton ref={close} accessibilityLabel="Close confirmation" onPress={onCancel} className="absolute -right-4 -top-4 min-h-12 min-w-12 items-center justify-center" icon={({ color }) => <PosIcon name="close" size={20} color={color} />} />
+    </View>
+    <Text className="mb-4 type-micro-financial-rate leading-[21px] text-text-primary">{message}</Text>
+    <ConfirmationActions destructive={destructive} cancelVariant={cancelVariant ?? 'destructiveOutline'} confirmLabel={confirmLabel} cancelLabel={cancelLabel} onConfirm={onConfirm} onCancel={onCancel} busy={busy} confirmDisabled={confirmDisabled} />
+  </View>;
   if (variant === 'quickAdd') return <View accessibilityViewIsModal className="w-full max-w-[340px] self-center rounded-control bg-white p-[18px]">
       <View className="mb-4 flex-row items-center gap-2 border-b border-text-secondary pb-3 pr-5">
       {leadingIcon ?? (iconTone === 'blue'

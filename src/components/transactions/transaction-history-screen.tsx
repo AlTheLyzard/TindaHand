@@ -8,16 +8,15 @@ import { DashboardNavigation } from '@/components/dashboard/dashboard-navigation
 import { MainHeader } from '@/components/dashboard/main-header';
 import { OperatorHeader } from '@/components/operator/operator-header';
 import { PaginationControls } from '@/components/ui/pagination-controls';
-import { PosChip } from '@/components/pos/pos-chip';
 import { PosIcon } from '@/components/pos/pos-icon';
-import { Button } from '@/components/ui/button';
+import { Button, IconButton } from '@/components/ui/button';
 import { BackButton } from '@/components/ui/back-button';
 import { Skeleton, SkeletonBar } from '@/components/ui/content-state';
 import tokens from '@/constants/design-tokens.json';
 import { operatorTransactionCategories, transactionCategories } from '@/data/transactions';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useNavigationHeight } from '@/state/navigation-motion';
-import type { TransactionCategory, TransactionFilters, TransactionRecord } from '@/types/transactions';
+import type { TransactionCategory, TransactionFilters, TransactionRecord, TransactionSortOrder } from '@/types/transactions';
 import { emptyTransactionFilters, filterTransactions, transactionAmount, transactionMetadata } from '@/utils/transactions';
 import { TransactionFilterSheet } from './transaction-filter-sheet';
 
@@ -32,12 +31,16 @@ function TransactionRow({ record }: { record: TransactionRecord }) {
   const metadata = transactionMetadata(record);
   const partial = record.saleTotalCentavos !== undefined && (record.outstandingCentavos ?? 0) > 0;
   const details = partial ? ` Sale total ${transactionAmount({ amountCentavos: record.saleTotalCentavos!, direction: 'neutral' })}. Received ${amount}. Outstanding ${transactionAmount({ amountCentavos: record.outstandingCentavos!, direction: 'neutral' })}.` : '';
-  const amountText = <Text testID="transaction-amount" style={[styles.amount, { color: record.direction === 'in' ? tokens.color.successBase : record.direction === 'out' ? tokens.color.errorBase : tokens.color.textSecondary }]}>{amount.replace(/ /g, '\u00a0')}</Text>;
+  const amountText = <Text testID="transaction-amount" style={[styles.amount, {
+    lineHeight: tokens.typography.listFinancial.lineHeight * fontScale,
+    color: record.direction === 'in' ? tokens.color.successBase : record.direction === 'out' ? tokens.color.errorBase : tokens.color.textSecondary,
+  }]}>{amount.replace(/ /g, '\u00a0')}</Text>;
   return <View testID="transaction-row" accessible accessibilityLabel={`${title}. ${metadata}. ${amount}.${details}`}
     style={[styles.row, { flexDirection: stacked ? 'column' : 'row', alignItems: stacked ? 'stretch' : 'center' }]}>
     <View style={{ flex: stacked ? undefined : 1, minWidth: 0, gap: 2 }}>
-      <Text style={styles.rowTitle}>{title}</Text>
-      <Text style={styles.metadata} numberOfLines={fontScale > 1.25 ? undefined : 1}>{metadata}</Text>
+      <Text style={[styles.rowTitle, { lineHeight: tokens.typography.labelNav.lineHeight * fontScale }]}>{title}</Text>
+      <Text style={[styles.metadata, { lineHeight: tokens.typography.helper.lineHeight * fontScale }]}
+        numberOfLines={fontScale > 1.25 ? undefined : 1}>{metadata}</Text>
     </View>
     {stacked ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}>{amountText}</ScrollView> : amountText}
   </View>;
@@ -53,6 +56,7 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
   const { rows, loading, error, retry } = useTransactions();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<TransactionCategory>('all');
+  const [sortOrder, setSortOrder] = useState<TransactionSortOrder>('newest');
   const [filters, setFilters] = useState<TransactionFilters>(emptyTransactionFilters);
   const [filterOpen, setFilterOpen] = useState(false);
   const list = useRef<FlatList<TransactionRecord>>(null);
@@ -60,9 +64,13 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
   const navigationHeight = useNavigationHeight();
   const { fontScale } = useWindowDimensions();
   const categories = operator ? operatorTransactionCategories : transactionCategories;
-  const filtered = useMemo(() => filterTransactions(rows, query, category, filters), [rows, query, category, filters]);
-  const hasFilters = !!filters.from || !!filters.to || filters.paymentMethod !== 'all';
-  const pageKey = JSON.stringify([query, category, filters, filtered.map(record => record.id)]);
+  const filtered = useMemo(() => {
+    const result = filterTransactions(rows, query, category, filters);
+    return sortOrder === 'newest' ? result : result.sort((a, b) =>
+      Date.parse(a.occurredAt) - Date.parse(b.occurredAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  }, [rows, query, category, filters, sortOrder]);
+  const hasFilters = !!filters.from || !!filters.to || filters.paymentMethod !== 'all' || category !== 'all' || sortOrder !== 'newest';
+  const pageKey = JSON.stringify([query, category, filters, sortOrder, filtered.map(record => record.id)]);
   const [pageState, setPageState] = useState<{ key: string; index: number }>({ key: '', index: 0 });
   const pageCount = Math.max(1, Math.ceil(filtered.length / transactionPageSize));
   const pageIndex = pageState.key === pageKey ? Math.min(pageState.index, pageCount - 1) : 0;
@@ -73,7 +81,7 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
   // - UI State to Wire: Calculate page count from server total and handle page loading/errors
   const pageRows = filtered.slice(pageIndex * transactionPageSize, (pageIndex + 1) * transactionPageSize);
   const moveToTop = () => list.current?.scrollToOffset({ offset: 0, animated: false });
-  const reset = () => { Keyboard.dismiss(); setQuery(''); setCategory('all'); setFilters(emptyTransactionFilters()); moveToTop(); };
+  const reset = () => { Keyboard.dismiss(); setQuery(''); setCategory('all'); setSortOrder('newest'); setFilters(emptyTransactionFilters()); moveToTop(); };
   const goToPage = (index: number) => {
     setPageState({ key: pageKey, index });
     Keyboard.dismiss();
@@ -94,17 +102,13 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <SearchBar containerStyle={{ flex: 1 }} label="Search transactions" accessibilityHint="Search by transaction number, customer, payee, or description."
-              value={query} onChangeText={value => { setQuery(value); moveToTop(); }} placeholder="Search transactions..."
+              value={query} onChangeText={value => { setQuery(value); moveToTop(); }} placeholder="Search transactions"
               selectionColor={tokens.color.brightBlue} onSubmitEditing={Keyboard.dismiss}
               onClear={() => { setQuery(''); moveToTop(); }} clearLabel="Clear transaction search" />
-            <Button compact variant="text" fullWidth={false} accessibilityLabel={hasFilters ? 'Filter transactions, filters applied' : 'Filter transactions'}
+            <IconButton variant="text" accessibilityLabel={hasFilters ? 'Filter transactions, filters applied' : 'Filter transactions'}
               accessibilityState={{ expanded: filterOpen, selected: hasFilters }} onPress={() => { Keyboard.dismiss(); setFilterOpen(true); }}
-              iconPosition="trailing" icon={props => <PosIcon name="filter" {...props} />}>Filter</Button>
+              icon={({ color }) => <PosIcon name="filter" size={24} color={color} />} />
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, marginRight: -24 }} contentContainerStyle={{ gap: 8, paddingRight: 24 }}>
-            {categories.map(item => <PosChip key={item.value} appearance="category" label={item.label} selected={category === item.value}
-              onPress={() => { setCategory(item.value); moveToTop(); }} />)}
-          </ScrollView>
         </View>
         <FlatList ref={list} data={loading || error ? [] : pageRows} keyExtractor={record => record.id} renderItem={({ item }) => <TransactionRow record={item} />}
           style={{ flex: 1, minHeight: 0, width: '100%', maxWidth: 460, alignSelf: 'center' }}
@@ -113,11 +117,11 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
           ListEmptyComponent={loading ? <TransactionSkeleton /> : <View style={styles.empty}>
             <Text accessibilityRole="header" style={styles.emptyTitle}>{error ? 'Unable to load transactions' : rows.length ? 'No matching transactions' : 'No transactions yet'}</Text>
             <Text accessibilityRole={error ? 'alert' : undefined} accessibilityLiveRegion="polite" style={styles.emptyCopy}>
-              {error || (rows.length ? 'Try another search, category, date range, or payment method.' : operator
+              {error || (rows.length ? 'Try another search, type, date range, or payment method.' : operator
                 ? 'Recorded sales and customer receivables will appear here.'
                 : 'Recorded sales, customer payments, and expenses will appear here.')}
             </Text>
-            {error ? <Button onPress={retry}>Try Again</Button> : (rows.length > 0 || query || category !== 'all' || hasFilters) ? <Button variant="secondary" onPress={reset}>Clear search and filters</Button> : null}
+            {error ? <Button onPress={retry}>Try Again</Button> : (rows.length > 0 || query || hasFilters) ? <Button variant="secondary" onPress={reset}>Clear search and filters</Button> : null}
           </View>}
           ListFooterComponent={!loading && !error && filtered.length > transactionPageSize ? <View style={styles.pagination}>
             <PaginationControls pageIndex={pageIndex} pageCount={pageCount} itemName="transaction" onPageChange={goToPage} />
@@ -127,7 +131,10 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
       <DashboardNavigation onHome={() => router.navigate(operator ? '/operator-pos' : '/owner-dashboard')}
         onPos={() => router.navigate(operator ? '/operator-pos' : '/owner-pos')} onUnavailable={() => {}} />
     </View>
-    {filterOpen && <TransactionFilterSheet applied={filters} onClose={() => setFilterOpen(false)} onApply={value => { setFilters(value); moveToTop(); }} />}
+    {filterOpen && <TransactionFilterSheet applied={filters} appliedCategory={category} appliedSort={sortOrder}
+      categories={categories} onClose={() => setFilterOpen(false)} onApply={(value, nextCategory, nextSort) => {
+        setFilters(value); setCategory(nextCategory); setSortOrder(nextSort); moveToTop();
+      }} />}
   </SafeAreaView>;
 }
 
@@ -135,9 +142,9 @@ const styles = StyleSheet.create({
   controls: { width: '100%', maxWidth: 460, alignSelf: 'center', paddingHorizontal: 24, paddingTop: tokens.spacing.headerTitleGap, gap: 8, backgroundColor: tokens.color.appBackground },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
   row: { minHeight: 72, paddingHorizontal: 16, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard },
-  rowTitle: { fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: 18, color: tokens.color.textPrimary },
-  metadata: { fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.textPlaceholder },
-  amount: { flexShrink: 0, fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.listFinancial.fontSize, lineHeight: 24 },
+  rowTitle: { fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: tokens.typography.labelNav.lineHeight, color: tokens.color.textPrimary },
+  metadata: { fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: tokens.typography.helper.lineHeight, color: tokens.color.textPlaceholder },
+  amount: { flexShrink: 0, fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.listFinancial.fontSize, lineHeight: tokens.typography.listFinancial.lineHeight },
   empty: { padding: 20, marginTop: 20, gap: 16, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard },
   emptyTitle: { fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 33, color: tokens.color.textPrimary },
   emptyCopy: { fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microFinancialRate.fontSize, lineHeight: 21, color: tokens.color.textSecondary },

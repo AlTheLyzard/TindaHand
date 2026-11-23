@@ -9,15 +9,17 @@ import { calendarDays, inclusiveCalendarDays, localToday, moveCalendarMonth, sel
 
 type CalendarProps = {
   selection: CalendarSelection; mode: 'single' | 'range'; month: string; onMonth: (month: string) => void;
-  onSelect: (date: string) => void; minDate?: string; maxDate?: string; helperText?: string;
+  onSelect: (date: string) => void; minDate?: string; maxDate?: string; helperText?: string; showFooter?: boolean; compact?: boolean;
 };
 
 /** Shared calendar surface. Callers own draft/commit boundaries and contextual actions. */
-export function DateCalendar({ selection, mode, month, onMonth, onSelect, minDate = '0001-01-01', maxDate = '9999-12-31', helperText }: CalendarProps) {
+export function DateCalendar({ selection, mode, month, onMonth, onSelect, minDate = '0001-01-01', maxDate = '9999-12-31', helperText, showFooter = true, compact = false }: CalendarProps) {
   const count = inclusiveCalendarDays(selection);
   const { fontScale } = useWindowDimensions();
   const [gridWidth, setGridWidth] = useState(0);
-  const daySize = Math.min(Math.max(36, Math.ceil(22 * fontScale) + 12), gridWidth ? gridWidth / 7 - 2 : 36);
+  const daySize = compact
+    ? Math.min(Math.max(30, Math.ceil(20 * fontScale) + 8), gridWidth ? gridWidth / 7 - 2 : 34)
+    : Math.min(Math.max(36, Math.ceil(22 * fontScale) + 12), gridWidth ? gridWidth / 7 - 2 : 36);
   const today = localToday();
   const previous = moveCalendarMonth(month, -1, minDate, maxDate);
   const next = moveCalendarMonth(month, 1, minDate, maxDate);
@@ -35,14 +37,14 @@ export function DateCalendar({ selection, mode, month, onMonth, onSelect, minDat
       const endpoint = date === selection.from || date === selection.to;
       const between = mode === 'range' && !!count && date > selection.from && date < selection.to;
       return <MotionPressable key={date} accessibilityRole="button" accessibilityLabel={`${formatCalendarDate(date)}${date === today ? ', today' : ''}`} accessibilityState={{ selected: endpoint || between, disabled }} aria-pressed={endpoint || between} disabled={disabled}
-        onPress={() => onSelect(date)} style={{ width: `${100 / 7}%`, minHeight: 48, marginVertical: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: between ? tokens.color.accentContainer : 'transparent' }}>
+        onPress={() => onSelect(date)} style={{ width: `${100 / 7}%`, minHeight: compact ? 40 : 48, marginVertical: compact ? 1 : 2, alignItems: 'center', justifyContent: 'center', backgroundColor: between ? tokens.color.accentContainer : 'transparent' }}>
         <View testID={endpoint ? 'calendar-selected-day' : undefined} style={{ width: daySize, height: daySize, borderRadius: daySize / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: endpoint ? tokens.button.primary.default : 'transparent', borderWidth: date === today && !endpoint && !between ? 1 : 0, borderColor: tokens.color.accentBase }}>
           <Text adjustsFontSizeToFit numberOfLines={1} style={{ width: daySize, height: daySize, lineHeight: daySize, textAlign: 'center', textAlignVertical: 'center', includeFontPadding: false,
             fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.h3Heading.fontSize, color: endpoint ? tokens.color.surfaceCard : disabled ? tokens.color.textDisabled : date.startsWith(month) ? tokens.color.textPrimary : tokens.color.textPlaceholder }}>{Number(date.slice(-2))}</Text>
         </View>
       </MotionPressable>;
     })}</View>
-    <View style={{ padding: 4, gap: 8 }}>
+    {showFooter && <View style={{ padding: 4, gap: 8 }}>
       <Text accessibilityLiveRegion="polite" style={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, color: tokens.button.primary.default }}>
         {mode === 'single' ? `Selected: ${selection.from ? formatCalendarDate(selection.from) : 'Choose a date'}`
           : `From: ${selection.from ? formatCalendarDate(selection.from) : '—'} → To: ${selection.to ? formatCalendarDate(selection.to) : '—'}${count ? ` · ${count} ${count === 1 ? 'day' : 'days'}` : ''}`}
@@ -50,7 +52,7 @@ export function DateCalendar({ selection, mode, month, onMonth, onSelect, minDat
       <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microCaption.fontSize, lineHeight: 18, color: tokens.color.textSecondary }}>
         {helperText ?? (mode === 'range' ? 'Choose a start and end date. Both dates are included.' : 'Choose one date, then tap Confirm Date.')}
       </Text>
-    </View>
+    </View>}
   </View>;
 }
 

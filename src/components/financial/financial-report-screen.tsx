@@ -15,7 +15,7 @@ import { quickAddColors } from '@/components/dashboard/quick-add-ui';
 import { useTranslation } from '@/i18n/use-translation';
 import { useFinancialReport } from '@/hooks/use-financial-report';
 import { exportFinancialPdf } from '@/services/financial-export';
-import { periodLabel, reportTimestamp, reportTitles } from '@/utils/financial';
+import { reportTitles } from '@/utils/financial';
 import type { ReportKind } from '@/types/financial';
 
 export function FinancialReportScreen({ kind }: { kind: ReportKind }) {
@@ -55,16 +55,9 @@ export function FinancialReportScreen({ kind }: { kind: ReportKind }) {
     setSuccessEvent(`${kind}-${exportCount.current}`);
   }
   return <FinancialFrame title={title} refreshing={state.loading} onRefresh={state.refresh}>
-    <ReportFilters draft={state.filters.draft} single={single} pending={state.pending} busy={state.loading || generating}
+    <ReportFilters draft={state.filters.draft} applied={state.filters.applied} single={single} busy={state.loading || generating}
       onDraft={state.setDraft} onApply={state.apply} onReset={state.reset} />
-    {report && <View className="mt-4 gap-2">
-      <View accessibilityLiveRegion="polite" className="gap-1 rounded-control bg-accent-soft p-3">
-        <Text className=" type-helper text-brand">{t(state.pending ? single ? 'financial.unchangedDate' : 'financial.unchanged' : single ? 'financial.appliedDate' : 'financial.applied')}</Text>
-        <Text className=" type-button-cta text-brand">{periodLabel(report.selection, single)}</Text>
-      </View>
-      <Text className=" type-helper leading-4 text-text-secondary">{t('financial.lastUpdated', { date: reportTimestamp(report.generatedAt) })}{'\n'}{t('financial.refreshHint')}</Text>
-    </View>}
-    <View className="mt-8">
+    <View className="mt-6">
       {state.error ? <EmptyState title={t('financial.loadFailed')} description={t('financial.refreshHint')} action={t('financial.refresh')} onAction={state.refresh} /> : state.loading ? <Skeleton label={title}><View className="gap-4"><SkeletonBar height={180} /><SkeletonBar height={100} /></View></Skeleton> : report && <>
         {!report.hasActivity && <View className="mb-5"><EmptyState title={t('financial.empty')} description={t('financial.emptyHint')} /></View>}
         <ReportContent report={report} />

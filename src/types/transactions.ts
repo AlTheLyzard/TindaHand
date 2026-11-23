@@ -27,4 +27,6 @@ export type TransactionRecord = {
   outstandingCentavos?: number;
 };
 export type TransactionCategory = 'all' | TransactionType;
-export type TransactionFilters = { from: string; to: string; paymentMethod: 'all' | TransactionMethod };
+export type TransactionFilterMethod = 'all' | TransactionMethod | 'kulang';
+export type TransactionSortOrder = 'newest' | 'oldest';
+export type TransactionFilters = { from: string; to: string; paymentMethod: TransactionFilterMethod };

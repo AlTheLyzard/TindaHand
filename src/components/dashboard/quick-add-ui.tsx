@@ -1,7 +1,7 @@
 import { MoneyInput } from '@/components/ui/money-input';
 import { KeyboardInput as TextInput, KeyboardField } from '@/components/ui/keyboard-aware-scroll-view';
 import { MotionPressable } from '@/components/ui/motion-pressable';
-import { IconButton } from '@/components/ui/button';
+import { ButtonSurface, IconButton } from '@/components/ui/button';
 import { MotionRegion } from '@/components/ui/motion-content';
 import { useRef, useState, type Ref } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions, type TextInputProps, type TextInputInstance } from 'react-native';
@@ -10,9 +10,11 @@ import tokens from '@/constants/design-tokens.json';
 import type { QuickAddKind } from '@/types/quick-add';
 import { FieldLabel, fieldLabel } from '@/components/ui/field-label';
 import { formatCalendarDate } from '@/utils/date';
+import { expenseCategoryLabel } from '@/utils/expenses';
 
 export const quickAddLabels: Record<QuickAddKind, string> = { customerDebt: 'Customer Debt', storeDebt: 'Store Debt', expense: 'Expense' };
 export const quickAddColors = { ink: tokens.color.textPrimary, muted: tokens.color.textSecondary, primary: tokens.color.royalBlue, backdrop: tokens.overlay.navySoft };
+const quickAddExpenseCategories = ['Water Expense', 'Electricity Expense', 'Others Expense'] as const;
 /** Equal-width segments share one neutral track; full segments expose selection to assistive tech. */
 export function QuickAddChips({ kind, onSelect }: { kind: QuickAddKind; onSelect: (kind: QuickAddKind) => void }) {
   return <View testID="quick-add-chips" accessibilityRole="tablist" accessibilityLabel="Quick Add form" style={{ flexDirection: 'row', flexShrink: 0, gap: 4, padding: 4, borderRadius: 12, backgroundColor: tokens.color.surfaceSubtle }}>
@@ -23,6 +25,34 @@ export function QuickAddChips({ kind, onSelect }: { kind: QuickAddKind; onSelect
       <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ maxWidth: '100%', fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: tokens.typography.labelNav.lineHeight,
         color: kind === value ? tokens.color.textPrimary : tokens.color.textSecondary, textAlign: 'center' }}>{quickAddLabels[value]}</Text>
     </MotionPressable>)}
+  </View>;
+}
+
+/** Quick Add uses the compact category choices shown in its expense sheet. */
+export function QuickAddExpenseCategoryField({ value, onChange, error }: {
+  value: string; onChange: (value: string) => void; error?: string;
+}) {
+  return <View style={{ gap: 4 }}>
+    <FieldLabel label="Select Expense Category" required style={quickAddStyles.label} />
+    <View accessibilityRole="radiogroup" accessibilityLabel="Expense category" style={{ flexDirection: 'row', gap: 8, paddingVertical: 4 }}>
+      {quickAddExpenseCategories.map(category => {
+        const label = expenseCategoryLabel(category);
+        const selected = value === category;
+        return <ButtonSurface key={category} accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: selected }} aria-checked={selected} hitSlop={4}
+          onPress={() => onChange(category)} variant={selected ? 'primary' : 'secondary'} style={{
+            flex: 1, minWidth: 0, minHeight: 40, paddingHorizontal: 8, paddingVertical: 0,
+            alignItems: 'center', justifyContent: 'center', borderRadius: tokens.radius.pill,
+            backgroundColor: selected ? tokens.color.royalBlue : tokens.color.appBackground,
+            borderColor: selected ? tokens.color.royalBlue : tokens.color.borderOutline, boxShadow: tokens.shadow.chip,
+          }}>
+          {({ color }) => <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={{
+            maxWidth: '100%', textAlign: 'center', fontFamily: tokens.typography.weights.semibold,
+            fontSize: tokens.typography.labelNav.fontSize, lineHeight: tokens.typography.labelNav.lineHeight, color,
+          }}>{label}</Text>}
+        </ButtonSurface>;
+      })}
+    </View>
+    {!!error && <MotionRegion><Text accessibilityRole="alert" style={quickAddStyles.error}>{error}</Text></MotionRegion>}
   </View>;
 }
 
