@@ -16,6 +16,7 @@ import { RecordSkeleton } from '@/components/ui/content-skeletons';
 import tokens from '@/constants/design-tokens.json';
 import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
+import { extractTextFromImage, isSupported as ocrSupported } from 'expo-text-extractor';
 import { usePos } from '@/state/pos';
 import type { OwnerIdentity } from '@/types/auth';
 import type { PaymentMethod } from '@/types/pos';
@@ -60,6 +61,20 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
   const referenceVisible = gcashVisible;
   const confirmationKey = orderSelectionKey(selection) + JSON.stringify(draft);
   const update = (patch: Parameters<typeof updatePayment>[0]) => { setFailure(''); updatePayment(patch); };
+  /** Extract the most likely GCash reference number (13 consecutive digits) from OCR text lines. */
+  function extractGcashReference(lines: readonly string[]): string | null {
+    for (const line of lines) {
+      // GCash reference numbers are exactly 13 digits — strip spaces and check
+      const digits = line.replace(/\s+/g, '');
+      const match = digits.match(/\d{13}/);
+      if (match) return match[0];
+    }
+    // Fallback: concatenate all digits across all lines and take the first 13-digit run
+    const allText = lines.join(' ');
+    const fallback = allText.replace(/\s+/g, '').match(/\d{13}/);
+    return fallback ? fallback[0] : null;
+  }
+
   async function openReferenceCamera() {
     if (cameraBusy) return;
     setCameraBusy(true);
@@ -76,7 +91,29 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
         }
         return;
       }
-      await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 });
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 });
+      if (result.canceled || !result.assets[0]?.uri) return;
+      const imageUri = result.assets[0].uri;
+      // Run on-device OCR (ML Kit on Android, Apple Vision on iOS)
+      if (!ocrSupported) {
+        Alert.alert('OCR not supported', 'Text recognition is not available on this device. Enter the reference number manually.');
+        return;
+      }
+      let lines: string[] = [];
+      try {
+        lines = await extractTextFromImage(imageUri);
+      } catch {
+        Alert.alert('Could not read image', 'Text recognition failed. Enter the reference number manually.');
+        return;
+      }
+      const reference = extractGcashReference(lines);
+      if (!reference) {
+        Alert.alert('No reference number found', 'Make sure the GCash reference number is clearly visible and try again, or enter it manually.');
+        return;
+      }
+      // Auto-fill the correct reference field based on payment mode
+      update(split ? { splitReference: reference } : partial ? { partialReference: reference } : { gcashReference: reference });
+      touch('reference');
     } catch {
       Alert.alert('Unable to open camera', 'Check camera access and try again.');
     } finally {
