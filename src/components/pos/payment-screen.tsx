@@ -16,7 +16,7 @@ import { RecordSkeleton } from '@/components/ui/content-skeletons';
 import tokens from '@/constants/design-tokens.json';
 import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
-
+import { extractTextFromImage, isSupported as ocrSupported } from 'expo-text-extractor';
 import { usePos } from '@/state/pos';
 import type { OwnerIdentity } from '@/types/auth';
 import type { PaymentMethod } from '@/types/pos';
@@ -94,28 +94,15 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
       const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 });
       if (result.canceled || !result.assets[0]?.uri) return;
       const imageUri = result.assets[0].uri;
-      // expo-text-extractor is a native module — not available in Expo Go.
-      // Expo Go sets global.__ExpoModules (or lacks the native registry), so we
-      // detect it via the well-known absence of the NativeModules registry entry
-      // rather than require()-ing the package (which throws unrecoverably in Metro).
-      // In a real APK/dev-build the module loads fine via the normal import below.
-      type OcrModule = { extractTextFromImage: (uri: string) => Promise<string[]>; isSupported: boolean };
-      let ocrModule: OcrModule | null = null;
-      // NativeModules is populated by the native runtime; in Expo Go the
-      // ExpoTextExtractor key is missing, so we use that as the gate.
-      const { NativeModules } = require('react-native') as { NativeModules: Record<string, unknown> };
-      if ('ExpoTextExtractor' in NativeModules) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        ocrModule = require('expo-text-extractor') as OcrModule;
-      }
-      // Run on-device OCR (ML Kit on Android, Apple Vision on iOS)
-      if (!ocrModule?.isSupported) {
+      // Run on-device OCR (ML Kit on Android, Apple Vision on iOS).
+      // In Expo Go ocrSupported is false (via the Metro alias stub in ocr-stub.ts).
+      if (!ocrSupported) {
         Alert.alert('OCR not supported', 'Text recognition is not available on this device. Enter the reference number manually.');
         return;
       }
       let lines: string[] = [];
       try {
-        lines = await ocrModule.extractTextFromImage(imageUri);
+        lines = await extractTextFromImage(imageUri);
       } catch {
         Alert.alert('Could not read image', 'Text recognition failed. Enter the reference number manually.');
         return;
