@@ -170,7 +170,7 @@ export function RoleLoginScreen({
             "Account locked due to too many failed attempts. Try again later.",
           );
         } else if (result.status === "invalid") {
-          setNotice("Invalid ID or PIN. Check your credentials and try again.");
+          setNotice(result.message ?? "Invalid ID or PIN. Check your credentials and try again.");
         } else {
           // Network / server error — attempt offline login from cached PIN hash.
           const ownerId = id.trim().toUpperCase();
@@ -245,9 +245,7 @@ export function RoleLoginScreen({
         );
       } else if (result.status === "invalid") {
         setOperatorState("invalid");
-        setNotice(
-          "Invalid May-Ari ID or PIN. Check your credentials and try again.",
-        );
+        setNotice(result.message ?? "Invalid May-Ari ID or PIN. Check your credentials and try again.");
       } else {
         // Network / server error — attempt offline login from cached PIN hash.
         // We need the ownerId+kaheraId that were saved at the last successful login.

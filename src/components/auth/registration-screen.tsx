@@ -167,6 +167,8 @@ export function RegistrationScreen({ onCancel, onContinue, service = registerOwn
                     passwordIndicators={field === 'password' || field === 'confirmPassword'}
                     pin={pin}
                     pinIndicators={pin}
+                    pinVisibilityToggle={pin && values[field].length > 0}
+                    pinLengthIndicator={pin && values[field].length === 0}
                     placeholder={pin ? undefined : field === 'email' ? 'name@gmail.com' : field === 'name' ? t('fields.namePlaceholder') : field === 'password' ? t('fields.passwordPlaceholder') : t('fields.confirmPasswordPlaceholder')}
                     keyboardType={pin ? 'number-pad' : field === 'email' ? 'email-address' : 'default'}
                     maxLength={pin ? 4 : undefined}

@@ -71,10 +71,10 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     owner = db.query(MayAri).filter(MayAri.id == numeric_id).first()
 
     if not owner or not owner.pin_hash:
-        raise HTTPException(401, "Invalid ID or PIN")
+        raise HTTPException(404, "May-Ari ID not found. Check your ID and try again.")
 
     if not verify_pin(body.pin, owner.pin_hash):
-        raise HTTPException(401, "Invalid ID or PIN")
+        raise HTTPException(401, "Incorrect PIN. Please try again.")
 
     if not owner.is_active:
         raise HTTPException(403, "Account is deactivated")
@@ -104,7 +104,7 @@ def kahera_login(body: KaheraLoginRequest, db: Session = Depends(get_db)):
     ).first()
 
     if not kahera:
-        raise HTTPException(404, "Cashier not found for this store")
+        raise HTTPException(404, "Kahera ID not found for this store. Check your May-Ari ID and Kahera ID.")
 
     if not kahera.is_active:
         raise HTTPException(403, "This cashier account has been deactivated")
@@ -120,7 +120,7 @@ def kahera_login(body: KaheraLoginRequest, db: Session = Depends(get_db)):
             db.commit()
             raise HTTPException(429, f"Too many failed attempts. Locked for {LOCKOUT_MINUTES} minutes.")
         db.commit()
-        raise HTTPException(401, f"Invalid PIN. {MAX_FAILED_ATTEMPTS - kahera.failed_attempts} attempts remaining.")
+        raise HTTPException(401, f"Incorrect PIN. {MAX_FAILED_ATTEMPTS - kahera.failed_attempts} attempt(s) remaining.")
 
     kahera.failed_attempts = 0
     kahera.locked_until    = None
@@ -164,7 +164,7 @@ def kahera_login_by_pin(body: KaheraLoginByPinRequest, db: Session = Depends(get
     ).all()
 
     if not candidates:
-        raise HTTPException(404, "No active cashiers found for this store")
+        raise HTTPException(404, "May-Ari ID not found or has no active Kahera accounts.")
 
     # Check lockout first on any candidate (rate-limit feedback).
     now = datetime.now(timezone.utc)

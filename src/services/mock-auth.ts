@@ -29,9 +29,18 @@ export function authenticateMockOwner(
 // ── REAL LOGIN ───────────────────────────────────────────────────
 import { API_URL } from "@/services/api";
 
+/** Extract FastAPI's error detail string from a non-ok response body. */
+async function extractDetail(res: Response): Promise<string | undefined> {
+  try {
+    const body = await res.json();
+    if (typeof body?.detail === "string" && body.detail) return body.detail;
+  } catch { /* ignore parse errors */ }
+  return undefined;
+}
+
 export type LoginResult =
   | { status: "ok"; token: string; name: string }
-  | { status: "invalid" }
+  | { status: "invalid"; message?: string }
   | { status: "locked" }
   | { status: "error"; message: string };
 
@@ -43,7 +52,7 @@ export type KaheraLoginResult =
       kaheraId: string;
       ownerId: string;
     }
-  | { status: "invalid" }
+  | { status: "invalid"; message?: string }
   | { status: "locked" }
   | { status: "notFound" }
   | { status: "error"; message: string };
@@ -73,7 +82,10 @@ export async function loginOwner(
         name: data.full_name ?? "",
       };
     }
-    if (res.status === 401) return { status: "invalid" };
+    if (res.status === 401 || res.status === 404) {
+      const message = await extractDetail(res);
+      return { status: "invalid", message };
+    }
     if (res.status === 423 || res.status === 429) return { status: "locked" };
     return { status: "error", message: `Server error ${res.status}` };
   } catch {
@@ -113,9 +125,11 @@ export async function loginKahera(
         ownerId: data.owner_id ?? ownerId,
       };
     }
-    if (res.status === 401) return { status: "invalid" };
+    if (res.status === 401 || res.status === 404) {
+      const message = await extractDetail(res);
+      return { status: "invalid", message };
+    }
     if (res.status === 423 || res.status === 429) return { status: "locked" };
-    if (res.status === 404) return { status: "invalid" };
     return { status: "error", message: `Server error ${res.status}` };
   } catch {
     return {
