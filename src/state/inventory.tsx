@@ -2,8 +2,10 @@ import {
   applyInventoryAction,
   applyOperatorPosAction,
   getProducts,
+  getAssets,
   loadMockInventory,
 } from '@/services/inventory';
+import type { BusinessAsset } from '@/types/inventory';
 import { useAuthFlow } from '@/state/auth-flow';
 import type { InventoryProduct } from '@/types/inventory';
 import type { Customer } from '@/types/pos';
@@ -11,7 +13,7 @@ import { inventoryReducer, type InventoryAction, type InventoryStore } from '@/u
 import { customerNameKey } from '@/utils/pos-checkout';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
-const InventoryContext = createContext<{ store: InventoryStore; getStore: () => InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void; refetchProducts: () => Promise<void> } | null>(null);
+const InventoryContext = createContext<{ store: InventoryStore; getStore: () => InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void; refetchProducts: () => Promise<void>; refetchAssets: () => Promise<void> } | null>(null);
 
 type ApiProductBatch = { id: string; quantity: number; noExpiry: boolean; expirationDate: string | null };
 
@@ -56,22 +58,60 @@ function SessionInventory({ children }: { children: ReactNode }) {
     }
   }, [auth.deviceSession]);
 
-  // Try to load real products from the API on session start.
+  /** Fetch assets from the API and replace the store's asset list with the result. */
+  const refetchAssets = useCallback(async () => {
+    if (!auth.deviceSession || auth.deviceSession.locked) return;
+    try {
+      const apiAssets = await getAssets();
+      const realAssets: BusinessAsset[] = apiAssets.map(a => ({
+        id: a.id,
+        name: a.name,
+        classification: a.classification as BusinessAsset['classification'],
+        valueCentavos: a.valueCentavos,
+        usefulLifeYears: a.usefulLifeYears,
+        recordedDate: a.recordedDate,
+      }));
+      setStore(previous => {
+        const next = { ...previous, assets: realAssets };
+        current.current = next;
+        return next;
+      });
+    } catch {
+      // Offline or server error — keep existing seed/state.
+    }
+  }, [auth.deviceSession]);
+
+  // Try to load real products and assets from the API on session start.
   // The store always starts with mock data (loadMockInventory), so if the API
-  // is unreachable or returns an error, the mock products remain visible.
-  // On success, real products replace the mock ones so checkout uses real IDs.
+  // is unreachable or returns an error, the mock data remains visible.
+  // On success, real data replaces the mock so the app uses real IDs.
   useEffect(() => {
     // Only fetch when there's an active authenticated session (owner or kahera).
     if (!auth.deviceSession || auth.deviceSession.locked) return;
     let cancelled = false;
     getProducts().then(apiProducts => {
       if (cancelled) return;
-      // Trust the API's answer — even an empty array means "this store has no
-      // products yet". Replace mock data with the real list (which may be empty).
-      // Only keep existing data if the call throws (offline / server error).
       const realProducts: InventoryProduct[] = apiProducts.map(mapApiProduct);
       setStore(previous => {
         const next = { ...previous, products: realProducts };
+        current.current = next;
+        return next;
+      });
+    }).catch(() => {
+      // Offline or server error — keep whatever is already in state.
+    });
+    getAssets().then(apiAssets => {
+      if (cancelled) return;
+      const realAssets: BusinessAsset[] = apiAssets.map(a => ({
+        id: a.id,
+        name: a.name,
+        classification: a.classification as BusinessAsset['classification'],
+        valueCentavos: a.valueCentavos,
+        usefulLifeYears: a.usefulLifeYears,
+        recordedDate: a.recordedDate,
+      }));
+      setStore(previous => {
+        const next = { ...previous, assets: realAssets };
         current.current = next;
         return next;
       });
@@ -107,7 +147,7 @@ function SessionInventory({ children }: { children: ReactNode }) {
     const customer = { id, name: name.trim().replace(/\s+/g, ' ') };
     return dispatch({ type: 'registerCustomer', customer }) ? customer : null;
   }
-  return <InventoryContext.Provider value={{ store, getStore: () => current.current, dispatch, ensureCustomer, feedback, setFeedback, refetchProducts }}>{children}</InventoryContext.Provider>;
+  return <InventoryContext.Provider value={{ store, getStore: () => current.current, dispatch, ensureCustomer, feedback, setFeedback, refetchProducts, refetchAssets }}>{children}</InventoryContext.Provider>;
 }
 export function InventoryProvider({ children }: { children: ReactNode }) {
   const { deviceSession } = useAuthFlow();

@@ -157,7 +157,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
         name: draft.name.trim(),
         classification: draft.assetClassification as 'current' | 'equipment' | 'furniture',
         valueCentavos: quickAddTotal(draft),
-        usefulLifeYears: draft.assetClassification !== 'current' ? Number(draft.assetLife) : undefined,
+        usefulLifeYears: draft.assetClassification !== 'current' ? Number(draft.assetLife) : 0,
         recordedDate: draft.expenseDate,
       });
       const record: QuickAddRecord = {

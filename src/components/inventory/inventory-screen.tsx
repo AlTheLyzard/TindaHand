@@ -27,10 +27,10 @@ const statuses = { good: 'In Stock', low: 'Low Stock', out: 'Out of Stock' } as 
 export function InventoryScreen({ readOnly = false }: { readOnly?: boolean }) {
   const push = usePushOnce();
   const { tab, status: routeStatus } = useLocalSearchParams<{ tab?: string; status?: string }>();
-  const { store: liveStore, refetchProducts } = useInventory();
+  const { store: liveStore, refetchProducts, refetchAssets } = useInventory();
   // Re-sync with the backend whenever this screen comes into focus.
   // This ensures May-Ari sees Kahera's restocks, and Kahera sees May-Ari's edits.
-  useFocusEffect(useCallback(() => { void refetchProducts(); }, [refetchProducts]));
+  useFocusEffect(useCallback(() => { void refetchProducts(); void refetchAssets(); }, [refetchProducts, refetchAssets]));
   const preview = useContentPreview(listPreviewStates);
   const store = preview.empty ? { ...liveStore, products: [], assets: [] } : liveStore;
   const [assets, setAssets] = useState(tab === 'assets');
