@@ -1,6 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { InventoryFrame } from '@/components/inventory/inventory-ui';
-import { ProductInventoryContent } from '@/components/inventory/product-inventory-content';
+import { InventoryScreen } from '@/components/inventory/inventory-screen';
 import { useAuthFlow } from '@/state/auth-flow';
 import { hasCapability } from '@/utils/operator-access';
 
@@ -9,7 +8,6 @@ export default function OperatorInventoryRoute() {
   const { deviceSession } = useAuthFlow();
   const canEdit = hasCapability(deviceSession?.role === 'operator' ? deviceSession : null, 'inventory-edit');
   const canRestock = hasCapability(deviceSession?.role === 'operator' ? deviceSession : null, 'restock');
-  return <InventoryFrame title="Inventory" background>
-    <ProductInventoryContent key={status ?? 'all'} routeBase="/operator-inventory" initialStatus={status} canAdd={false} canEdit={canEdit} canRestock={canRestock} />
-  </InventoryFrame>;
+  return <InventoryScreen key={status ?? 'all'} readOnly showAssets={false} routeBase="/operator-inventory"
+    initialStatus={status} canAdd={false} canEdit={canEdit} canRestock={canRestock} />;
 }

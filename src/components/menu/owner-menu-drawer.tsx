@@ -132,7 +132,7 @@ export function OwnerMenuDrawer({ owner, visible, onClose, onPresentationChange,
           onCancel={() => setConfirmLogout(false)} onConfirm={() => {
             navigate(() => {
               clear();
-              router.replace({ pathname: '/login', params: { role: 'owner', loggedOut: '1' } });
+              router.replace({ pathname: '/login', params: { role: 'owner' } });
             });
           }} />
       </ScrollView>}</MotionOverlay>

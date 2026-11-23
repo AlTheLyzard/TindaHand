@@ -11,8 +11,8 @@ import { MotionModal } from '@/components/ui/motion-modal';
 import { PosDialog } from '@/components/pos/pos-dialog';
 import { PosIcon } from '@/components/pos/pos-icon';
 import { SuccessContent } from '@/components/ui/success-content';
-import { ProfileError, ProfileNotice, ProfileSection, ProfileText } from '@/components/profile/profile-ui';
-import { SettingsCard, SettingsRow } from '@/components/settings/settings-ui';
+import { AccountBadge, ProfileError, ProfileNotice, ProfileReadOnlyValue, ProfileSection, ProfileText } from '@/components/profile/profile-ui';
+import { SettingsCard } from '@/components/settings/settings-ui';
 import { OperatorProfileFrame } from '@/components/profile/operator-profile-frame';
 import { quickAddColors } from '@/components/dashboard/quick-add-ui';
 import { avatarPickerOrder } from '@/constants/profile-avatars';
@@ -23,15 +23,8 @@ import { useSettings } from '@/state/settings';
 import { authenticationService } from '@/services/authentication';
 import { AVATAR_IN_USE, avatarInUse } from '@/services/avatars';
 import { validateOperatorProfile } from '@/utils/settings';
-import { hasCapability } from '@/utils/operator-access';
 import type { AvatarId } from '@/types/profile';
 import type { OperatorProfileValues, SettingsErrors } from '@/types/settings';
-
-function OperatorRoleBadge() {
-  return <View className="rounded-pill bg-accent-soft px-3 py-1">
-    <Text className="type-status-badge text-brand">Kahera</Text>
-  </View>;
-}
 
 export function OperatorProfileScreen() {
   const flow = useAuthFlow();
@@ -55,7 +48,7 @@ export function OperatorProfileScreen() {
       await authenticationService.logout();
       flow.clear();
       if (router.canDismiss()) router.dismissAll();
-      router.replace({ pathname: '/login', params: { role: 'cashier', loggedOut: '1' } });
+      router.replace({ pathname: '/login', params: { role: 'cashier' } });
     } catch {
       lock.current = false;
       setBusy(false);
@@ -69,30 +62,22 @@ export function OperatorProfileScreen() {
   </>}>
     {!operator || session?.role !== 'operator' ? <SettingsCard><ProfileError message="Your Operator profile is unavailable. Please log in again." /></SettingsCard> : <>
       <SettingsCard>
-        <View className="flex-row items-center gap-3">
-          <ProfileAvatar avatarId={operator.avatarId} size={44} />
+        <View className="flex-row flex-wrap items-center gap-3">
+          <ProfileAvatar avatarId={operator.avatarId} size={60} />
           <View className="min-w-0 flex-1"><ProfileText bold>{operator.name}</ProfileText></View>
-          <OperatorRoleBadge />
+          <AccountBadge status="Kahera" />
         </View>
         <View className="my-4 h-px bg-outline" />
-        <ProfileText small>Owner ID</ProfileText>
-        <ProfileText bold>{session.ownerId}</ProfileText>
+        <ProfileText small>Kahera ID</ProfileText>
+        <ProfileText bold>{operator.id}</ProfileText>
         <View className="mt-1 flex-row items-center gap-1.5">
           <PosIcon name="info" size={14} />
-          <ProfileText small>Assigned once. Cannot be changed.</ProfileText>
+          <ProfileText small>Assigned once · Cannot be changed</ProfileText>
         </View>
         <View className="mt-4"><Button variant="outlined" onPress={() => router.push('/operator-profile/edit')}>Edit Profile</Button></View>
       </SettingsCard>
       <ProfileSection>Store</ProfileSection>
-      <SettingsCard>
-        <ProfileText bold>{profiles.get(session.ownerId)?.storeName || 'Not set'}</ProfileText>
-      </SettingsCard>
-      {hasCapability(session, 'settings') && <>
-        <ProfileSection>Account</ProfileSection>
-        <SettingsCard>
-          <SettingsRow inCard title="Settings" description="Preferences and app settings" icon="settings" onPress={() => router.navigate({ pathname: '/operator-more', params: { section: 'settings' } })} />
-        </SettingsCard>
-      </>}
+      <ProfileReadOnlyValue>{profiles.get(session.ownerId)?.storeName || 'Not set'}</ProfileReadOnlyValue>
     </>}
     <PosDialog visible={logoutVisible} title="Log Out" message="Are you sure you want to log out of TindaHand?" confirmLabel="Log Out" destructive busy={busy} onClose={() => setLogoutVisible(false)} onConfirm={() => void logout()} />
   </OperatorProfileFrame>;

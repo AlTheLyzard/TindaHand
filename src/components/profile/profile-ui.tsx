@@ -40,10 +40,10 @@ export function ProfileNotice({ title, children }: { title: string; children: Re
 export function ProfileReadOnlyValue({ children }: { children: ReactNode }) {
   return <View className="rounded-control border bg-accent-soft px-4 py-4" style={{ borderColor: tokens.color.brightBlue }}><ProfileText>{children}</ProfileText></View>;
 }
-export function AccountBadge({ status }: { status: 'Owner' | 'May-Ari' | 'active' | 'inactive' }) {
+export function AccountBadge({ status }: { status: 'Owner' | 'May-Ari' | 'Kahera' | 'active' | 'inactive' }) {
   const color = status === 'active' ? tokens.color.successBase : status === 'inactive' ? tokens.color.errorBase : tokens.color.royalBlue;
   return <View className="self-start rounded-pill px-3 py-1" style={{ backgroundColor: status === 'active' ? tokens.color.successTint : status === 'inactive' ? tokens.color.errorTint : tokens.color.softBlue }}>
-    <Text className="type-label-nav leading-[18px]" style={{ color }}>{status === 'Owner' ? 'May-Ari' : status === 'May-Ari' ? 'May-Ari' : status === 'active' ? 'Active' : 'Deactivated'}</Text>
+    <Text className="type-label-nav leading-[18px]" style={{ color }}>{status === 'Owner' || status === 'May-Ari' ? 'May-Ari' : status === 'Kahera' ? 'Kahera' : status === 'active' ? 'Active' : 'Deactivated'}</Text>
   </View>;
 }
 export function ProfileError({ message, retry }: { message: string; retry?: () => void }) {

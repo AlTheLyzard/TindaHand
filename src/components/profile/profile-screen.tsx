@@ -1,6 +1,6 @@
 import { RegistrationToast } from "@/components/auth/registration-toast";
 import { PosDialog } from "@/components/pos/pos-dialog";
-import { SettingsCard, SettingsRow } from "@/components/settings/settings-ui";
+import { SettingsCard } from "@/components/settings/settings-ui";
 import { Button } from "@/components/ui/button";
 import { useOwnerProfile } from "@/hooks/use-owner-profile";
 import { authenticationService } from "@/services/authentication";
@@ -8,7 +8,7 @@ import { useAuthFlow } from "@/state/auth-flow";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { View } from "react-native";
-import { ProfileFrame, operatorsRoot, profileRoot } from "./profile-frame";
+import { ProfileFrame, profileRoot } from "./profile-frame";
 import {
   AccountBadge,
   OwnerProfileAvatar as ProfileAvatar,
@@ -113,16 +113,6 @@ export function ProfileScreen() {
               </Button>
             </View>
           )}
-          <ProfileSection>Account</ProfileSection>
-          <SettingsCard>
-            <SettingsRow
-              inCard
-              title="Manage Operators"
-              description="Accounts, PINs and permissions"
-              icon="manageOperators"
-              onPress={() => router.push(operatorsRoot)}
-            />
-          </SettingsCard>
           <PosDialog
             visible={logout}
             title="Log Out"
@@ -144,7 +134,7 @@ export function ProfileScreen() {
                   if (router.canDismiss()) router.dismissAll();
                   router.replace({
                     pathname: "/login",
-                    params: { role: "owner", loggedOut: "1" },
+                    params: { role: "owner" },
                   });
                 })
                 .catch(() => {
