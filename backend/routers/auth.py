@@ -16,7 +16,8 @@ from auth import (
 from schemas import (
     RegisterRequest, LoginRequest,
     KaheraLoginRequest, KaheraLoginByPinRequest, KaheraCreateRequest, KaheraStatusRequest,
-    TokenResponse, MeResponse, OkResponse,
+    KaheraSelfUpdateRequest,
+    TokenResponse, MeResponse, OkResponse, CashierOut,
     ForgotPinRequest, ResetPinRequest,
 )
 
@@ -336,7 +337,47 @@ def toggle_kahera_status(
     return OkResponse(message=f"Cashier {'activated' if body.is_active else 'deactivated'}")
 
 
-# ── 6. /ME — WHO AM I? ───────────────────────────────────────────────────────
+# ── 6. KAHERA SELF-SERVICE PROFILE UPDATE ────────────────────────────────────
+
+@router.patch("/kahera/me", response_model=CashierOut)
+def update_kahera_me(
+    body: KaheraSelfUpdateRequest,
+    db:   Session = Depends(get_db),
+    current_user  = Depends(require_role("cashier")),
+):
+    """
+    Kahera updates her own name and/or avatar.
+    Uses the Kahera's own JWT — no owner token required.
+    """
+    kahera_id = current_user["db_id"]       # int — from JWT "sub"
+    owner_db_id = current_user.get("owner_db_id")  # int — from JWT "owner_id" claim
+
+    kahera = db.query(Kahera).filter(Kahera.id == kahera_id).first()
+    if not kahera:
+        raise HTTPException(404, "Kahera not found")
+
+    if body.full_name is not None:
+        full_name = body.full_name.strip()
+        if not full_name:
+            raise HTTPException(422, "Name cannot be empty")
+        kahera.full_name = full_name
+    if body.avatar_id is not None:
+        kahera.avatar_id = body.avatar_id
+
+    db.commit()
+    db.refresh(kahera)
+
+    resolved_owner_id = owner_db_id if owner_db_id is not None else kahera.owner_id
+    return CashierOut(
+        id=f"TH-KH-{kahera.id:04d}",
+        ownerId=f"TH-MA-{resolved_owner_id:04d}",
+        name=kahera.full_name,
+        status="active" if kahera.is_active else "inactive",
+        avatarId=kahera.avatar_id,
+    )
+
+
+# ── 7. /ME — WHO AM I? ───────────────────────────────────────────────────────
 
 @router.get("/me", response_model=MeResponse)
 def get_me(

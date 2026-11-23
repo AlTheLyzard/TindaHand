@@ -496,6 +496,11 @@ class CashierUpdate(BaseModel):
     avatar_id: Optional[str] = None
     is_active: Optional[bool] = None
 
+class KaheraSelfUpdateRequest(BaseModel):
+    """Body for PATCH /auth/kahera/me — Kahera updates her own profile."""
+    full_name: Optional[str] = None
+    avatar_id: Optional[str] = None
+
 class CashierPermissionsOut(BaseModel):
     """Shape returned by GET /settings/cashiers/{id}/permissions."""
     cashier_id: str                  # TH-KH-XXXX
