@@ -95,43 +95,22 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
       const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.3, exif: false });
       if (result.canceled || !result.assets[0]?.uri) return;
       const sourceUri = result.assets[0].uri;
-      // Convert image URI to base64. Use fetch+FileReader so it works on both
-      // file:// and content:// URIs (Android Expo Go returns content:// from camera).
-      let base64: string;
-      try {
-        const fetchResp = await fetch(sourceUri);
-        const blob = await fetchResp.blob();
-        base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const dataUrl = reader.result as string;
-            // dataUrl is "data:<mime>;base64,<data>" — strip the prefix
-            resolve(dataUrl.split(',')[1] ?? '');
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-        if (!base64) throw new Error('empty base64');
-      } catch {
-        Alert.alert('Could not read image', 'Failed to process the photo. Try again.');
-        return;
-      }
       // TODO: move to env once EXPO_PUBLIC_ vars are confirmed loading
       const apiKey = process.env.EXPO_PUBLIC_OCR_SPACE_KEY || 'K8288188399452188957';
       let ocrText = '';
       try {
-        // OCR.space requires URL-encoded body when sending base64 from React Native —
-        // multipart/FormData causes a 400 because RN sets the wrong content boundary.
-        const params = new URLSearchParams();
-        params.append('base64Image', `data:image/jpg;base64,${base64}`);
-        params.append('filetype', 'jpg');
-        params.append('OCREngine', '2');
-        params.append('isTable', 'true');
-        params.append('language', 'eng');
+        // Send image as a file upload (multipart) — avoids base64 encoding overhead
+        // and works on both file:// and content:// URIs in React Native.
+        // The object literal cast is the standard React Native FormData file pattern.
+        const form = new FormData();
+        form.append('file', { uri: sourceUri, type: 'image/jpeg', name: 'receipt.jpg' } as unknown as Blob);
+        form.append('OCREngine', '2');
+        form.append('isTable', 'true');
+        form.append('language', 'eng');
         const response = await fetch('https://api.ocr.space/parse/image', {
           method: 'POST',
-          headers: { apikey: apiKey, 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params.toString(),
+          headers: { apikey: apiKey },
+          body: form,
         });
         if (!response.ok) {
           Alert.alert('Could not read image', `OCR API returned ${response.status}. Enter the reference number manually.`);
