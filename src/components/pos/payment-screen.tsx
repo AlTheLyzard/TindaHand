@@ -96,7 +96,7 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
       if (result.canceled || !result.assets[0]?.uri) return;
       const sourceUri = result.assets[0].uri;
       // TODO: move to env once EXPO_PUBLIC_ vars are confirmed loading
-      const apiKey = process.env.EXPO_PUBLIC_VISION_KEY || 'AIzaSyDummyReplaceMe';
+      const apiKey = process.env.EXPO_PUBLIC_VISION_KEY || 'AIzaSyDDy-6klNZGU6VT3ZD08lkl8Av0pLsizOE';
       // Convert to base64 via fetch+FileReader — works on content:// and file:// URIs in Expo Go.
       let base64: string;
       try {
