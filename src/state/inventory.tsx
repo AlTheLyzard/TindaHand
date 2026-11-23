@@ -104,12 +104,15 @@ function SessionInventory({ children, ownerId }: { children: ReactNode; ownerId:
         // the lower of (local, remote) — preserving any optimistic deductions
         // that the backend products list hasn't caught up with yet.
         const localStock = new Map(previous.products.map(p => [p.id, p.stock]));
+        const localProducts = new Map(previous.products.map(p => [p.id, p]));
         const merged = realProducts.map(p => {
-          const local = localStock.get(p.id);
-          if (!MOCK_AUTH_ENABLED && local !== undefined && local < p.stock) {
-            // Local has a lower count — keep it so the UI doesn't flicker upward
-            // while waiting for the backend products endpoint to catch up.
-            return { ...p, stock: local };
+          const localProduct = localProducts.get(p.id);
+          if (!MOCK_AUTH_ENABLED && localProduct !== undefined && localProduct.stock < p.stock) {
+            // Local has a lower count — a sale was made that the backend products
+            // endpoint hasn't caught up with yet. Keep the local product's stock
+            // AND its batches so both POS (uses stock) and Inventory (sums batches)
+            // show the same deducted quantity.
+            return { ...p, stock: localProduct.stock, batches: localProduct.batches };
           }
           return p;
         });
