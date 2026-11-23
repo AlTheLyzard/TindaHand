@@ -97,13 +97,27 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
       const sourceUri = result.assets[0].uri;
       // TODO: move to env once EXPO_PUBLIC_ vars are confirmed loading
       const apiKey = process.env.EXPO_PUBLIC_OCR_SPACE_KEY || 'K8288188399452188957';
+      // Convert to base64 via fetch+FileReader — works on content:// and file:// URIs in Expo Go.
+      let base64: string;
+      try {
+        const blob = await (await fetch(sourceUri)).blob();
+        base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        if (!base64) throw new Error('empty');
+      } catch {
+        Alert.alert('Could not read image', 'Failed to process the photo. Try again.');
+        return;
+      }
       let ocrText = '';
       try {
-        // Send image as a file upload (multipart) — avoids base64 encoding overhead
-        // and works on both file:// and content:// URIs in React Native.
-        // The object literal cast is the standard React Native FormData file pattern.
+        // Send base64Image as a plain FormData string field — do NOT set Content-Type
+        // manually so React Native sets the multipart boundary correctly.
         const form = new FormData();
-        form.append('file', { uri: sourceUri, type: 'image/jpeg', name: 'receipt.jpg' } as unknown as Blob);
+        form.append('base64Image', `data:image/jpeg;base64,${base64}`);
         form.append('OCREngine', '2');
         form.append('isTable', 'true');
         form.append('language', 'eng');
