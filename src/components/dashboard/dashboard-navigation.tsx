@@ -57,7 +57,16 @@ export function DashboardNavigation({ onHome, onPos, onUnavailable, onNavigate }
           router.dismissTo('/owner-dashboard');
         }
       }
-      else if (icon === 'cart' && onPos) onPos();
+      else if (icon === 'cart' && onPos) {
+        // For operators, check POS capability before navigating — if May-Ari has
+        // turned off POS access, tapping the tab shows "unavailable" instead of
+        // landing the Kahera on the POS screen.
+        if (operator && !hasCapability(deviceSession, 'pos')) {
+          onUnavailable(navigationItems[index].label);
+        } else {
+          onPos();
+        }
+      }
       else if (icon === 'inventory' && operator) {
         const canOpenInventory = hasCapability(deviceSession, 'inventory-edit')
           || hasCapability(deviceSession, 'restock');

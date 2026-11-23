@@ -11,6 +11,9 @@ export default function OperatorPosLayout() {
   const stackMotion = useStackMotion();
   const { deviceSession, restoring } = useAuthFlow();
   if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className=" type-micro-financial-rate text-brand">Restoring your session…</Text></View>;
-  if (!deviceSession || deviceSession.role !== 'operator' || !hasCapability(deviceSession, 'pos')) return <Redirect href="/choose-account" />;
+  // Not an operator at all → go to login.
+  if (!deviceSession || deviceSession.role !== 'operator') return <Redirect href="/choose-account" />;
+  // Operator exists but POS is disabled by May-Ari → stay logged in, go to More.
+  if (!hasCapability(deviceSession, 'pos')) return <Redirect href="/operator-more" />;
   return <Stack screenOptions={{ ...stackMotion, headerShown: false, contentStyle: { backgroundColor: tokens.color.appBackground } }} />;
 }

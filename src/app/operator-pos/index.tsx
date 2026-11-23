@@ -11,7 +11,7 @@ export default function OperatorPosRoute() {
   // If the session is locked (background timer or cold restart with persisted lock),
   // redirect to the PIN screen instead of showing the POS.
   if (deviceSession.locked) return <Redirect href={{ pathname: '/login', params: { role: 'cashier' } }} />;
-  if (!hasCapability(deviceSession, 'pos')) return null;
+  if (!hasCapability(deviceSession, 'pos')) return <Redirect href="/operator-more" />;
   const isOfflineGrace = deviceSession.id.startsWith('offline-grace-');
   const owner: OwnerIdentity = { ...deviceSession.owner, mode: MOCK_AUTH_ENABLED ? 'mock' : isOfflineGrace ? 'offline-grace' : 'confirmed' };
   return <ProductBrowsingScreen owner={owner} basePath="/operator-pos" />;
