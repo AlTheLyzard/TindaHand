@@ -7,6 +7,7 @@ import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 export default function OperatorPaymentRoute() {
   const { deviceSession } = useAuthFlow();
   if (!deviceSession || deviceSession.role !== 'operator' || !hasCapability(deviceSession, 'pos')) return null;
-  const owner: OwnerIdentity = { ...deviceSession.owner, mode: MOCK_AUTH_ENABLED ? 'mock' : 'confirmed' };
+  const isOfflineGrace = deviceSession.id.startsWith('offline-grace-');
+  const owner: OwnerIdentity = { ...deviceSession.owner, mode: MOCK_AUTH_ENABLED ? 'mock' : isOfflineGrace ? 'offline-grace' : 'confirmed' };
   return <PaymentScreen owner={owner} basePath="/operator-pos" allowPartialPayment={hasCapability(deviceSession, 'receivables')} />;
 }
