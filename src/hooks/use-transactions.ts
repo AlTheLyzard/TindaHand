@@ -12,7 +12,12 @@ export function useTransactions() {
   const { store } = useInventory();
   const { transactionLedgerForOwner } = useQuickAdd();
   const operator = deviceSession?.role === "operator" ? deviceSession : null;
-  const ownerId = owner?.id ?? operator?.ownerId;
+  // For POS-sales persistence: inventory.tsx saves under `deviceSession?.owner?.id ?? deviceSession?.id`,
+  // so for Kahera that key is her own session ID (deviceSession.id), not the owner's ID.
+  const storageKey = owner?.id ?? deviceSession?.id;
+  // For ledger lookups (receivables, payables): records carry the owner's ID as ownerId,
+  // so filter by the owner's ID regardless of who is logged in.
+  const ledgerOwnerId = owner?.id ?? operator?.ownerId;
   const scope = operator ? "operator" : "owner";
   const confirmedMode = owner?.mode === "confirmed";
 
@@ -35,8 +40,8 @@ export function useTransactions() {
 
   const [revision, setRevision] = useState(0);
   const ledger = useMemo(
-    () => (ownerId ? transactionLedgerForOwner(ownerId, scope) : null),
-    [ownerId, scope, transactionLedgerForOwner],
+    () => (ledgerOwnerId ? transactionLedgerForOwner(ledgerOwnerId, scope) : null),
+    [ledgerOwnerId, scope, transactionLedgerForOwner],
   );
   const pos = store.pos;
   const source = useMemo(
@@ -59,8 +64,8 @@ export function useTransactions() {
   useEffect(() => {
     if (confirmedMode) return;
     let active = true;
-    const request: Promise<TransactionRecord[]> = ownerId
-      ? readTransactions(ownerId, source)
+    const request: Promise<TransactionRecord[]> = storageKey
+      ? readTransactions(storageKey, source)
       : Promise.resolve([]);
     void request
       .then((rows) => {
@@ -75,7 +80,7 @@ export function useTransactions() {
     };
   // source is a stable useMemo ref — it only changes when pos, ledger, scope, or
   // revision changes, so this effect is safe to track it directly.
-  }, [ownerId, confirmedMode, source]);
+  }, [storageKey, confirmedMode, source]);
 
   // ── Confirmed (real API) path: fetch from backend on revision bump ──────
   useEffect(() => {
