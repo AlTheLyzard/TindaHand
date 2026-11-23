@@ -21,6 +21,8 @@ import { AssetClassificationField } from '@/components/inventory/asset-classific
 import type { AssetClassification } from '@/types/inventory';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useQuickAdd } from '@/state/quick-add';
+import { useExpenseClassifier } from '@/hooks/use-expense-classifier';
+import { expenseCategoryLabel } from '@/utils/expenses';
 import type { QuickAddDraft, QuickAddKind, QuickAddRecord } from '@/types/quick-add';
 import { emptyQuickAddDraft, hasQuickAddChanges, quickAddErrors, quickAddTotal } from '@/utils/quick-add';
 import { todayInManila } from '@/utils/inventory';
@@ -29,6 +31,8 @@ import { formatPesos } from '@/utils/dashboard';
 import { CreditorList, CreditorNameField } from '@/components/payables/payables-ui';
 import { CustomerList, CustomerNameField } from '@/components/receivables/receivables-ui';
 import { useInventory } from '@/state/inventory';
+import { useAuthFlow } from '@/state/auth-flow';
+import { useApiCustomers } from '@/hooks/use-customers';
 import { customerDebtErrors } from '@/utils/receivables';
 import tokens from '@/constants/design-tokens.json';
 import { useOverlayTransition } from '@/hooks/use-overlay-transition';
@@ -39,6 +43,9 @@ type Confirmation = { title: string; message: string; label: string; action: () 
 export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddKind; onClose: () => void }) {
   const { save, payables } = useQuickAdd();
   const { store } = useInventory();
+  const { owner } = useAuthFlow();
+  const confirmedMode = owner?.mode === 'confirmed';
+  const { customers: apiCustomers } = useApiCustomers(confirmedMode ? owner?.id : undefined);
   const [open, setOpen] = useState(true);
   const dismiss = () => setOpen(false);
   const [baseline, setBaseline] = useState(() => emptyQuickAddDraft(initialKind, todayInManila()));
@@ -82,6 +89,22 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
   const asset = draft.kind === 'asset';
   const expense = draft.kind === 'expense';
   const customer = draft.kind === 'customerDebt';
+  // Classifier — watches "Transaction details" and suggests a category for expenses.
+  const { suggestion: categorySuggestion } = useExpenseClassifier(expense ? draft.details : '');
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+  const showSuggestion =
+    expense &&
+    !suggestionDismissed &&
+    !!categorySuggestion &&
+    !draft.category &&
+    !saving &&
+    !saved;
+
+  function applySuggestion() {
+    if (!categorySuggestion) return;
+    update({ category: categorySuggestion.category });
+    setSuggestionDismissed(true);
+  }
 
   const errors = draft.kind === 'customerDebt' ? customerDebtErrors(draft, store.products) : quickAddErrors(draft);
   const error = (field: keyof QuickAddDraft) => submitted ? errors[field] : undefined;
@@ -108,6 +131,7 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
   function reset(kind = draft.kind) {
     const next = emptyQuickAddDraft(kind, todayInManila());
     setDraft(next); setBaseline(next); setSubmitted(false); setFailure(''); setCategoryOpen(false); setDetailsOpen(false);
+    setSuggestionDismissed(false);
   }
   async function submit() {
     if (busy.current || !open || saved || confirmation || datePickerOpen || picker || browsing) return;
@@ -154,7 +178,7 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
               </View>
             </View>}>
               <MotionContent changeKey={picker ?? `${draft.kind}:${draft.borrowing}`}>
-                {picker ? picker === 'customer' ? <CustomerList customers={store.pos?.customers ?? []} onSelect={selected => { update({ name: selected.name, customerId: selected.id }); Keyboard.dismiss(); setPicker(null); }} />
+                {picker ? picker === 'customer' ? <CustomerList customers={confirmedMode ? apiCustomers : (store.pos?.customers ?? [])} onSelect={selected => { update({ name: selected.name, customerId: selected.id }); Keyboard.dismiss(); setPicker(null); }} />
                   : <CreditorList creditors={payables.creditors} onSelect={selected => { setDraft(previous => selectDraftCreditor(previous, payables.creditors, selected.id)); Keyboard.dismiss(); setPicker(null); }} /> : <>
 
                 <MotionLayout style={{ gap: tokens.spacing.two }}>
@@ -182,7 +206,25 @@ export function QuickAddModal({ initialKind, onClose }: { initialKind: QuickAddK
                     <QuickAddField date onPickDate={() => { Keyboard.dismiss(); setDatePickerOpen(true); }} label="Recorded date" value={draft.expenseDate} onChangeText={expenseDate => update({ expenseDate })} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" maxLength={10} error={error('expenseDate')} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
                   </>}
                   {expense && <>
-                    <ExpenseCategoryField value={draft.category} onChange={category => { update({ category }); }} error={error('category')} open={categoryOpen} onOpenChange={setCategoryOpen} />
+                    <ExpenseCategoryField value={draft.category} onChange={category => { update({ category }); setSuggestionDismissed(true); }} error={error('category')} open={categoryOpen} onOpenChange={setCategoryOpen} />
+                    {showSuggestion && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -8, gap: 6 }}>
+                        <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.textSecondary }}>Suggested:</Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Apply suggested category: ${expenseCategoryLabel(categorySuggestion!.category)}`}
+                          onPress={applySuggestion}
+                          style={({ pressed }) => ({ backgroundColor: tokens.color.accentContainer, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, opacity: pressed ? 0.7 : 1 })}
+                        >
+                          <Text style={{ fontFamily: tokens.typography.weights.medium, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.accentBase }}>
+                            {expenseCategoryLabel(categorySuggestion!.category)} ✓
+                          </Text>
+                        </Pressable>
+                        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss suggestion" onPress={() => setSuggestionDismissed(true)} hitSlop={8}>
+                          <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.helper.fontSize, lineHeight: 15, color: tokens.color.textSecondary }}>✕</Text>
+                        </Pressable>
+                      </View>
+                    )}
                   </>}
                   {!asset && (customer && draft.borrowing === 'product' ? <CreditProductSelector selection={draft.items} onChange={changeItems} onBrowse={() => { Keyboard.dismiss(); setBrowsing(true); }} error={error('items')}
                     onRemove={id => confirm('Remove Item?', `Remove ${draft.items[id].itemName} from this debt?`, 'Remove', () => setDraft(previous => ({ ...previous, items: removeSelectedProduct(previous.items, id) })))} /> :
