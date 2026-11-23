@@ -93,7 +93,19 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
       }
       const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.8 });
       if (result.canceled || !result.assets[0]?.uri) return;
-      const imageUri = result.assets[0].uri;
+      const sourceUri = result.assets[0].uri;
+      // Android camera returns a content:// URI which FileSystem.readAsStringAsync
+      // cannot always read directly. Copy to a cache file first to get a file:// URI.
+      let imageUri = sourceUri;
+      if (sourceUri.startsWith('content://')) {
+        const dest = FileSystem.cacheDirectory + `gcash_ocr_${Date.now()}.jpg`;
+        try {
+          await FileSystem.copyAsync({ from: sourceUri, to: dest });
+          imageUri = dest;
+        } catch {
+          // copyAsync failed — fall through and try reading the content:// URI directly
+        }
+      }
       // Convert image to base64 and send to OCR.space API
       let base64: string;
       try {
