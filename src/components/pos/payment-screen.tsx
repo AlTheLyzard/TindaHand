@@ -16,7 +16,6 @@ import { RecordSkeleton } from '@/components/ui/content-skeletons';
 import tokens from '@/constants/design-tokens.json';
 import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
-import * as FileSystem from 'expo-file-system';
 import { usePos } from '@/state/pos';
 import type { OwnerIdentity } from '@/types/auth';
 import type { PaymentMethod } from '@/types/pos';
@@ -94,22 +93,23 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
       const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.8 });
       if (result.canceled || !result.assets[0]?.uri) return;
       const sourceUri = result.assets[0].uri;
-      // Android camera returns a content:// URI which FileSystem.readAsStringAsync
-      // cannot always read directly. Copy to a cache file first to get a file:// URI.
-      let imageUri = sourceUri;
-      if (sourceUri.startsWith('content://')) {
-        const dest = FileSystem.cacheDirectory + `gcash_ocr_${Date.now()}.jpg`;
-        try {
-          await FileSystem.copyAsync({ from: sourceUri, to: dest });
-          imageUri = dest;
-        } catch {
-          // copyAsync failed — fall through and try reading the content:// URI directly
-        }
-      }
-      // Convert image to base64 and send to OCR.space API
+      // Convert image URI to base64. Use fetch+FileReader so it works on both
+      // file:// and content:// URIs (Android Expo Go returns content:// from camera).
       let base64: string;
       try {
-        base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: FileSystem.EncodingType.Base64 });
+        const fetchResp = await fetch(sourceUri);
+        const blob = await fetchResp.blob();
+        base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result as string;
+            // dataUrl is "data:<mime>;base64,<data>" — strip the prefix
+            resolve(dataUrl.split(',')[1] ?? '');
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        if (!base64) throw new Error('empty base64');
       } catch {
         Alert.alert('Could not read image', 'Failed to process the photo. Try again.');
         return;
