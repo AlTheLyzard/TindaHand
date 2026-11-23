@@ -118,14 +118,17 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
       const apiKey = process.env.EXPO_PUBLIC_OCR_SPACE_KEY || 'K8288188399452188957';
       let ocrText = '';
       try {
-        const body = new FormData();
-        body.append('base64Image', `data:image/jpeg;base64,${base64}`);
-        body.append('OCREngine', '2');
-        body.append('isTable', 'true');
+        // OCR.space requires URL-encoded body when sending base64 from React Native —
+        // multipart/FormData causes a 400 because RN sets the wrong content boundary.
+        const params = new URLSearchParams();
+        params.append('base64Image', `data:image/jpeg;base64,${base64}`);
+        params.append('OCREngine', '2');
+        params.append('isTable', 'true');
+        params.append('language', 'eng');
         const response = await fetch('https://api.ocr.space/parse/image', {
           method: 'POST',
-          headers: { apikey: apiKey },
-          body,
+          headers: { apikey: apiKey, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
         });
         if (!response.ok) {
           Alert.alert('Could not read image', `OCR API returned ${response.status}. Enter the reference number manually.`);
