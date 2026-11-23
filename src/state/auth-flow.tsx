@@ -15,7 +15,7 @@ export function suppressAuthLock() { _lockSuppressed = true; }
 export function releaseAuthLock()  { _lockSuppressed = false; }
 import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
-import { getOwnerProfile, settingsService } from '@/services/settings';
+import { getCashiers, getOwnerProfile, settingsService } from '@/services/settings';
 import { clearOfflineKaheraPinHash, clearOfflineOwnerPinHash, clearSessionLocked, getKaheraId, getOwnerId, getOwnerName, getRole, getSessionLocked, getToken, saveSessionLocked } from '@/services/token-storage';
 import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegisteredOwner, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
 import { defaultOperatorPermissions } from '@/utils/operator-access';
@@ -197,8 +197,8 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
               locked: wasLocked,
             };
             authenticationService.seedRealOwner(owner);
-            // Seed the Kahera into the local settings store so the profile screen
-            // and drawer can display their name/avatar without a mock setup.
+            // Seed the Kahera into the local settings store with a placeholder avatar
+            // so the header renders immediately, then prefetch the real avatar in the background.
             settingsService.seedRealCashier({
               id: kaheraId,
               ownerId: resolvedId,
@@ -207,6 +207,20 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
               avatarId: 'avatar-01',
             });
             setDeviceSession(realSession);
+            // Pre-fetch the cashier's real avatarId so the header shows the correct
+            // photo immediately without waiting for the Profile screen to mount.
+            void getCashiers().then(cashiers => {
+              const cashier = cashiers.find(c => c.id === kaheraId);
+              if (cashier) {
+                settingsService.seedRealCashier({
+                  id: kaheraId,
+                  ownerId: resolvedId,
+                  name: cashier.name,
+                  status: cashier.status,
+                  avatarId: cashier.avatarId,
+                });
+              }
+            }).catch(() => { /* Best-effort; avatar will appear after Profile screen opens. */ });
             return realSession;
           }
           // Owner session.

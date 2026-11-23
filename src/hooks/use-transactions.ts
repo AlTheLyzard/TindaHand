@@ -56,8 +56,11 @@ export function useTransactions() {
     let active = true;
     if (confirmedMode) {
       // Real API path: fetch from backend; track loading separately.
+      // For cashier sessions, scope the results to this Kahera's own records so
+      // their history never shows another Kahera's or the May-Ari's transactions.
+      const kaheraId = operator?.operatorId ?? undefined;
       setApiState(prev => ({ ...prev, loading: true, error: "" }));
-      void getTransactions()
+      void getTransactions({ kaheraId })
         .then((rows) => {
           if (active) setApiState({ rows, loading: false, error: "" });
         })

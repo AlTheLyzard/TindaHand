@@ -22,6 +22,13 @@ export interface ApiTransactionFilters {
   toDate?: string;
   /** Backend filter: 'sale' | 'customerPayment' | 'expense' */
   type?: "sale" | "customerPayment" | "expense";
+  /**
+   * When set, the backend returns only transactions recorded by that Kahera.
+   * Cashier sessions always pass their own kaheraId so their history is
+   * scoped to what they personally recorded — it never merges with the
+   * owner's full history or another Kahera's records.
+   */
+  kaheraId?: string;
 }
 
 /** Fetches the transaction log from the backend.
@@ -33,6 +40,7 @@ export async function getTransactions(
   if (filters.fromDate) params.set("from_date", filters.fromDate);
   if (filters.toDate) params.set("to_date", filters.toDate);
   if (filters.type) params.set("type", filters.type);
+  if (filters.kaheraId) params.set("kahera_id", filters.kaheraId);
   const query = params.toString();
   return apiFetch<TransactionRecord[]>(`/transactions${query ? `?${query}` : ""}`);
 }
