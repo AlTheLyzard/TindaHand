@@ -20,18 +20,29 @@ type ApiProductBatch = { id: string; quantity: number; noExpiry: boolean; expira
 
 /** Map API product shape to the local InventoryProduct type. */
 function mapApiProduct(p: ReturnType<typeof Object.assign> & { id: string; name: string; category: string; unitPriceCentavos: number; costCentavos: number; stock: number; expirationDate: string | null; photoUri: string | null; batches?: ApiProductBatch[] | null }): InventoryProduct {
+  const batches = p.batches?.map((b: ApiProductBatch) => b.noExpiry
+    ? { id: b.id, quantity: b.quantity, noExpiry: true as const, expirationDate: null }
+    : { id: b.id, quantity: b.quantity, noExpiry: false as const, expirationDate: b.expirationDate ?? '' });
+
+  // When the backend returns batches, derive stock from their sum so the POS
+  // and inventory screens always agree. The backend's top-level `stock` field
+  // may lag behind (e.g. 0) while the batch quantities already reflect the
+  // correct count — using the batch sum as the canonical figure fixes the
+  // "Out of Stock in POS but 23 PCS in Inventory" mismatch.
+  const stock = batches && batches.length > 0
+    ? batches.reduce((sum, b) => sum + b.quantity, 0)
+    : p.stock;
+
   return {
     id: p.id,
     name: p.name,
     category: p.category as InventoryProduct['category'],
     unitPriceCentavos: p.unitPriceCentavos,
     costCentavos: p.costCentavos,
-    stock: p.stock,
+    stock,
     expirationDate: p.expirationDate ?? '',
     photoUri: p.photoUri ?? undefined,
-    batches: p.batches?.map((b: ApiProductBatch) => b.noExpiry
-      ? { id: b.id, quantity: b.quantity, noExpiry: true as const, expirationDate: null }
-      : { id: b.id, quantity: b.quantity, noExpiry: false as const, expirationDate: b.expirationDate ?? '' }),
+    batches,
   };
 }
 
