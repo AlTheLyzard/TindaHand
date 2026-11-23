@@ -94,6 +94,7 @@ export interface AuthenticationService {
   subscribeAccountDirectory(listener: () => void): () => void;
   getAccountDirectorySnapshot(): AccountDirectorySnapshot;
   seedRealOwner(owner: RegisteredOwner): void;
+  seedRealSession(session: DeviceSession): void;
   registerOwner: RegistrationService;
   authenticateOwner(input: {
     ownerId: string;

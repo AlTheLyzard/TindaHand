@@ -197,6 +197,10 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
               locked: wasLocked,
             };
             authenticationService.seedRealOwner(owner);
+            // Keep authentication.ts's module-level session variable in sync so
+            // updateOperatorProfile (and other methods that check `session` directly)
+            // see a valid session even after a background restoreSession call wiped it.
+            authenticationService.seedRealSession(realSession);
             // Seed the Kahera into the local settings store with a placeholder avatar
             // so the header renders immediately, then prefetch the real avatar in the background.
             settingsService.seedRealCashier({
@@ -236,6 +240,7 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
           };
           // Seed the mock directory so login.tsx's directory.owners.length check passes.
           authenticationService.seedRealOwner(owner);
+          authenticationService.seedRealSession(realSession);
           setDeviceSession(realSession);
           // Pre-fetch the owner profile in the background so the header avatar is
           // populated immediately without waiting for the Profile screen to mount.

@@ -288,6 +288,13 @@ export function createAuthenticationService(
         publishAccountDirectory();
       }
     },
+    seedRealSession(realSession: DeviceSession) {
+      // Called by auth-flow after it rebuilds a session from the real JWT
+      // (restoreSession / refreshSession real path). This keeps the module-level
+      // `session` variable in sync so updateOperatorProfile and other methods
+      // that check `session` directly can still run.
+      session = { ...realSession };
+    },
     // BACKEND INTEGRATION: Replace this adapter as one unit. Never fall back to
     // mock success on an API failure. See docs/authentication-handoff.md.
     async registerOwner(values) {
@@ -680,6 +687,16 @@ export function createAuthenticationService(
       // - Expected Response: Current DeviceSession or null when expired/revoked
       // - UI State to Wire: Drive restoring state, role gates, and signed-out recovery from this response
       await ready;
+      // Real backend: live() always returns null (enabled()=false), but the real
+      // session is kept in the module-level `session` variable and validated by the
+      // backend JWT (via auth-flow's refreshSession real path). Don't null it out here
+      // — that would destroy the in-memory session every time the app comes to the
+      // foreground, causing "An active Operator session is required." errors.
+      if (!MOCK_AUTH_ENABLED) {
+        // Return the current in-memory session as-is; auth-flow handles token revalidation
+        // via the real JWT path whenever this returns null.
+        return null;
+      }
       const current = live();
       if (!current) session = null;
       return current
