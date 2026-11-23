@@ -40,16 +40,28 @@ def _is_initial_sale_receipt(payment: DebtPayment, debts: List[CustomerDebt], sa
 
 @router.get("", response_model=List[TransactionOut])
 def list_transactions(
-    from_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
-    to_date:   Optional[str] = Query(None, description="YYYY-MM-DD"),
-    type:      Optional[str] = Query(None, description="sale | customerPayment | expense"),
+    from_date:  Optional[str] = Query(None, description="YYYY-MM-DD"),
+    to_date:    Optional[str] = Query(None, description="YYYY-MM-DD"),
+    type:       Optional[str] = Query(None, description="sale | customerPayment | expense"),
+    kahera_id:  Optional[str] = Query(None, description="TH-KH-XXXX — when set, return only sales recorded by that cashier"),
     limit: int = Query(200, ge=1, le=1000),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
     owner_id = current_user["db_id"]
 
-    sales             = db.query(Sale).filter(Sale.owner_id == owner_id).all()
+    # Resolve kahera_id string (e.g. "TH-KH-0001") to the numeric FK used in the Sale table.
+    kahera_numeric: Optional[int] = None
+    if kahera_id:
+        try:
+            kahera_numeric = int(kahera_id.strip().upper().split("-")[-1])
+        except (ValueError, IndexError):
+            kahera_numeric = None
+
+    sales_q = db.query(Sale).filter(Sale.owner_id == owner_id)
+    if kahera_numeric is not None:
+        sales_q = sales_q.filter(Sale.kahera_id == kahera_numeric)
+    sales             = sales_q.all()
     debts             = db.query(CustomerDebt).filter(CustomerDebt.owner_id == owner_id).all()
     payments          = db.query(DebtPayment).filter(DebtPayment.owner_id == owner_id).all()
     expenses          = db.query(Expense).filter(Expense.owner_id == owner_id).all()
