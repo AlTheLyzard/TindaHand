@@ -94,14 +94,19 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
       const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 });
       if (result.canceled || !result.assets[0]?.uri) return;
       const imageUri = result.assets[0].uri;
-      // Lazy-load expo-text-extractor so Expo Go doesn't crash at module init
-      // (native modules are unavailable in Expo Go; the APK build includes them)
-      let ocrModule: { extractTextFromImage: (uri: string) => Promise<string[]>; isSupported: boolean } | null = null;
-      try {
+      // expo-text-extractor is a native module — not available in Expo Go.
+      // Expo Go sets global.__ExpoModules (or lacks the native registry), so we
+      // detect it via the well-known absence of the NativeModules registry entry
+      // rather than require()-ing the package (which throws unrecoverably in Metro).
+      // In a real APK/dev-build the module loads fine via the normal import below.
+      type OcrModule = { extractTextFromImage: (uri: string) => Promise<string[]>; isSupported: boolean };
+      let ocrModule: OcrModule | null = null;
+      // NativeModules is populated by the native runtime; in Expo Go the
+      // ExpoTextExtractor key is missing, so we use that as the gate.
+      const { NativeModules } = require('react-native') as { NativeModules: Record<string, unknown> };
+      if ('ExpoTextExtractor' in NativeModules) {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
-        ocrModule = require('expo-text-extractor') as typeof ocrModule;
-      } catch {
-        // Expo Go or device without the native module
+        ocrModule = require('expo-text-extractor') as OcrModule;
       }
       // Run on-device OCR (ML Kit on Android, Apple Vision on iOS)
       if (!ocrModule?.isSupported) {
