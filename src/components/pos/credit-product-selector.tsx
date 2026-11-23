@@ -13,12 +13,12 @@ import tokens from '@/constants/design-tokens.json';
 /** Compact reference rows share POS snapshots and quantity constraints, with no stock mutations. */
 export function CreditProductSelector({ selection, onChange, onRemove, onBrowse, error, fullPage = false }: {
   selection: ProductSelection; onChange: (update: (previous: ProductSelection) => ProductSelection) => void;
-  onRemove: (id: string) => void; onBrowse: () => void; error?: string; fullPage?: boolean;
+  onRemove: (id: string, reason: 'remove' | 'quantity-zero') => void; onBrowse: () => void; error?: string; fullPage?: boolean;
 }) {
   const { store: { products } } = useInventory();
   const lines = Object.values(selection);
   const { fontScale } = useWindowDimensions();
-  const browseButton = <View style={{ marginTop: lines.length ? 0 : 8 }}><Button onPress={onBrowse}>Select Products</Button></View>;
+  const browseButton = <View style={{ marginTop: lines.length ? 0 : 8 }}><Button compact variant={fullPage ? 'primary' : 'text'} onPress={onBrowse}>{fullPage ? 'Select Products' : '+ Select Products'}</Button></View>;
   return <View style={{ gap: 8 }}>
     <FieldLabel label="Products taken on credit" required style={quickAddStyles.label} />
     {fullPage && browseButton}
@@ -34,12 +34,12 @@ export function CreditProductSelector({ selection, onChange, onRemove, onBrowse,
               <QuantityStepper compact value={line.quantity} valueLabel={`Quantity ${line.quantity}`} valueTextClassName="type-micro-caption text-text-primary"
             decreaseLabel={`Decrease ${line.itemName}`} increaseLabel={`Increase ${line.itemName}`}
             onDecrease={() => {
-              if (line.quantity === 1) onRemove(line.productId);
+              if (line.quantity === 1) onRemove(line.productId, 'quantity-zero');
               else if (product) onChange(previous => setSelectedQuantity(previous, product, line.quantity - 1));
             }}
             onIncrease={() => { if (product) onChange(previous => selectProduct(previous, product)); }}
             increaseDisabled={!product || line.quantity >= product.stock} />
-          <IconButton accessibilityLabel={`Remove ${line.itemName}`} onPress={() => onRemove(line.productId)} className="min-h-12 min-w-12 items-center justify-center" variant="destructiveText" icon={({ color }) => <PosIcon name="trash" size={22} color={color} />} />
+          <IconButton accessibilityLabel={`Remove ${line.itemName}`} onPress={() => onRemove(line.productId, 'remove')} className="min-h-12 min-w-12 items-center justify-center" variant="destructiveText" icon={({ color }) => <PosIcon name="trash" size={22} color={color} />} />
           {fullPage && <Text className="ml-auto type-button-cta text-brand">{formatPesos(line.quantity * line.unitPriceCentavos)}</Text>}
         </View>
       </View>;

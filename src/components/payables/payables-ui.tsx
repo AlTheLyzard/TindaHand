@@ -25,10 +25,11 @@ export function CreditorSearch({ value, onChange, placeholder = 'Enter Creditor 
     onClear={() => onChange('')} clearLabel="Clear creditor search" />;
 }
 
-export function CreditorList({ creditors, onSelect }: { creditors: readonly Creditor[]; onSelect: (creditor: Creditor) => void }) {
+export function CreditorList({ creditors, onSelect, description }: { creditors: readonly Creditor[]; onSelect: (creditor: Creditor) => void; description?: string }) {
   const [query, setQuery] = useState('');
   const rows = creditors.filter(row => row.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())).slice().sort((a, b) => a.name.localeCompare(b.name));
   return <View className="gap-4">
+    {!!description && <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">{description}</Text>}
     <CreditorSearch value={query} onChange={setQuery} placeholder="Search creditor name" />
     {!rows.length && <StatusText className="py-5 type-micro-financial-rate text-text-secondary">{query.trim() ? 'No creditors match your search.' : 'No creditors yet. Return to enter a new creditor.'}</StatusText>}
     {rows.map((creditor, index) => {

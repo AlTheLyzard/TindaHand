@@ -34,13 +34,13 @@ export function CustomerSearch({ value, onChange, kind = 'customer', placeholder
     placeholder={placeholder ?? (kind === 'customer' ? 'Enter Customer Name' : 'Enter Product Name')}
     onClear={() => onChange('')} clearLabel={`Clear ${kind} search`} />;
 }
-export function CustomerNameField({ value, customerId, onChange, onMatch, onSelect, error, inputRef, onNext, floatingSuggestions, customers: customersProp }: {
+export function CustomerNameField({ value, customerId, onChange, onMatch, onSelect, error, inputRef, onNext, floatingSuggestions, customers: customersProp, label = 'Customer name or other identifying details' }: {
   value: string; customerId?: string; onChange: (name: string) => void; onMatch: (customer: Customer) => void;
-  onSelect: () => void; error?: string; inputRef?: Ref<TextInputInstance>; onNext?: () => void; floatingSuggestions?: boolean; customers?: readonly Customer[];
+  onSelect: () => void; error?: string; inputRef?: Ref<TextInputInstance>; onNext?: () => void; floatingSuggestions?: boolean; customers?: readonly Customer[]; label?: string;
 }) {
   const { store } = useInventory();
   const records = customersProp ?? store.pos?.customers ?? [];
-  return <PartyNameField kind="customer" label="Customer name or other identifying details" value={value} selectedId={customerId}
+  return <PartyNameField kind="customer" label={label} value={value} selectedId={customerId}
     records={records} onChange={onChange} onMatch={onMatch} onSelect={onSelect} error={error} inputRef={inputRef} onNext={onNext} floatingSuggestions={floatingSuggestions} />;
 }
 export function CustomerList({ customers, onSelect, onAddNew, searchPlaceholder = 'Search Customer...', description = 'Choose a customer for this debt.', emptyDescription = 'Return to the debt form to enter a new customer.' }: {

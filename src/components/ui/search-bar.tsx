@@ -1,5 +1,5 @@
 import { useState, type ReactNode, type Ref } from 'react';
-import { StyleSheet, View, type StyleProp, type TextInputInstance, type TextInputProps, type ViewStyle } from 'react-native';
+import { StyleSheet, View, useWindowDimensions, type StyleProp, type TextInputInstance, type TextInputProps, type ViewStyle } from 'react-native';
 import { KeyboardInput } from '@/components/ui/keyboard-aware-scroll-view';
 import { IconButton } from '@/components/ui/button';
 import { PosIcon } from '@/components/pos/pos-icon';
@@ -17,6 +17,9 @@ type SearchBarProps = Omit<TextInputProps, 'style'> & {
 /** Shared search field with an optional floating autocomplete result list. */
 export function SearchBar({ inputRef, label, results, onClear, clearLabel = 'Clear search', containerStyle, onFocus, onBlur, ...props }: SearchBarProps) {
   const [focused, setFocused] = useState(false);
+  const { fontScale } = useWindowDimensions();
+  const inputLineHeight = tokens.typography.bodyPrimary.lineHeight * fontScale;
+  const inputHeight = Math.max(tokens.size.touchTarget, inputLineHeight + tokens.spacing.two);
   return <View style={[styles.root, containerStyle]}>
     <View style={[styles.field, { borderColor: focused ? tokens.color.brightBlue : tokens.color.borderOutline }]}>
       <View accessible={false} style={styles.searchIcon}><PosIcon name="search" size={20} color={tokens.color.textSecondary} /></View>
@@ -25,7 +28,9 @@ export function SearchBar({ inputRef, label, results, onClear, clearLabel = 'Cle
         autoCorrect={false} autoCapitalize="none" returnKeyType={props.returnKeyType ?? 'search'}
         onFocus={event => { setFocused(true); onFocus?.(event); }}
         onBlur={event => { setFocused(false); onBlur?.(event); }}
-        className="min-w-0 flex-1 type-body-primary text-text-primary web:focus:outline-none" />
+        className="min-w-0 flex-1 type-body-primary text-text-primary web:focus:outline-none"
+        style={{ minWidth: 0, flex: 1, height: inputHeight, paddingVertical: 0, paddingHorizontal: 0, textAlignVertical: 'center', includeFontPadding: false,
+          fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.bodyPrimary.fontSize, lineHeight: inputLineHeight, color: tokens.color.textPrimary }} />
       {!!props.value && onClear && <IconButton accessibilityLabel={clearLabel} onPress={onClear} icon={({ color, size }) => <PosIcon name="close" color={color} size={size} />} />}
     </View>
     {!!results && <View style={styles.results}>{results}</View>}

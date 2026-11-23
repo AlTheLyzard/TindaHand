@@ -35,8 +35,12 @@ export function filterTransactions(records: readonly TransactionRecord[], query:
   const search = query.trim().toLowerCase();
   return records.filter(record => {
     const day = transactionDateKey(record.occurredAt);
+    const methodMatches = filters.paymentMethod === 'all'
+      || (filters.paymentMethod === 'kulang'
+        ? record.type === 'customerDebt' || (record.type === 'sale' && (record.outstandingCentavos ?? 0) > 0)
+        : record.paymentMethod === filters.paymentMethod);
     return (category === 'all' || record.type === category)
-      && (filters.paymentMethod === 'all' || record.paymentMethod === filters.paymentMethod)
+      && methodMatches
       && (!filters.from || day >= filters.from) && (!filters.to || day <= filters.to)
       && (!search || [record.transactionNumber, record.partyName, record.description].some(value => value?.toLowerCase().includes(search)));
   }).sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));

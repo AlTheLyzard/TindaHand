@@ -56,4 +56,13 @@ export const appIconAssets = {
   minus: require('@/assets/images/icons/minus.svg'),
   camera: require('@/assets/images/icons/camera.svg'),
   calendarDue: require('@/assets/images/icons/calendarDue.svg'),
+  droplet: require('@/assets/images/icons/droplet.svg'),
+  lightning: require('@/assets/images/icons/lightning.svg'),
+  briefcase: require('@/assets/images/icons/briefcase.svg'),
+  user: require('@/assets/images/icons/user.svg'),
+  users: require('@/assets/images/icons/users.svg'),
+  undo: require('@/assets/images/icons/undo.svg'),
+  refresh: require('@/assets/images/icons/refresh.svg'),
+  mail: require('@/assets/images/icons/mail.svg'),
+  wifiOff: require('@/assets/images/icons/wifiOff.svg'),
 } as const;

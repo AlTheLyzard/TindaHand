@@ -40,9 +40,9 @@ export function FinancialLandingScreen() {
       <PosIcon name="chevronRight" size={18} color={tokens.color.textPrimary} />
     </MotionPressable>)}</View>
     <View className="mt-6">
-      {failed ? <EmptyState title={t('financial.loadFailed')} description={t('financial.mock')} action={t('financial.refresh')} onAction={() => setRevision(value => value + 1)} /> : status ? <View className="gap-2 rounded-control border border-success-base bg-success-tint p-4">
-        <View className="flex-row items-center gap-2"><PosIcon name="checkCircle" size={20} color={tokens.color.successBase} /><Text className=" type-label-nav text-success-base">{t('financial.updated')}</Text></View>
-        <Text className=" type-helper text-success-base">{t('financial.lastUpdated', { date: reportTimestamp(status.updatedAt) })}</Text>
+      {failed ? <EmptyState title={t('financial.loadFailed')} description={t('financial.mock')} action={t('financial.refresh')} onAction={() => setRevision(value => value + 1)} /> : status ? <View className="gap-2 rounded-control border border-accent bg-accent-soft p-4">
+        <View className="flex-row items-center gap-2"><PosIcon name="checkCircle" size={20} color={tokens.color.royalBlue} /><Text className=" type-label-nav text-action">{t('financial.updated')}</Text></View>
+        <Text className=" type-helper text-brand">{t('financial.lastUpdated', { date: reportTimestamp(status.updatedAt) })}</Text>
       </View> : <Skeleton><SkeletonBar height={70} /></Skeleton>}
     </View>
     <Text className="mb-14 mt-3 type-helper text-text-secondary">{t('financial.mock')}</Text>

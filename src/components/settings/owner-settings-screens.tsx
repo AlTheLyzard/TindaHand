@@ -13,37 +13,59 @@ import { SettingsFrame, settingsRoot } from '@/components/settings/settings-fram
 
 const ownerGuideCards = [
   {
-    title: 'Dashboard & Quick Add',
-    description: 'Review sales, stock health, and recent activity, then use Quick Add to start common store tasks.',
+    title: 'Dashboard',
+    description: "View your store's sales summary, stock status, best-selling products, and recent activities.",
   },
   {
     title: 'Point of Sale (POS)',
-    description: 'Select products, manage your cart, choose a payment method, and confirm customer purchases.',
+    description: 'Select products, manage your cart, and process customer payments to complete transactions.',
   },
   {
     title: 'Inventory & Asset Management',
-    description: 'Monitor stock and expiration dates, update products, and manage store assets.',
+    description: 'Add and manage products, update stock quantities, monitor expiration dates, and record store assets.',
   },
   {
-    title: 'Debts, Expenses & Reports',
-    description: 'Record customer and store debts and payments, add expenses, and review transactions and financial statements.',
+    title: 'Quick Add',
+    description: 'Quickly record store transactions:',
+    items: [
+      ['Sisingilin', 'Record amounts owed by customers.'],
+      ['Utang Ko', 'Record amounts the store owes.'],
+      ['Gastusin', 'Record store expenses.'],
+    ],
   },
   {
-    title: 'Profile & Settings',
-    description: 'Manage your profile, Operator access and permissions, and the available app settings.',
+    title: 'Financial Statements',
+    description: "View your store's financial records through:",
+    items: [
+      ['General Journal'],
+      ['General Ledger'],
+      ['Income Statement'],
+      ['Balance Sheet'],
+    ],
+    footer: 'You can also download available financial statements.',
+  },
+  {
+    title: 'More Tools',
+    description: 'Access your transaction history, review financial records, manage settings, and other available store tools.',
   },
 ] as const;
 
 export function OwnerAppGuideScreen() {
   return <SettingsFrame title="App Guide & Tutorial" parent={settingsRoot}>
     <SettingsDescription>
-      Welcome to TindaHand! This quick guide will help you understand the Owner module&apos;s main features and how to use them.
+      Welcome to TindaHand! This quick guide will help you understand the app&apos;s main features and how to use them.
     </SettingsDescription>
-    <View className="gap-4">
+    <View className="gap-5">
       {ownerGuideCards.map(card => <SettingsCard key={card.title}>
-        <View className="gap-3">
-          <Text accessibilityRole="header" className=" type-list-financial leading-6 text-brand">{card.title}</Text>
+        <View className="gap-4">
+          <Text accessibilityRole="header" className="type-h3-heading leading-[27px] text-brand">{card.title}</Text>
           <Text className=" type-micro-financial-rate leading-[22px] text-text-secondary">{card.description}</Text>
+          {'items' in card && <View className="gap-2">
+            {card.items.map(item => <Text key={item[0]} className="type-micro-financial-rate leading-[22px] text-text-secondary">
+              <Text>• </Text><Text className="font-semibold">{item[0]}</Text>{item[1] ? <Text> – {item[1]}</Text> : null}
+            </Text>)}
+          </View>}
+          {'footer' in card && <Text className="type-micro-financial-rate leading-[22px] text-text-secondary">{card.footer}</Text>}
         </View>
       </SettingsCard>)}
     </View>
@@ -56,24 +78,23 @@ export function OwnerReplayWalkthroughScreen() {
   return <>
     <SettingsFrame title="Replay App Walkthrough" parent={settingsRoot}>
       <View className="items-center">
-        <ReplayWalkthroughIllustration />
+        <View className="mt-8 w-full items-center">
+          <ReplayWalkthroughIllustration />
+        </View>
         <Text accessibilityRole="header" className="mt-2 text-center type-title-accent leading-[30px] text-brand">
           Take a Quick Tour Again!
         </Text>
         <Text className="mt-3 text-center type-micro-financial-rate leading-[22px] text-text-secondary">
-          Want to get familiar with TindaHand again? Replay the Owner walkthrough to revisit the app&apos;s main features and how they work.
+          Want to get familiar with TindaHand again? Replay the walkthrough to revisit the app&apos;s main features and how they work.
         </Text>
-        <Text className="mt-5 text-center type-micro-caption leading-[18px] text-text-secondary">
-          You can exit the walkthrough anytime.
-        </Text>
-        <Button className="mt-4" onPress={() => setConfirmationOpen(true)}>Start Walkthrough</Button>
+        <Button className="mt-8" onPress={() => setConfirmationOpen(true)}>Start Walkthrough</Button>
       </View>
     </SettingsFrame>
     <MotionModal visible={confirmationOpen} onRequestClose={close} backdropColor={tokens.overlay.navy}>
       <View className="flex-1 justify-center px-6 py-8" onAccessibilityEscape={close}>
         <ConfirmationContent title="Replay Walkthrough?" titleColor={tokens.color.darkNavy}
           leadingIcon={<View className="h-8 w-8 items-center justify-center rounded-pill bg-brand"><PosIcon name="history" size={20} color={tokens.color.surfaceCard} /></View>}
-          message="Would you like to go through the TindaHand Owner introduction again?" cancelLabel="Cancel" confirmLabel="Start"
+          message="Would you like to go through the TindaHand introduction again?" cancelLabel="Cancel" confirmLabel="Start"
           destructive={false} cancelVariant="secondary" onCancel={close} onConfirm={() => {
             close();
             router.push('/owner-menu/settings/walkthrough');

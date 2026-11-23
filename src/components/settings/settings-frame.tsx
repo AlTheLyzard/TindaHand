@@ -5,7 +5,7 @@ import tokens from "@/constants/design-tokens.json";
 import { useNavigationHeight } from "@/state/navigation-motion";
 import { router, useFocusEffect, type Href } from "expo-router";
 import { useCallback, type ReactNode } from "react";
-import { BackHandler, Image, Keyboard, Platform, StyleSheet, Text, View } from "react-native";
+import { BackHandler, Image, Keyboard, Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -18,6 +18,7 @@ export function SettingsFrame({
   landing = false,
   storefrontArtwork = true,
   navigationRole = 'owner',
+  showBack = true,
   children,
 }: {
   title: string;
@@ -25,10 +26,12 @@ export function SettingsFrame({
   landing?: boolean;
   storefrontArtwork?: boolean;
   navigationRole?: 'owner' | 'operator';
+  showBack?: boolean;
   children: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
   const navigationHeight = useNavigationHeight();
+  const { fontScale } = useWindowDimensions();
   const back = useCallback(() => {
     Keyboard.dismiss();
     router.dismissTo(parent);
@@ -51,30 +54,7 @@ export function SettingsFrame({
         pointerEvents="none"
         style={StyleSheet.absoluteFill}
       />}
-      {storefrontArtwork && <Image
-        source={require('@/assets/images/auth/header-background.png')}
-        resizeMode="stretch"
-        accessible={false}
-        pointerEvents="none"
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top + 120 }}
-      />}
       <SafeAreaView edges={["top", "left", "right"]} className="flex-1" style={storefrontArtwork ? { backgroundColor: 'transparent' } : undefined}>
-      <View
-        className="border-b bg-white"
-        style={{ borderColor: tokens.color.navigationBorder }}
-      >
-        <View className="w-full max-w-[460px] flex-row items-center gap-3 self-center px-5 py-4">
-          <Image
-            source={require("@/assets/images/brand/tindahand-mark.png")}
-            style={{ width: 36, height: 36 }}
-            resizeMode="contain"
-            accessible={false}
-          />
-          <Text className="flex-shrink type-title-accent leading-[30px] text-brand">
-            TindaHand
-          </Text>
-        </View>
-      </View>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -93,9 +73,9 @@ export function SettingsFrame({
             style={{ paddingTop: tokens.spacing.headerTitleGap }}
           >
             <View
-              className={`flex-row items-center gap-2 ${landing ? "mb-1" : "mb-8"}`}
+              className={`flex-row items-center gap-2 ${landing ? "mb-3" : "mb-4"}`}
             >
-              {!landing && (
+              {showBack && (
                 <BackButton
                   accessibilityLabel="Go back"
                   onPress={back}
@@ -103,7 +83,8 @@ export function SettingsFrame({
               )}
               <Text
                 accessibilityRole="header"
-                className={`min-w-0 flex-1 ${landing ? 'type-large-metric' : 'type-h2-section'} text-brand`}
+                className="min-w-0 flex-1 type-h1-display text-brand"
+                style={{ lineHeight: tokens.typography.h1Display.lineHeight * fontScale }}
               >
                 {title}
               </Text>

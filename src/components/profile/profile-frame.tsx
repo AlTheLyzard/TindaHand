@@ -5,9 +5,10 @@ import { ProfilePageLayout } from './profile-page-layout';
 
 export const profileRoot = '/owner-menu/profile' as const;
 export const operatorsRoot = '/owner-menu/profile/operators' as const;
-export function ProfileFrame({ title, subtitle, children, onBack, footer, busy = false }: {
+export function ProfileFrame({ title, subtitle, children, onBack, footer, busy = false, headerWave = false }: {
   title: string; subtitle?: string; children: ReactNode; onBack?: () => void;
   footer?: ReactNode; busy?: boolean;
+  headerWave?: boolean;
 }) {
   const back = useCallback(() => {
     Keyboard.dismiss();
@@ -21,7 +22,7 @@ export function ProfileFrame({ title, subtitle, children, onBack, footer, busy =
     return () => subscription.remove();
   }, [back]));
   return <ProfilePageLayout
-    title={title} subtitle={subtitle} onBack={back} busy={busy} footer={footer}>
+    title={title} subtitle={subtitle} onBack={back} busy={busy} footer={footer} headerWave={headerWave}>
     {children}
   </ProfilePageLayout>;
 }

@@ -40,7 +40,8 @@ export function reportTimestamp(value: string) {
 }
 export function balanceSide(value: number) { return value < 0 ? 'credit' : 'debit'; }
 export function accountExplanation(normal: 'debit' | 'credit', name: string) {
-  return `${name} is ${normal}-normal. ${normal === 'debit' ? 'Debit increases; credit reduces' : 'Credit increases; debit reduces'} this account.`;
+  const account = name.toLocaleLowerCase('en-US');
+  return `${name} is ${normal}-normal. ${normal === 'debit' ? `Debit (+) increases ${account}; credit (−) reduces ${account}.` : `Credit (+) increases ${account}; debit (−) reduces ${account}.`}`;
 }
 export function calculateFinancialReport(data: FinancialDataset, kind: ReportKind, selection: ReportSelection, generatedAt: string): FinancialReport {
   const error = selectionError(selection);

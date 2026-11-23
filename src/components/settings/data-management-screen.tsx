@@ -123,7 +123,7 @@ export function DataManagementScreen() {
       <View accessibilityLiveRegion="polite" className="mb-5 gap-3 rounded-control p-4"
         style={{ backgroundColor: good ? tokens.color.successTint : failed ? tokens.color.errorTint : tokens.color.iceContainer }}>
         <View className="flex-row items-center gap-3">
-          <PosIcon name={good ? 'checkCircle' : failed ? 'alert' : 'history'} color={good ? tokens.color.successBase : failed ? tokens.color.errorBase : tokens.color.darkNavy} />
+          <PosIcon name={good ? 'checkCircle' : failed ? 'alert' : state.status === 'offline' ? 'wifiOff' : state.status === 'syncing' ? 'refresh' : 'checkCircle'} color={good ? tokens.color.successBase : failed ? tokens.color.errorBase : tokens.color.darkNavy} />
           <Text accessibilityRole="header" className="flex-1 type-button-cta leading-[21px]"
             style={{ color: good ? tokens.color.successBase : failed ? tokens.color.errorBase : tokens.color.darkNavy }}>{titles[state.status]}</Text>
         </View>

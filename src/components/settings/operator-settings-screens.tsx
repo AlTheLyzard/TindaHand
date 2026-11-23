@@ -18,7 +18,7 @@ export const operatorSettingsHref = {
 } as const;
 
 export function OperatorSettingsLandingScreen() {
-  return <SettingsFrame title="Settings" landing parent="/operator-pos" navigationRole="operator">
+  return <SettingsFrame title="Settings" landing parent="/operator-pos" navigationRole="operator" showBack={false}>
     <View className="mb-3"><SettingsDescription>Make TindaHand work for your store</SettingsDescription></View>
     <SettingsSection>PREFERENCES</SettingsSection>
     <SettingsRow title="Language" description="English" icon="language"
@@ -62,10 +62,10 @@ export function OperatorAppGuideScreen() {
     <SettingsDescription>
       Welcome to TindaHand! This quick guide will help you understand the app&apos;s main features and how to use them.
     </SettingsDescription>
-    <View className="gap-4">
+    <View className="gap-5">
       {operatorGuideCards.map(card => <SettingsCard key={card.title}>
-        <View className="gap-3">
-          <Text accessibilityRole="header" className=" type-list-financial leading-6 text-brand">{card.title}</Text>
+        <View className="gap-4">
+          <Text accessibilityRole="header" className="type-h3-heading leading-[27px] text-brand">{card.title}</Text>
           <Text className=" type-micro-financial-rate leading-[22px] text-text-secondary">{card.description}</Text>
         </View>
       </SettingsCard>)}
@@ -79,17 +79,16 @@ export function OperatorReplayWalkthroughScreen() {
   return <>
     <SettingsFrame title="Replay App Walkthrough" parent={operatorSettingsHref}>
       <View className="items-center">
-        <ReplayWalkthroughIllustration />
+        <View className="mt-8 w-full items-center">
+          <ReplayWalkthroughIllustration />
+        </View>
         <Text accessibilityRole="header" className="mt-2 text-center type-title-accent leading-[30px] text-brand">
           Take a Quick Tour Again!
         </Text>
         <Text className="mt-3 text-center type-micro-financial-rate leading-[22px] text-text-secondary">
           Want to get familiar with TindaHand again? Replay the walkthrough to revisit the app&apos;s main features and how they work.
         </Text>
-        <Text className="mt-5 text-center type-micro-caption leading-[18px] text-text-secondary">
-          You can exit the walkthrough anytime.
-        </Text>
-        <Button className="mt-4" onPress={() => setConfirmationOpen(true)}>Start Walkthrough</Button>
+        <Button className="mt-8" onPress={() => setConfirmationOpen(true)}>Start Walkthrough</Button>
       </View>
     </SettingsFrame>
     <MotionModal visible={confirmationOpen} onRequestClose={close} backdropColor={tokens.overlay.navy}>

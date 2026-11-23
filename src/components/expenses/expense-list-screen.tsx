@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ScrollView, Text, View, type ScrollViewInstance } from 'react-native';
+import { Text, View, useWindowDimensions, type ScrollViewInstance } from 'react-native';
 import { InventoryFrame, InvField } from '@/components/inventory/inventory-ui';
 import { RegistrationToast } from '@/components/auth/registration-toast';
 import { PosChip } from '@/components/pos/pos-chip';
@@ -26,6 +26,10 @@ export function ExpenseListScreen() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<ExpenseFilter>('all');
   const [today, setToday] = useState(todayInManila);
+  const { width } = useWindowDimensions();
+  const contentWidth = Math.max(0, Math.min(width, 460) - 40);
+  const chipColumns = contentWidth >= 344 ? 4 : 2;
+  const chipWidth = (contentWidth - (chipColumns - 1) * 8) / chipColumns;
   const scroll = useRef<ScrollViewInstance>(null);
   const push = usePushOnce();
   // Use real API data for confirmed sessions; fall back to local seed for mock/preview.
@@ -43,33 +47,39 @@ export function ExpenseListScreen() {
     return () => clearInterval(refresh);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedbackId, confirmedMode]));
-  return <InventoryFrame title="Store expenses" back inlineTitle scrollRef={scroll} hideNavigationWithKeyboard background
+  return <InventoryFrame title="Store Expenses" back inlineTitle scrollRef={scroll} hideNavigationWithKeyboard background
     onBack={() => router.canGoBack() ? router.back() : router.replace('/owner-dashboard')}>
     <View style={{ position: 'relative' }}>
-      <InvField hideLabel label="Search expenses" accessibilityLabel="Search expenses" value={query} onChangeText={setQuery} placeholder="Search expenses…" returnKeyType="search" style={{ paddingLeft: 52, paddingRight: 16 }} />
+      <InvField hideLabel label="Search expenses" accessibilityLabel="Search expenses" value={query} onChangeText={setQuery} placeholder="Search expenses" returnKeyType="search"
+        style={{ paddingLeft: 52, paddingRight: 16 }} />
       <View pointerEvents="none" style={{ position: 'absolute', left: 16, top: 0, bottom: 0, justifyContent: 'center' }}><PosIcon name="search" size={20} /></View>
     </View>
     <View testID="expense-month-summary" className="gap-1 rounded-control border border-outline bg-accent-soft p-4">
-      <Text className=" type-label-nav leading-[18px] text-brand">Total expenses this month</Text>
+      <Text className=" type-label-nav leading-[18px] text-brand">Kabuuan ng Gastusin Ngayong Buwan:</Text>
       <Text accessibilityLiveRegion="polite" className=" type-large-metric leading-[36px] text-brand">{formatPesos(monthlyExpenses(allExpenses, today))}</Text>
     </View>
     {expenseFeedback && <RegistrationToast expiresAt={expenseFeedback.expiresAt} onDismiss={dismissExpenseFeedback} title="Expense recorded" message="Your expense has been saved successfully." />}
     <Button onPress={newRecord}>New Record</Button>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-      <PosChip label="All" selected={category === 'all'} onPress={() => setCategory('all')} />
-      {expenseCategories.map(value => <PosChip key={value} label={expenseCategoryLabel(value)} selected={category === value} onPress={() => setCategory(value)} />)}
-    </ScrollView>
-    {allExpenses.length === 0 ? <EmptyState icon="expense" title="No expenses yet" description="Record your first store expense to start tracking your spending." action="New Record" onAction={newRecord} /> : expenses.length === 0 ?
-      <EmptyState icon="search" title={query.trim() ? 'No expenses found' : 'No expenses in this category'} description="Try a different search or category to find your expenses." action="Clear search and filters" onAction={() => { setQuery(''); setCategory('all'); }} /> :
+    <View accessibilityRole="radiogroup" accessibilityLabel="Filter expenses by category" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      <View style={{ width: chipWidth }}><PosChip label="All" appearance="category" singleLine stretch selected={category === 'all'} onPress={() => setCategory('all')} /></View>
+      {expenseCategories.map(value => <View key={value} style={{ width: chipWidth }}>
+        <PosChip label={expenseCategoryLabel(value)} appearance="category" singleLine stretch selected={category === value} onPress={() => setCategory(value)} />
+      </View>)}
+    </View>
+    {allExpenses.length === 0 ? <EmptyState icon="expense" title="No expenses yet" description="Record your first store expense to start tracking your spending." /> : expenses.length === 0 ?
+      <EmptyState icon="search" title={query.trim() ? 'No expenses found' : 'No expenses in this category'}
+        description="Try a different search or category to find your expenses." /> :
       expenses.map(record => <View key={record.id} testID="expense-card" style={{ gap: 10, borderRadius: tokens.radius.surface, borderWidth: 1, borderColor: tokens.color.borderOutline, backgroundColor: tokens.color.surfaceCard, padding: 16 }}>
-        <Text accessibilityRole="header" style={{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.h3Heading.fontSize, lineHeight: 27, color: tokens.color.textPrimary }}>{expenseCategoryLabel(record.category)}</Text>
+        <Text accessibilityRole="header" style={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.h3Heading.fontSize, lineHeight: tokens.typography.h3Heading.lineHeight, color: tokens.color.textPrimary }}>{expenseCategoryLabel(record.category)}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: 8, rowGap: 4 }}>
-          <Text style={{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.listFinancial.fontSize, lineHeight: 24, color: tokens.button.primary.default }}>{formatPesos(record.amountCentavos)}</Text>
-          <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microCaption.fontSize, lineHeight: 18, color: tokens.color.textSecondary }}>{formatExpenseDate(record.expenseDate)}</Text>
+          <Text style={{ fontFamily: tokens.typography.weights.bold, fontSize: tokens.typography.listFinancial.fontSize, lineHeight: tokens.typography.listFinancial.lineHeight, color: tokens.button.primary.default }}>{formatPesos(record.amountCentavos)}</Text>
+          <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microCaption.fontSize, lineHeight: tokens.typography.microCaption.lineHeight, color: tokens.color.textSecondary }}>{formatExpenseDate(record.expenseDate)}</Text>
         </View>
         {!!record.details && <View style={{ alignSelf: 'flex-start', maxWidth: '100%', borderRadius: tokens.radius.pill, backgroundColor: tokens.color.surfaceSubtle, paddingHorizontal: 10, paddingVertical: 4 }}>
-          <Text style={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: 18, color: tokens.color.textPrimary }}>{record.details}</Text>
+          <Text style={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: tokens.typography.labelNav.lineHeight, color: tokens.color.textPrimary }}>{record.details}</Text>
         </View>}
+        {!confirmedMode && <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microCaption.fontSize,
+          lineHeight: tokens.typography.microCaption.lineHeight, color: tokens.color.textSecondary }}>Cash sa Pera sa Kaha</Text>}
       </View>)}
   </InventoryFrame>;
 }

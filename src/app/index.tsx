@@ -19,11 +19,11 @@ export default function WelcomeScreen() {
         className="flex-1"
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}>
-        <View className="w-full max-w-[480px] flex-1 self-center px-5 pb-4 pt-12" style={{ minHeight: 660 }}>
+        <View className="w-full max-w-[480px] flex-1 self-center px-5 pb-32 pt-8" style={{ minHeight: 660 }}>
           <View className="flex-1 items-center justify-center py-10">
             <Image
               source={require('@/assets/images/brand/tindahand-mark.png')}
-              style={{ width: 180, height: 180, maxWidth: '100%', aspectRatio: 1 }}
+              style={{ width: 200, height: 200, maxWidth: '100%', aspectRatio: 1 }}
               resizeMode="contain"
               accessible={false}
               importantForAccessibility="no"

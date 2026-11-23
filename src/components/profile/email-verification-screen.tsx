@@ -3,9 +3,11 @@ import { View } from 'react-native';
 import { useOwnerProfile } from '@/hooks/use-owner-profile';
 import { authenticationService } from '@/services/authentication';
 import { Button } from '@/components/ui/button';
+import { PosIcon } from '@/components/pos/pos-icon';
 import { ProfileFrame } from './profile-frame';
 import { ProfileError, ProfileNotice, ProfileText, ProfileUnavailable } from './profile-ui';
 import { ProfileSuccess } from './profile-screen';
+import tokens from '@/constants/design-tokens.json';
 
 export function EmailVerificationScreen() {
   const { profile, loading, error, reload } = useOwnerProfile();
@@ -25,6 +27,7 @@ export function EmailVerificationScreen() {
   }
   return <ProfileFrame title="Email Verification" subtitle="Your registered email stays active until the new address is verified." busy={busy}>
     {loading || error || !profile ? <ProfileUnavailable loading={loading} error={error} retry={reload} /> : <View className="gap-4">
+      <View className="flex-row items-center gap-2"><PosIcon name="mail" size={20} color={tokens.color.darkNavy} /><ProfileText small>Manage your registered email and verification status.</ProfileText></View>
       <ProfileNotice title="Registered email"><ProfileText>{profile.email}</ProfileText></ProfileNotice>
       {profile.pendingEmail ? <>
         <ProfileNotice title={`Verification ${profile.pendingEmail.status}`}>{profile.pendingEmail.address}</ProfileNotice>
