@@ -33,7 +33,7 @@ import { useQuickAdd } from '@/state/quick-add';
 import type { OwnerIdentity } from '@/types/auth';
 import type { DashboardActivity, SalesPeriod } from '@/types/dashboard';
 import type { QuickAddKind } from '@/types/quick-add';
-import { quickAddDashboardActivity, summarizeDashboard } from '@/utils/dashboard';
+import { bestSellersFromSales, quickAddDashboardActivity, summarizeDashboard } from '@/utils/dashboard';
 import { inventorySummary, todayInManila } from '@/utils/inventory';
 import { isInitialSaleReceipt } from '@/utils/transactions';
 
@@ -91,9 +91,24 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   const { addedCentavos } = useCashRegister();
   const scroll = useRef<ScrollViewInstance>(null);
 
-  // Use summarizeDashboard for local/mock data, but override specific fields
-  // with real backend numbers when available.
-  const localSummary = summarizeDashboard(period, data, preview.empty ? 0 : addedCentavos);
+  // Real POS sales committed this session — these are the only source of truth for best sellers.
+  const realSales = pos?.sales ?? [];
+
+  // Payable payments reduce cash (store debt repayments paid in cash).
+  const payablePaymentsCentavos = preview.empty ? 0
+    : quickAdd.payables.payments.reduce((sum, p) => sum + p.amountCentavos, 0);
+
+  // Use summarizeDashboard for local data, passing quick-add records so expenses deduct from cash.
+  const localSummary = summarizeDashboard(
+    period,
+    data,
+    preview.empty ? 0 : addedCentavos,
+    preview.empty ? [] : quickAdd.records,
+    preview.empty ? 0 : payablePaymentsCentavos,
+  );
+
+  // Best sellers come from real POS sales only — no demo data injected.
+  const realBestSellers = bestSellersFromSales(realSales);
 
   // Derive moneyIn / moneyOut from real cash movements when available.
   // Positive amounts = cash added (money in); backend only records additions.
@@ -119,7 +134,11 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
         : apiSummary.totalSalesThisMonthCentavos,
     // Best sellers from the backend top-K algorithm (quantitySold maps to quantity)
     bestSellers: apiSummary.topProducts.map(p => ({ id: p.productId, name: p.name, quantity: p.quantitySold })),
-  } : localSummary;
+  } : {
+    ...localSummary,
+    // Override best sellers with real POS data only (no demo sales), if any sales exist.
+    bestSellers: realBestSellers.length > 0 ? realBestSellers : localSummary.bestSellers,
+  };
 
   const isLoading = preview.loading || apiLoading;
   const stock = inventorySummary(preview.empty ? [] : products, todayInManila());

@@ -1,6 +1,7 @@
 import { dashboardDemo } from '@/data/dashboard';
 import { getLocaleFormats } from '@/i18n';
 import type { DashboardActivity, DemoSale, SalesPeriod } from '@/types/dashboard';
+import type { MockSale } from '@/types/pos';
 import type { QuickAddRecord } from '@/types/quick-add';
 
 /** Copy before sorting: the full history and its source order remain untouched. */
@@ -26,8 +27,34 @@ export function formatPesos(centavos: number) {
   return `₱${(centavos / 100).toLocaleString(getLocaleFormats().number, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/**
+ * Derive best sellers from real POS sales only — no demo data.
+ * Ranked by total quantity sold across all time (not period-filtered,
+ * so the ranking reflects the full history the user has built up).
+ */
+export function bestSellersFromSales(sales: readonly MockSale[]): { id: string; name: string; quantity: number }[] {
+  const ranked = new Map<string, { id: string; name: string; quantity: number }>();
+  for (const sale of sales) {
+    for (const line of Object.values(sale.items)) {
+      const existing = ranked.get(line.productId);
+      ranked.set(line.productId, {
+        id: line.productId,
+        name: line.itemName,
+        quantity: (existing?.quantity ?? 0) + line.quantity,
+      });
+    }
+  }
+  return [...ranked.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 3);
+}
+
 /** Manila calendar periods, with one reference clock and Monday week starts. */
-export function summarizeDashboard(period: SalesPeriod, data: Omit<typeof dashboardDemo, 'sales' | 'activity'> & { sales: readonly DemoSale[]; activity: readonly DashboardActivity[] } = dashboardDemo, cashAddedCentavos = 0) {
+export function summarizeDashboard(
+  period: SalesPeriod,
+  data: Omit<typeof dashboardDemo, 'sales' | 'activity'> & { sales: readonly DemoSale[]; activity: readonly DashboardActivity[] } = dashboardDemo,
+  cashAddedCentavos = 0,
+  quickAddRecords: readonly QuickAddRecord[] = [],
+  payablePaymentsCentavos = 0,
+) {
   const end = new Date(data.asOf);
   const start = new Date(end.getTime() + 8 * 60 * 60 * 1000);
   start.setUTCHours(0, 0, 0, 0);
@@ -43,13 +70,21 @@ export function summarizeDashboard(period: SalesPeriod, data: Omit<typeof dashbo
   }
   const moneyIn = data.movements.reduce((total, movement) => total + Math.max(0, movement.amountCentavos), cashAddedCentavos);
   const moneyOut = data.movements.reduce((total, movement) => total + Math.max(0, -movement.amountCentavos), 0);
+
+  // Expenses and cash-lent debts recorded via Quick Add reduce the cash on hand.
+  const expenseOutCentavos = quickAddRecords
+    .filter(r => r.kind === 'expense' || (r.kind === 'customerDebt' && r.borrowing === 'cash'))
+    .reduce((sum, r) => sum + r.amountCentavos, 0);
+  // Payable payments (store debt repayments) also reduce cash.
+  const totalCashOut = moneyOut + expenseOutCentavos + payablePaymentsCentavos;
+
   return {
     saleCount: new Set(sales.map(sale => sale.saleId ?? sale.id)).size,
     totalSalesCentavos,
     // Only the daily comparison is supplied; do not fabricate weekly/monthly growth.
     growth: period === 'daily' && data.previousSalesCentavos > 0 ? Math.round((totalSalesCentavos / data.previousSalesCentavos - 1) * 100) : null,
     bestSellers: [...ranked.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 3),
-    moneyIn, moneyOut, cashCentavos: data.openingCashCentavos + moneyIn - moneyOut,
+    moneyIn, moneyOut: totalCashOut, cashCentavos: data.openingCashCentavos + moneyIn - totalCashOut,
     outOfStock: data.products.filter((product) => product.stock === 0).length,
     lowStock: data.products.filter((product) => product.stock > 0 && product.stock <= product.lowStockThreshold).length,
   };
