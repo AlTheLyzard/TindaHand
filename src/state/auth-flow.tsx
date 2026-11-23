@@ -15,7 +15,7 @@ export function suppressAuthLock() { _lockSuppressed = true; }
 export function releaseAuthLock()  { _lockSuppressed = false; }
 import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
-import { settingsService } from '@/services/settings';
+import { getOwnerProfile, settingsService } from '@/services/settings';
 import { clearOfflineKaheraPinHash, clearOfflineOwnerPinHash, clearSessionLocked, getKaheraId, getOwnerId, getOwnerName, getRole, getSessionLocked, getToken, saveSessionLocked } from '@/services/token-storage';
 import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegisteredOwner, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
 import { defaultOperatorPermissions } from '@/utils/operator-access';
@@ -223,6 +223,18 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
           // Seed the mock directory so login.tsx's directory.owners.length check passes.
           authenticationService.seedRealOwner(owner);
           setDeviceSession(realSession);
+          // Pre-fetch the owner profile in the background so the header avatar is
+          // populated immediately without waiting for the Profile screen to mount.
+          void getOwnerProfile().then(data => {
+            authenticationService.profile.syncFromApi({
+              ownerId: owner.id,
+              name: data.name,
+              avatarId: (data.avatarId as import('@/types/profile').AvatarId | null) ?? null,
+              storeName: data.storeName ?? '',
+              email: data.email ?? '',
+              pendingEmail: null,
+            });
+          }).catch(() => { /* Best-effort; avatar will appear after Profile screen opens. */ });
           return realSession;
         }
       }
