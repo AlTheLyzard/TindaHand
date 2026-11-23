@@ -90,7 +90,9 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
         }
         return;
       }
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.8 });
+      // OCR.space free tier has a ~1MB payload limit. Keep the image small:
+      // 1024px wide is plenty for reading a 13-digit reference number.
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.3, exif: false });
       if (result.canceled || !result.assets[0]?.uri) return;
       const sourceUri = result.assets[0].uri;
       // Convert image URI to base64. Use fetch+FileReader so it works on both
@@ -121,7 +123,8 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
         // OCR.space requires URL-encoded body when sending base64 from React Native —
         // multipart/FormData causes a 400 because RN sets the wrong content boundary.
         const params = new URLSearchParams();
-        params.append('base64Image', `data:image/jpeg;base64,${base64}`);
+        params.append('base64Image', `data:image/jpg;base64,${base64}`);
+        params.append('filetype', 'jpg');
         params.append('OCREngine', '2');
         params.append('isTable', 'true');
         params.append('language', 'eng');
