@@ -395,7 +395,7 @@ export async function getCashiers(): Promise<ApiCashier[]> {
   return apiFetch<ApiCashier[]>('/settings/cashiers');
 }
 
-/** Update a cashier's name, avatar, or active status. */
+/** Update a cashier's name, avatar, or active status (owner-scoped, requires owner JWT). */
 export async function updateCashier(kahera_id: string, data: Partial<{
   name: string;
   avatarId: string;
@@ -406,6 +406,31 @@ export async function updateCashier(kahera_id: string, data: Partial<{
   if (data.avatarId !== undefined) payload['avatar_id'] = data.avatarId;
   if (data.isActive !== undefined) payload['is_active'] = data.isActive;
   return apiFetch<ApiCashier>(`/settings/cashiers/${kahera_id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Kahera self-service: update own name and avatar using the Kahera's own JWT.
+ *
+ * Backend endpoint: PATCH /auth/kahera/me
+ * Required role: cashier (token is Kahera's own JWT — NOT the owner's)
+ * Body:  { full_name?: string; avatar_id?: string }
+ * Response: the same ApiCashier shape as PATCH /settings/cashiers/:id
+ *
+ * This is the correct endpoint for a Kahera editing her own profile from the
+ * Kahera app.  The owner-scoped PATCH /settings/cashiers/:id returns 403 for
+ * a Kahera JWT, which is intentional backend authorization.
+ */
+export async function updateKaheraProfile(data: {
+  name?: string;
+  avatarId?: string;
+}): Promise<ApiCashier> {
+  const payload: Record<string, unknown> = {};
+  if (data.name !== undefined) payload['full_name'] = data.name;
+  if (data.avatarId !== undefined) payload['avatar_id'] = data.avatarId;
+  return apiFetch<ApiCashier>('/auth/kahera/me', {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });

@@ -9,7 +9,7 @@ import { ownerPasswordKey, ownerPinKey } from "@/services/auth-storage-keys";
 import { loginKahera } from "@/services/mock-auth";
 import { createMockProfileService } from "@/services/profile";
 import { createRememberedIdentities } from "@/services/remembered-identities";
-import { settingsService, resetCashierPin as resetCashierPinApi, updateCashier as updateCashierApi, updateCashierPermissions, getCashierPermissions, getCashiers } from "@/services/settings";
+import { settingsService, resetCashierPin as resetCashierPinApi, updateCashier as updateCashierApi, updateKaheraProfile, updateCashierPermissions, getCashierPermissions, getCashiers } from "@/services/settings";
 import { saveToken } from "@/services/token-storage";
 import type {
   AuthenticationService,
@@ -570,7 +570,10 @@ export function createAuthenticationService(
         const operatorId = session.operatorId;
         const currentSessionId = session.id;
         try {
-          const updated = await updateCashierApi(operatorId, {
+          // Use the Kahera self-service endpoint (PATCH /auth/kahera/me) so the
+          // Kahera's own JWT is sent.  The owner-scoped endpoint
+          // (PATCH /settings/cashiers/:id) returns 403 for a Kahera token.
+          const updated = await updateKaheraProfile({
             name: input.name,
             avatarId: input.avatarId,
           });
