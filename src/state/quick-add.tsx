@@ -164,6 +164,14 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
         paymentStatus: null,
         occurredAt: result.occurredAt,
       };
+      // Add the confirmed expense to local state so the dashboard (summarizeDashboard)
+      // immediately deducts it from Pera sa Kaha without waiting for a screen refocus.
+      setRecords(previous => {
+        if (previous.some(item => item.id === record.id && item.ownerId === record.ownerId)) return previous;
+        const next = [record, ...previous];
+        if (owner?.id) void persistJson(owner.id, 'quick-add-records', next);
+        return next;
+      });
       setFeedback({ recordId: record.id, ownerId: record.ownerId, expiresAt: Date.now() + 5000 });
       return record;
     }
