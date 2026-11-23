@@ -96,7 +96,7 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
       if (result.canceled || !result.assets[0]?.uri) return;
       const sourceUri = result.assets[0].uri;
       // TODO: move to env once EXPO_PUBLIC_ vars are confirmed loading
-      const apiKey = process.env.EXPO_PUBLIC_OCR_SPACE_KEY || 'K8288188399452188957';
+      const apiKey = process.env.EXPO_PUBLIC_VISION_KEY || 'AIzaSyDummyReplaceMe';
       // Convert to base64 via fetch+FileReader — works on content:// and file:// URIs in Expo Go.
       let base64: string;
       try {
@@ -114,29 +114,27 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
       }
       let ocrText = '';
       try {
-        // Send base64Image as a plain FormData string field — do NOT set Content-Type
-        // manually so React Native sets the multipart boundary correctly.
-        const form = new FormData();
-        form.append('base64Image', `data:image/jpeg;base64,${base64}`);
-        form.append('OCREngine', '2');
-        form.append('isTable', 'true');
-        form.append('language', 'eng');
-        const response = await fetch('https://api.ocr.space/parse/image', {
-          method: 'POST',
-          headers: { apikey: apiKey },
-          body: form,
-        });
+        // Google Cloud Vision TEXT_DETECTION — JSON body, no multipart issues.
+        const response = await fetch(
+          `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              requests: [{
+                image: { content: base64 },
+                features: [{ type: 'TEXT_DETECTION', maxResults: 1 }],
+              }],
+            }),
+          },
+        );
         if (!response.ok) {
-          Alert.alert('Could not read image', `OCR API returned ${response.status}. Enter the reference number manually.`);
+          const errJson = await response.json().catch(() => ({})) as { error?: { message?: string } };
+          Alert.alert('Could not read image', `Vision API error ${response.status}: ${errJson.error?.message ?? 'unknown'}. Enter the reference number manually.`);
           return;
         }
-        const json = await response.json() as { ParsedResults?: { ParsedText?: string }[]; IsErroredOnProcessing?: boolean; ErrorMessage?: string | string[] };
-        if (json.IsErroredOnProcessing) {
-          const msg = Array.isArray(json.ErrorMessage) ? json.ErrorMessage[0] : (json.ErrorMessage ?? 'unknown error');
-          Alert.alert('Could not read image', `OCR failed: ${msg}. Enter the reference number manually.`);
-          return;
-        }
-        ocrText = json.ParsedResults?.[0]?.ParsedText ?? '';
+        const json = await response.json() as { responses?: { fullTextAnnotation?: { text?: string } }[] };
+        ocrText = json.responses?.[0]?.fullTextAnnotation?.text ?? '';
       } catch (err) {
         Alert.alert('Could not read image', `Network error: ${String(err)}. Enter the reference number manually.`);
         return;
