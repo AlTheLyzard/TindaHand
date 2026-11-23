@@ -9,7 +9,7 @@ import { ownerPasswordKey, ownerPinKey } from "@/services/auth-storage-keys";
 import { loginKahera } from "@/services/mock-auth";
 import { createMockProfileService } from "@/services/profile";
 import { createRememberedIdentities } from "@/services/remembered-identities";
-import { settingsService, resetCashierPin as resetCashierPinApi, updateCashier as updateCashierApi, updateCashierPermissions, getCashierPermissions } from "@/services/settings";
+import { settingsService, resetCashierPin as resetCashierPinApi, updateCashier as updateCashierApi, updateCashierPermissions, getCashierPermissions, getCashiers } from "@/services/settings";
 import { saveToken } from "@/services/token-storage";
 import type {
   AuthenticationService,
@@ -415,12 +415,19 @@ export function createAuthenticationService(
         publishAccountDirectory();
       }
 
-      // Fetch the Kahera's real permissions from the backend so May-Ari's
-      // permission toggles take effect immediately on next login.
+      // Fetch the Kahera's real permissions and avatar from the backend so
+      // May-Ari's permission toggles take effect immediately on next login,
+      // and the header shows the correct profile photo.
       let permissions: readonly OperatorPermission[] = [...defaultOperatorPermissions];
+      let avatarId: string | undefined;
       try {
-        const fetched = await getCashierPermissions(result.kaheraId);
+        const [fetched, cashiers] = await Promise.all([
+          getCashierPermissions(result.kaheraId),
+          getCashiers(),
+        ]);
         if (fetched.length > 0) permissions = fetched as OperatorPermission[];
+        const match = cashiers.find(c => c.id === result.kaheraId);
+        if (match?.avatarId) avatarId = match.avatarId;
       } catch {
         // Best-effort: fall back to defaults if the fetch fails.
       }
@@ -435,6 +442,7 @@ export function createAuthenticationService(
           id: result.kaheraId,
           name: result.name,
           permissions: [...permissions],
+          avatarId,
         },
       };
       remembered.remember("cashier", result.ownerId);

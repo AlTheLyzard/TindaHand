@@ -82,6 +82,8 @@ export type DeviceSession = {
         id: string;
         name: string;
         permissions: readonly OperatorPermission[];
+        /** Avatar fetched from the backend at login so the header shows the right photo. */
+        avatarId?: string;
       };
     }
 );

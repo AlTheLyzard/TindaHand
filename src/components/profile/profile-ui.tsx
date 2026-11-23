@@ -6,7 +6,6 @@ import { SettingsCard } from '@/components/settings/settings-ui';
 import { Button } from '@/components/ui/button';
 import { useAuthFlow } from '@/state/auth-flow';
 import { useProfileSnapshot } from '@/hooks/use-owner-profile';
-import { useSettings } from '@/state/settings';
 import { ProfileAvatar } from './profile-avatar';
 
 export { ProfileAvatar } from './profile-avatar';
@@ -16,10 +15,12 @@ export function OwnerProfileAvatar(props: ComponentProps<typeof ProfileAvatar>) 
 export function OwnerAvatar({ size = 36 }: { size?: number }) {
   const { owner, deviceSession } = useAuthFlow();
   const profiles = useProfileSnapshot();
-  const settings = useSettings();
   if (deviceSession?.role === 'operator') {
-    const operator = settings.cashiers(deviceSession.ownerId).find(item => item.id === deviceSession.operatorId);
-    return <ProfileAvatar size={size} avatarId={operator?.avatarId} />;
+    // Prefer the avatarId stored in the session (fetched from the real backend
+    // at login time). Fall back to the mock-store record so the dev mock path
+    // still works when MOCK_AUTH_ENABLED is true.
+    const sessionAvatarId = deviceSession.operator.avatarId;
+    return <ProfileAvatar size={size} avatarId={sessionAvatarId} />;
   }
   return <OwnerProfileAvatar size={size} avatarId={owner ? profiles.get(owner.id)?.avatarId : null} />;
 }
