@@ -1,11 +1,11 @@
 import { dashboardDemo } from "@/data/dashboard";
 import { apiFetch } from "@/services/api";
-import type { MockSale } from "@/types/pos";
+import type { LocalSale } from "@/types/pos";
 import { dashboardWithSales } from "@/utils/pos-records";
 
 // ── Legacy sync helper (used by existing dashboard screen + cash-register service) ──────────
 // TODO(BACKEND): Remove once owner-dashboard-screen.tsx is updated to call getDashboardSummary()
-export function getDashboardData(sales: readonly MockSale[] = []) {
+export function getDashboardData(sales: readonly LocalSale[] = []) {
   return dashboardWithSales(dashboardDemo, sales);
 }
 

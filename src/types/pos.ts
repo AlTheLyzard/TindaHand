@@ -49,9 +49,9 @@ export type SalePayment = {
 // TODO(backend): Verify completed sale and tender records against the POS API schema.
 // - Method/Action: POST / Complete sale and record tenders atomically
 // - Expected Input/Payload: CheckoutCommand with owner/store session, item snapshots, and payment draft
-// - Expected Response: MockSale-compatible canonical sale, payment, and any receivable records
+// - Expected Response: LocalSale-compatible canonical sale, payment, and any receivable records
 // - UI State to Wire: Show success and refresh stock/history only after server confirmation
-export type MockSale = {
+export type LocalSale = {
   id: string; ownerId: string; occurredAt: string; customerId: string | null;
   items: ProductSelection;
   totalCentavos: number;
@@ -59,7 +59,10 @@ export type MockSale = {
   payment: SalePayment;
 };
 
-export type PosLedger = { customers: Customer[]; sales: MockSale[]; debts: QuickAddRecord[] };
+/** @deprecated Use LocalSale */
+export type MockSale = LocalSale;
+
+export type PosLedger = { customers: Customer[]; sales: LocalSale[]; debts: QuickAddRecord[] };
 export type CheckoutCommand = { id: string; ownerId: string; occurredAt: string; selection: ProductSelection; draft: PaymentDraft };
 
 /** Greedy coin change breakdown returned by the backend after a cash sale. */

@@ -1,7 +1,7 @@
 import { dashboardDemo } from '@/data/dashboard';
 import { getLocaleFormats } from '@/i18n';
 import type { DashboardActivity, DemoSale, SalesPeriod } from '@/types/dashboard';
-import type { MockSale } from '@/types/pos';
+import type { LocalSale } from '@/types/pos';
 import type { QuickAddRecord } from '@/types/quick-add';
 
 /** Copy before sorting: the full history and its source order remain untouched. */
@@ -32,7 +32,7 @@ export function formatPesos(centavos: number) {
  * Ranked by total quantity sold across all time (not period-filtered,
  * so the ranking reflects the full history the user has built up).
  */
-export function bestSellersFromSales(sales: readonly MockSale[]): { id: string; name: string; quantity: number }[] {
+export function bestSellersFromSales(sales: readonly LocalSale[]): { id: string; name: string; quantity: number }[] {
   const ranked = new Map<string, { id: string; name: string; quantity: number }>();
   for (const sale of sales) {
     for (const line of Object.values(sale.items)) {

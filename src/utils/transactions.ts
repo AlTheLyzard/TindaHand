@@ -1,4 +1,4 @@
-import type { Customer, MockSale } from '@/types/pos';
+import type { Customer, LocalSale } from '@/types/pos';
 import type { QuickAddRecord } from '@/types/quick-add';
 import type { ReceivablePayment } from '@/types/receivables';
 import type { PayablesLedger } from '@/types/payables';
@@ -43,12 +43,12 @@ export function filterTransactions(records: readonly TransactionRecord[], query:
 }
 
 export type TransactionSources = {
-  sales: readonly MockSale[]; customers: readonly Customer[];
+  sales: readonly LocalSale[]; customers: readonly Customer[];
   records: readonly QuickAddRecord[]; payments: readonly ReceivablePayment[]; payables?: PayablesLedger;
 };
 /** POS mirrors its initial partial receipt into AR to calculate debt balances.
  * That mirror is the sale's receipt, not a later customer payment. */
-export function isInitialSaleReceipt(payment: ReceivablePayment, debts: readonly QuickAddRecord[], sales: readonly MockSale[]) {
+export function isInitialSaleReceipt(payment: ReceivablePayment, debts: readonly QuickAddRecord[], sales: readonly LocalSale[]) {
   const debt = debts.find(row => row.ownerId === payment.ownerId && row.id === payment.debtId);
   return !!debt?.saleId && payment.id === `initial-payment-${debt.saleId}`
     && sales.some(sale => sale.ownerId === payment.ownerId && sale.id === debt.saleId);

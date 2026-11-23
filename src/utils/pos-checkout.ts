@@ -1,6 +1,6 @@
 import { deductProductStock } from './inventory-stock';
 import { customerSeed } from '../data/customers';
-import type { CheckoutCommand, Customer, MockSale, PosLedger } from '@/types/pos';
+import type { CheckoutCommand, Customer, LocalSale, PosLedger } from '@/types/pos';
 import type { QuickAddRecord } from '@/types/quick-add';
 import type { InventoryStore } from '@/utils/inventory';
 import { selectionSummary, stockConflicts } from './pos';
@@ -12,7 +12,7 @@ export function emptyPosLedger(): PosLedger {
 }
 
 /** One immutable commit: rejection changes nothing, including customer creation. */
-export function commitMockSale(state: InventoryStore, command: CheckoutCommand): InventoryStore {
+export function commitSale(state: InventoryStore, command: CheckoutCommand): InventoryStore {
   const { id, ownerId, occurredAt, selection, draft } = command;
   const ledger = state.pos ?? emptyPosLedger();
   if (!id || !ownerId || !Number.isFinite(Date.parse(occurredAt)) || ledger.sales.some(sale => sale.id === id)) return state;
@@ -32,7 +32,7 @@ export function commitMockSale(state: InventoryStore, command: CheckoutCommand):
     customer ??= { id: `customer-${id}`, name: draft.customerName.trim().replace(/\s+/g, ' ') };
   }
   const items = Object.fromEntries(entries.map(([key, line]) => [key, { ...line }]));
-  const payment: MockSale['payment'] = {
+  const payment: LocalSale['payment'] = {
     id: `payment-${id}`, saleId: id, method: draft.method, recording: 'manual',
     tenders: [
       ...(a.cashRaw === null ? [] : [{ method: 'cash' as const, receivedCentavos: a.cash!, reference: null }]),
@@ -41,7 +41,7 @@ export function commitMockSale(state: InventoryStore, command: CheckoutCommand):
     receivedCentavos: a.paidCentavos, appliedCentavos: Math.min(totalCentavos, a.paidCentavos),
     cashChangeCentavos: a.changeCentavos,
   };
-  const sale: MockSale = { id, ownerId, occurredAt, customerId: customer?.id ?? null, items,
+  const sale: LocalSale = { id, ownerId, occurredAt, customerId: customer?.id ?? null, items,
     totalCentavos, remainingCentavos: a.remainingCentavos,
     paymentStatus: a.remainingCentavos === 0 ? 'paid' : a.paidCentavos === 0 ? 'unpaid' : 'partial', payment };
   const debt: QuickAddRecord | null = customer && a.remainingCentavos > 0 ? {
@@ -61,3 +61,6 @@ export function commitMockSale(state: InventoryStore, command: CheckoutCommand):
       sales: [sale, ...ledger.sales], debts: debt ? [debt, ...ledger.debts] : ledger.debts },
   };
 }
+
+/** @deprecated Use commitSale */
+export const commitMockSale = commitSale;

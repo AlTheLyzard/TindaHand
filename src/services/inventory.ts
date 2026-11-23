@@ -6,7 +6,7 @@ import {
 import { receivablesSeed } from "@/data/receivables";
 import { apiFetch } from "@/services/api";
 import type { DeviceSession, OwnerIdentity } from "@/types/auth";
-import type { MockSale } from "@/types/pos";
+import type { LocalSale } from "@/types/pos";
 import {
   inventoryReducer,
   type InventoryAction,
@@ -36,7 +36,7 @@ export function loadMockInventory(): InventoryStore {
   };
 }
 
-export function getInventorySales(sales: readonly MockSale[]) {
+export function getInventorySales(sales: readonly LocalSale[]) {
   return [...inventorySales, ...saleLines(sales)];
 }
 

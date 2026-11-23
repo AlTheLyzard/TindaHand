@@ -11,6 +11,7 @@ const accounts: readonly FinancialAccount[] = [
   { id: 'cogs', name: 'Cost of Goods Sold', category: 'cost', normal: 'debit' },
   { id: 'utilities', name: 'Store Electricity & Water', category: 'expense', normal: 'debit' },
   { id: 'transport', name: 'Supplier Transportation', category: 'expense', normal: 'debit' },
+  { id: 'expense', name: 'General Operating Expense', category: 'expense', normal: 'debit' },
 ];
 function entry(id: string, date: string, description: string, debitId: string, creditId: string, amount: number): JournalEntry {
   return { id, date, description, lines: [{ accountId: debitId, debit: amount, credit: 0 }, { accountId: creditId, debit: 0, credit: amount }] };

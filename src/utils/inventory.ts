@@ -2,7 +2,7 @@ import { t } from '@/i18n';
 import type { BusinessAsset, InventoryFilters, InventoryProduct, ProductDraft, RestockRecord, StockStatus } from '../types/inventory';
 import type { CheckoutCommand, Customer, PosLedger, ProductCategory } from '../types/pos';
 import { parsePaymentAmount } from './pos-payment';
-import { commitMockSale, customerNameKey, emptyPosLedger } from './pos-checkout';
+import { commitSale, customerNameKey, emptyPosLedger } from './pos-checkout';
 import { commitCustomerDebt, commitReceivablePayment } from './receivables';
 import type { CustomerDebtCommand, ReceivablePayment, ReceivablePaymentCommand } from '@/types/receivables';
 
@@ -82,7 +82,7 @@ export function inventoryReducer(state: InventoryStore, action: InventoryAction)
   switch (action.type) {
     case 'saveCustomerDebt': return commitCustomerDebt(state, action.command);
     case 'confirmReceivablePayment': return commitReceivablePayment(state, action.command);
-    case 'completeSale': return commitMockSale(state, action.command);
+    case 'completeSale': return commitSale(state, action.command);
     case 'registerCustomer': {
       const ledger = state.pos ?? emptyPosLedger();
       if (!action.customer.id || !action.customer.name.trim() || ledger.customers.some(customer => customer.id === action.customer.id || customerNameKey(customer.name) === customerNameKey(action.customer.name))) return state;
