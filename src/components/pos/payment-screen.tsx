@@ -115,6 +115,10 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
         return;
       }
       const apiKey = process.env.EXPO_PUBLIC_OCR_SPACE_KEY ?? '';
+      if (!apiKey) {
+        Alert.alert('OCR not configured', 'Add EXPO_PUBLIC_OCR_SPACE_KEY to your .env and restart the dev server. Enter the reference number manually for now.');
+        return;
+      }
       let ocrText = '';
       try {
         const body = new FormData();
@@ -126,12 +130,19 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
           headers: { apikey: apiKey },
           body,
         });
-        if (!response.ok) throw new Error(`OCR API error ${response.status}`);
-        const json = await response.json() as { ParsedResults?: { ParsedText?: string }[]; IsErroredOnProcessing?: boolean };
-        if (json.IsErroredOnProcessing) throw new Error('OCR processing error');
+        if (!response.ok) {
+          Alert.alert('Could not read image', `OCR API returned ${response.status}. Enter the reference number manually.`);
+          return;
+        }
+        const json = await response.json() as { ParsedResults?: { ParsedText?: string }[]; IsErroredOnProcessing?: boolean; ErrorMessage?: string | string[] };
+        if (json.IsErroredOnProcessing) {
+          const msg = Array.isArray(json.ErrorMessage) ? json.ErrorMessage[0] : (json.ErrorMessage ?? 'unknown error');
+          Alert.alert('Could not read image', `OCR failed: ${msg}. Enter the reference number manually.`);
+          return;
+        }
         ocrText = json.ParsedResults?.[0]?.ParsedText ?? '';
-      } catch {
-        Alert.alert('Could not read image', 'Text recognition failed. Enter the reference number manually.');
+      } catch (err) {
+        Alert.alert('Could not read image', `Network error: ${String(err)}. Enter the reference number manually.`);
         return;
       }
       // Split into lines for the same extraction logic
