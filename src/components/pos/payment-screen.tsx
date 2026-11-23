@@ -16,7 +16,7 @@ import { RecordSkeleton } from '@/components/ui/content-skeletons';
 import tokens from '@/constants/design-tokens.json';
 import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
-import { extractTextFromImage, isSupported as ocrSupported } from 'expo-text-extractor';
+
 import { usePos } from '@/state/pos';
 import type { OwnerIdentity } from '@/types/auth';
 import type { PaymentMethod } from '@/types/pos';
@@ -94,14 +94,23 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
       const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 });
       if (result.canceled || !result.assets[0]?.uri) return;
       const imageUri = result.assets[0].uri;
+      // Lazy-load expo-text-extractor so Expo Go doesn't crash at module init
+      // (native modules are unavailable in Expo Go; the APK build includes them)
+      let ocrModule: { extractTextFromImage: (uri: string) => Promise<string[]>; isSupported: boolean } | null = null;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        ocrModule = require('expo-text-extractor') as typeof ocrModule;
+      } catch {
+        // Expo Go or device without the native module
+      }
       // Run on-device OCR (ML Kit on Android, Apple Vision on iOS)
-      if (!ocrSupported) {
+      if (!ocrModule?.isSupported) {
         Alert.alert('OCR not supported', 'Text recognition is not available on this device. Enter the reference number manually.');
         return;
       }
       let lines: string[] = [];
       try {
-        lines = await extractTextFromImage(imageUri);
+        lines = await ocrModule.extractTextFromImage(imageUri);
       } catch {
         Alert.alert('Could not read image', 'Text recognition failed. Enter the reference number manually.');
         return;
