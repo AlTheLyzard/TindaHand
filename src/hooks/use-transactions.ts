@@ -1,3 +1,4 @@
+import { MOCK_AUTH_ENABLED } from "@/config/mock-auth";
 import { getTransactions, readTransactions } from "@/services/transactions";
 import { useAuthFlow } from "@/state/auth-flow";
 import { useInventory } from "@/state/inventory";
@@ -15,12 +16,16 @@ export function useTransactions() {
   // Both POS sales and ledger records are stamped with the owner's ID as ownerId,
   // regardless of whether Kahera or May-Ari recorded them.  Always filter by the
   // owner's ID so projectTransactions can match sales correctly.
-  // (The disk key used by inventory for pos-sales is deviceSession.id for Kahera,
-  // but that is handled entirely by inventory.tsx — useTransactions never calls
-  // loadJson/persistJson directly; it just receives the already-loaded pos.sales.)
   const ledgerOwnerId = owner?.id ?? operator?.ownerId;
   const scope = operator ? "operator" : "owner";
-  const confirmedMode = owner?.mode === "confirmed";
+  // confirmedMode: use the real API whenever the backend is active.
+  // - May-Ari: owner.mode === 'confirmed' when the real backend issued a token.
+  // - Kahera: owner is null (only set for role==='owner'), so we fall back to
+  //   !MOCK_AUTH_ENABLED — if the app is talking to a real backend, Kahera also
+  //   fetches transactions from the API (filtered to her kaheraId), just like May-Ari.
+  //   This fixes the logout-wipe bug: local pos.sales are session-scoped (lost on
+  //   remount) while the backend persists them permanently.
+  const confirmedMode = owner?.mode === "confirmed" || (!MOCK_AUTH_ENABLED && operator !== null);
 
   // ── Mock/preview path: source-keyed result ──────────────────────────────
   const [result, setResult] = useState<{
