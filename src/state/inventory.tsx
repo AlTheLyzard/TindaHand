@@ -5,10 +5,11 @@ import {
   getAssets,
   loadMockInventory,
 } from '@/services/inventory';
+import { loadJson, persistJson } from '@/services/local-persist';
 import type { BusinessAsset } from '@/types/inventory';
 import { useAuthFlow } from '@/state/auth-flow';
 import type { InventoryProduct } from '@/types/inventory';
-import type { Customer } from '@/types/pos';
+import type { Customer, LocalSale } from '@/types/pos';
 import { inventoryReducer, type InventoryAction, type InventoryStore } from '@/utils/inventory';
 import { customerNameKey } from '@/utils/pos-checkout';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -34,10 +35,30 @@ function mapApiProduct(p: ReturnType<typeof Object.assign> & { id: string; name:
   };
 }
 
-function SessionInventory({ children }: { children: ReactNode }) {
+function SessionInventory({ children, ownerId }: { children: ReactNode; ownerId: string }) {
   const auth = useAuthFlow();
   const [store, setStore] = useState<InventoryStore>(() => loadMockInventory());
   const current = useRef(store);
+
+  // Hydrate persisted POS sales on mount (runs once per session).
+  useEffect(() => {
+    loadJson<LocalSale[]>(ownerId, 'pos-sales').then(saved => {
+      if (!saved?.length) return;
+      setStore(previous => {
+        const existing = new Set((previous.pos?.sales ?? []).map(s => s.id));
+        const incoming = saved.filter(s => !existing.has(s.id));
+        if (!incoming.length) return previous;
+        const next: InventoryStore = {
+          ...previous,
+          pos: { ...(previous.pos ?? { customers: [], debts: [] }), sales: [...incoming, ...(previous.pos?.sales ?? [])] },
+        };
+        current.current = next;
+        return next;
+      });
+    }).catch(() => { /* non-fatal */ });
+  // Run once on mount — ownerId is stable for this session instance.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** Fetch products from the API and replace the store's product list with the result. */
   const refetchProducts = useCallback(async () => {
@@ -136,6 +157,10 @@ function SessionInventory({ children }: { children: ReactNode }) {
     if (next === current.current) return false;
     current.current = next;
     setStore(next);
+    // Persist sales after every completed checkout so they survive reload.
+    if (action.type === 'completeSale' && next.pos?.sales.length) {
+      void persistJson(ownerId, 'pos-sales', next.pos.sales);
+    }
     return true;
   }
   function ensureCustomer(name: string, id: string) {
@@ -151,8 +176,9 @@ function SessionInventory({ children }: { children: ReactNode }) {
 }
 export function InventoryProvider({ children }: { children: ReactNode }) {
   const { deviceSession } = useAuthFlow();
+  const ownerId = deviceSession?.owner?.id ?? deviceSession?.id ?? 'guest';
   // Locking retains this session's demo state; full logout/removal clears it.
-  return <SessionInventory key={deviceSession?.id ?? 'signed-out'} >{children}</SessionInventory>;
+  return <SessionInventory key={deviceSession?.id ?? 'signed-out'} ownerId={ownerId}>{children}</SessionInventory>;
 }
 export function useInventory() {
   const value = useContext(InventoryContext);

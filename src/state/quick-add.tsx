@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { quickAddSeed } from '@/data/quick-add';
+import { loadJson, persistJson } from '@/services/local-persist';
 import { createQuickAddService } from '@/services/quick-add';
 import { createPayable } from '@/services/payables';
 import { useAuthFlow } from '@/state/auth-flow';
@@ -31,6 +32,21 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   const receivables = createReceivablesService(getStore, dispatch);
   const [service] = useState(createQuickAddService);
   const [allRecords, setRecords] = useState<readonly QuickAddRecord[]>(quickAddSeed);
+
+  // Hydrate persisted quick-add records on mount.
+  useEffect(() => {
+    if (!owner?.id) return;
+    loadJson<QuickAddRecord[]>(owner.id, 'quick-add-records').then(saved => {
+      if (!saved?.length) return;
+      setRecords(previous => {
+        const existing = new Set(previous.map(r => r.id));
+        const incoming = saved.filter(r => !existing.has(r.id));
+        return incoming.length ? [...incoming, ...previous] : previous;
+      });
+    }).catch(() => { /* non-fatal */ });
+  // Run once per owner session.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner?.id]);
   const [feedback, setFeedback] = useState<(NonNullable<ExpenseFeedback> & { ownerId: string }) | null>(null);
   const [, setRevision] = useState(0);
   const [payableFeedback, setPayableFeedback] = useState<{ ownerId: string; message: string } | null>(null);
@@ -185,7 +201,12 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
     if (record.kind === 'storeDebt') {
       setRevision(previous => previous + 1);
       setPayableFeedback({ ownerId: record.ownerId, message: `Debt saved for ${record.name}.` });
-    } else setRecords(previous => previous.some(item => item.id === record.id && item.ownerId === record.ownerId) ? previous : [record, ...previous]);
+    } else setRecords(previous => {
+        if (previous.some(item => item.id === record.id && item.ownerId === record.ownerId)) return previous;
+        const next = [record, ...previous];
+        if (owner?.id) void persistJson(owner.id, 'quick-add-records', next);
+        return next;
+      });
     if (record.kind === 'expense') setFeedback({ recordId: record.id, ownerId: record.ownerId, expiresAt: Date.now() + 5000 });
     return record;
   }
