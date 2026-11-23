@@ -16,7 +16,7 @@ import { RecordSkeleton } from '@/components/ui/content-skeletons';
 import tokens from '@/constants/design-tokens.json';
 import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
-import { extractTextFromImage, isSupported as ocrSupported } from 'expo-text-extractor';
+import * as FileSystem from 'expo-file-system';
 import { usePos } from '@/state/pos';
 import type { OwnerIdentity } from '@/types/auth';
 import type { PaymentMethod } from '@/types/pos';
@@ -91,22 +91,39 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
         }
         return;
       }
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 });
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.8 });
       if (result.canceled || !result.assets[0]?.uri) return;
       const imageUri = result.assets[0].uri;
-      // Run on-device OCR (ML Kit on Android, Apple Vision on iOS).
-      // In Expo Go ocrSupported is false (via the Metro alias stub in ocr-stub.ts).
-      if (!ocrSupported) {
-        Alert.alert('OCR not supported', 'Text recognition is not available on this device. Enter the reference number manually.');
+      // Convert image to base64 and send to OCR.space API
+      let base64: string;
+      try {
+        base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: FileSystem.EncodingType.Base64 });
+      } catch {
+        Alert.alert('Could not read image', 'Failed to process the photo. Try again.');
         return;
       }
-      let lines: string[] = [];
+      const apiKey = process.env.EXPO_PUBLIC_OCR_SPACE_KEY ?? '';
+      let ocrText = '';
       try {
-        lines = await extractTextFromImage(imageUri);
+        const body = new FormData();
+        body.append('base64Image', `data:image/jpeg;base64,${base64}`);
+        body.append('OCREngine', '2');
+        body.append('isTable', 'true');
+        const response = await fetch('https://api.ocr.space/parse/image', {
+          method: 'POST',
+          headers: { apikey: apiKey },
+          body,
+        });
+        if (!response.ok) throw new Error(`OCR API error ${response.status}`);
+        const json = await response.json() as { ParsedResults?: { ParsedText?: string }[]; IsErroredOnProcessing?: boolean };
+        if (json.IsErroredOnProcessing) throw new Error('OCR processing error');
+        ocrText = json.ParsedResults?.[0]?.ParsedText ?? '';
       } catch {
         Alert.alert('Could not read image', 'Text recognition failed. Enter the reference number manually.');
         return;
       }
+      // Split into lines for the same extraction logic
+      const lines = ocrText.split(/\r?\n/).filter(Boolean);
       const reference = extractGcashReference(lines);
       if (!reference) {
         Alert.alert('No reference number found', 'Make sure the GCash reference number is clearly visible and try again, or enter it manually.');
