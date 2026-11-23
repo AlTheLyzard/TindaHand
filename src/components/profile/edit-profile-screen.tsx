@@ -97,25 +97,26 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
         router.dismissTo({ pathname: profileRoot, params: { updated: result.value.pendingEmail ? 'pending' : 'complete' } });
       } else {
         // Real path: call PATCH /settings/profile with current PIN for identity verification.
-        await updateOwnerProfile({
+        const updated = await updateOwnerProfile({
           name: state.draft.name.trim(),
           storeName: state.draft.storeName.trim(),
           avatarId: state.draft.avatarId ?? undefined,
           currentPin: currentPin,
         });
         if (!active.current) return;
-        // Immediately sync the new avatar/name into the shared profile snapshot so
-        // OwnerAvatar in the header re-renders everywhere — without this, the update
-        // is not visible until the profile screen is visited (its useFocusEffect
-        // calls getOwnerProfile → syncFromApi, which is what we do here directly).
+        // Immediately sync the backend-confirmed profile into the shared snapshot so
+        // OwnerAvatar in the header re-renders everywhere without requiring a navigation
+        // to/from the profile screen (which is what triggers its useFocusEffect fetch).
+        // Using the backend response directly avoids any mismatch between the draft and
+        // what the server actually stored (e.g. a normalised avatarId).
         if (owner) {
           authenticationService.profile.syncFromApi({
             ownerId: owner.id,
-            name: state.draft.name.trim(),
-            storeName: state.draft.storeName.trim(),
-            email: profile.email,
+            name: updated.name,
+            storeName: updated.storeName,
+            email: updated.email,
             pendingEmail: profile.pendingEmail,
-            avatarId: state.draft.avatarId ?? null,
+            avatarId: (updated.avatarId as import('@/types/profile').AvatarId | null) ?? null,
           });
         }
         // Refresh the in-memory session so the new name propagates app-wide

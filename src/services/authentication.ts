@@ -9,7 +9,7 @@ import { ownerPasswordKey, ownerPinKey } from "@/services/auth-storage-keys";
 import { loginKahera } from "@/services/mock-auth";
 import { createMockProfileService } from "@/services/profile";
 import { createRememberedIdentities } from "@/services/remembered-identities";
-import { settingsService } from "@/services/settings";
+import { settingsService, resetCashierPin as resetCashierPinApi } from "@/services/settings";
 import { saveToken } from "@/services/token-storage";
 import type {
   AuthenticationService,
@@ -450,10 +450,32 @@ export function createAuthenticationService(
     },
     async resetOperatorPin({ operatorId, ...input }) {
       // TODO(backend): Reset a store Operator PIN after current Owner reauthentication.
-      // - Method/Action: PATCH / Reset operator PIN
+      // - Method/Action: POST /settings/cashiers/{id}/reset-pin
       // - Expected Input/Payload: { operatorId, ownerPin, pin } as request-only secrets
       // - Expected Response: Updated Cashier identity and session-revocation result
       // - UI State to Wire: Confirm the reset and refresh/invalidate affected Operator sessions
+      if (!MOCK_AUTH_ENABLED) {
+        // Real backend path: POST /settings/cashiers/{operatorId}/reset-pin
+        // The session JWT authorizes the owner; ownerPin verifies identity; pin is the new cashier PIN.
+        try {
+          await resetCashierPinApi(operatorId, input.ownerPin, input.pin);
+          // The PIN-reset endpoint returns no body; build a minimal stub so the
+          // typed return satisfies SettingsResult<Cashier>. The call-site in
+          // cashier-screens.tsx immediately maps { ok: true } → { ok: true, value: undefined }
+          // so the stub fields are never rendered.
+          const cashier = {
+            id: operatorId,
+            name: '',
+            ownerId: '',
+            status: 'active' as const,
+            avatarId: 'avatar-01' as import('@/types/profile').AvatarId,
+          } satisfies import('@/types/settings').Cashier;
+          return { ok: true as const, value: cashier };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Unable to reset PIN. Please try again.';
+          return { ok: false as const, message };
+        }
+      }
       const owner = authorizedOwner();
       const sessionId = live()?.id;
       return owner

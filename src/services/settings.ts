@@ -419,6 +419,14 @@ export async function getCashierPermissions(kahera_id: string): Promise<readonly
   return data.permissions;
 }
 
+/** Reset a cashier's PIN (requires current owner PIN for identity verification). */
+export async function resetCashierPin(operatorId: string, ownerPin: string, newPin: string): Promise<void> {
+  return apiFetch<void>(`/settings/cashiers/${operatorId}/reset-pin`, {
+    method: 'POST',
+    body: JSON.stringify({ owner_pin: ownerPin, new_pin: newPin }),
+  });
+}
+
 /** Overwrite the full permissions list for a single cashier. */
 export async function updateCashierPermissions(
   kahera_id: string,
