@@ -21,6 +21,7 @@ import { batchErrors, buildDraftProduct, clearInventoryStep, createInventoryDraf
 import { inventoryRules } from '@/constants/inventory-rules';
 import { formatPesos } from '@/utils/dashboard';
 import { parsePaymentAmount } from '@/utils/pos-payment';
+import { hasCapability } from '@/utils/operator-access';
 import { EmptyState, useContentPreview } from '@/components/ui/content-state';
 import { RecordSkeleton } from '@/components/ui/content-skeletons';
 
@@ -32,7 +33,10 @@ export function ProductScreen() {
   const push = usePushOnce();
   const params = useLocalSearchParams<{ id?: string; mode?: string }>();
   const { store, getStore, dispatch, setFeedback } = useInventory();
-  const { owner } = useAuthFlow();
+  const { owner, deviceSession } = useAuthFlow();
+  const operatorSession = deviceSession?.role === 'operator' ? deviceSession : null;
+  const canEditProduct = !!owner || hasCapability(operatorSession, 'inventory-edit');
+  const canRestockProduct = !!owner || hasCapability(operatorSession, 'restock');
   // Route roots differ by role — always derive from `owner` so Kahera never
   // lands on an owner-only route that guards her back to choose-account.
   const inventoryRoot = owner ? '/owner-inventory' : '/operator-inventory';
@@ -299,7 +303,7 @@ export function ProductScreen() {
       {mode === 'delete' ? <><Button variant="destructiveOutline" onPress={() => setConfirmation({ kind: 'productDelete' })}>Delete Product</Button><Button variant="secondary" onPress={back}>Cancel</Button></> : <>
         <InvText bold color={tokens.color.darkNavy}>Restock history</InvText>
         {!restocks.length ? <InvText>No restocks yet.</InvText> : restocks.map(r => <InvCard key={r.id}><InvText bold>+{r.quantity} PCS · {r.stockDate}</InvText>{r.batches ? r.batches.map(b => <InvText key={b.id}>{b.quantity} PCS | {batchExpiryLabel(b)}</InvText>) : <InvText>Expires {r.expirationDate}</InvText>}<InvText size={11}>Recorded {new Date(r.recordedAt).toLocaleString('en-PH', { timeZone: inventoryRules.timeZone })}</InvText></InvCard>)}
-        <Button onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'edit' } })}>Edit Product</Button><Button variant="secondary" onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'restock' } })}>Restock</Button>
+        {canEditProduct && <Button onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'edit' } })}>Edit Product</Button>}{canRestockProduct && <Button variant="secondary" onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'restock' } })}>Restock</Button>}
       </>}
     </> : mode === 'restock' && product ? <>
       {productHeader(product)}

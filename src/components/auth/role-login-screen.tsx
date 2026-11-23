@@ -39,13 +39,11 @@ export function RoleLoginScreen({
   role,
   onBack,
   onSuccess,
-  loggedOut = false,
   pinReset = false,
 }: {
   role: AccountRole;
   onBack: () => void;
   onSuccess: () => void;
-  loggedOut?: boolean;
   pinReset?: boolean;
 }) {
   const flow = useAuthFlow();
@@ -232,14 +230,12 @@ export function RoleLoginScreen({
             style={{ flexGrow: 1, flexShrink: 0 }}
           >
             <AuthHeader onBack={onBack} backDisabled={busy} />
-            {(loggedOut || pinReset) && (
+            {pinReset && (
               <Text
                 accessibilityRole="alert"
                 className="mt-3 font-poppins text-[12px] text-[#1D5D21]"
               >
-                {pinReset
-                  ? "PIN reset successfully."
-                  : "Logged out successfully."}
+                PIN reset successfully.
               </Text>
             )}
             <View className="mt-16 px-2" style={{ flexShrink: 0 }}>

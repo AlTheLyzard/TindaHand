@@ -147,7 +147,7 @@ export function OperatorMenuDrawer({ visible, onClose, onPresentationChange, onN
             navigate(() => {
               clear();
               if (router.canDismiss()) router.dismissAll();
-              router.replace({ pathname: '/login', params: { role: 'cashier', loggedOut: '1' } });
+              router.replace({ pathname: '/login', params: { role: 'cashier' } });
             });
           }} />
       </ScrollView>}</MotionOverlay>

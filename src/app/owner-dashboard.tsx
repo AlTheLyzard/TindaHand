@@ -60,7 +60,7 @@ export default function OwnerDashboardRoute() {
     if (router.canDismiss()) router.dismissAll();
     router.replace({
       pathname: "/login",
-      params: { role: "owner", loggedOut: "1" },
+      params: { role: "owner" },
     });
   }
 
