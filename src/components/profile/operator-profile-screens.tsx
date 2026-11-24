@@ -29,6 +29,7 @@ import type { OperatorProfileValues, SettingsErrors } from '@/types/settings';
 
 export function OperatorProfileScreen() {
   const flow = useAuthFlow();
+  const { refreshSession } = flow;
   const settings = useSettings();
   const profiles = useProfileSnapshot();
   const [logoutVisible, setLogoutVisible] = useState(false);
@@ -43,9 +44,12 @@ export function OperatorProfileScreen() {
   // Re-sync the session whenever this screen comes into focus so the name and
   // avatar reflect any changes saved in the Edit Profile screen.
   // Skip in mock mode — refreshSession is a no-op there anyway.
+  // Destructure refreshSession so the dep is the stable useCallback ref, not
+  // the flow context object (which is re-created on every Provider render and
+  // would cause an infinite update loop).
   useFocusEffect(useCallback(() => {
-    if (!MOCK_AUTH_ENABLED) void flow.refreshSession();
-  }, [flow.refreshSession]));
+    if (!MOCK_AUTH_ENABLED) void refreshSession();
+  }, [refreshSession]));
 
   async function logout() {
     if (lock.current) return;
