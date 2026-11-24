@@ -201,14 +201,19 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
             // updateOperatorProfile (and other methods that check `session` directly)
             // see a valid session even after a background restoreSession call wiped it.
             authenticationService.seedRealSession(realSession);
-            // Seed the Kahera into the local settings store with a placeholder avatar
-            // so the header renders immediately, then prefetch the real avatar in the background.
+            // Seed the Kahera into the local settings store so the header renders
+            // immediately.  Reuse any avatar already known from a previous seed or
+            // profile save rather than resetting to a placeholder — otherwise a
+            // refreshSession() call right after updateOperatorProfile() would clobber
+            // the freshly-saved avatar back to the default.
+            const knownAvatar = settingsService.cashiers(resolvedId)
+              .find(c => c.id === kaheraId)?.avatarId ?? 'avatar-01';
             settingsService.seedRealCashier({
               id: kaheraId,
               ownerId: resolvedId,
               name: resolvedName,
               status: 'active',
-              avatarId: 'avatar-01',
+              avatarId: knownAvatar,
             });
             setDeviceSession(realSession);
             // Pre-fetch the cashier's real avatarId so the header shows the correct
