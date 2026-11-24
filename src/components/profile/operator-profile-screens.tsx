@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, Text, View, type TextInputInstance } from 'react-native';
 import { router, useFocusEffect, usePreventRemove, type Href } from 'expo-router';
+import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { AvatarOption } from '@/components/profile/avatar-option';
@@ -38,6 +39,13 @@ export function OperatorProfileScreen() {
   const operator = session?.role === 'operator'
     ? settings.cashiers(session.ownerId).find(item => item.id === session.operatorId)
     : undefined;
+
+  // Re-sync the session whenever this screen comes into focus so the name and
+  // avatar reflect any changes saved in the Edit Profile screen.
+  // Skip in mock mode — refreshSession is a no-op there anyway.
+  useFocusEffect(useCallback(() => {
+    if (!MOCK_AUTH_ENABLED) void flow.refreshSession();
+  }, [flow.refreshSession]));
 
   async function logout() {
     if (lock.current) return;
