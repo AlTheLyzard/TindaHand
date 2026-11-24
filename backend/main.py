@@ -1,4 +1,5 @@
 import logging
+import sqlalchemy
 import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -16,24 +17,35 @@ def _run_migrations(engine):
     Idempotent schema migrations that create_all cannot handle
     (adding columns to already-existing tables).
     Safe to run on every startup — each ALTER is guarded by a column-exists check.
+    Works on both SQLite (dev) and PostgreSQL (Railway production).
     """
+    dialect = engine.dialect.name  # 'sqlite' or 'postgresql'
+
     with engine.connect() as conn:
         # 1. Kahera.pin_is_temporary  (added for the temp-PIN flow)
         try:
-            result = conn.execute(
-                __import__("sqlalchemy").text("PRAGMA table_info(kahera)")
-            )
-            columns = {row[1] for row in result}
-            if "pin_is_temporary" not in columns:
-                conn.execute(
-                    __import__("sqlalchemy").text(
-                        "ALTER TABLE kahera ADD COLUMN pin_is_temporary BOOLEAN NOT NULL DEFAULT 0"
-                    )
-                )
+            if dialect == "sqlite":
+                result = conn.execute(sqlalchemy.text("PRAGMA table_info(kahera)"))
+                has_col = any(row[1] == "pin_is_temporary" for row in result)
+            else:
+                # PostgreSQL (and any other ANSI SQL DB): use information_schema
+                result = conn.execute(sqlalchemy.text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'kahera' AND column_name = 'pin_is_temporary'"
+                ))
+                has_col = result.fetchone() is not None
+
+            if not has_col:
+                default_val = "0" if dialect == "sqlite" else "false"
+                conn.execute(sqlalchemy.text(
+                    f"ALTER TABLE kahera ADD COLUMN pin_is_temporary BOOLEAN NOT NULL DEFAULT {default_val}"
+                ))
                 conn.commit()
                 logging.info("Migration: added kahera.pin_is_temporary column.")
+            else:
+                logging.info("Migration: kahera.pin_is_temporary already exists, skipping.")
         except Exception as e:
-            logging.warning(f"Migration kahera.pin_is_temporary skipped: {e}")
+            logging.error(f"Migration kahera.pin_is_temporary FAILED: {e}")
 
 
 @asynccontextmanager
