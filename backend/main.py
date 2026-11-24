@@ -11,6 +11,31 @@ import models   # import so SQLAlchemy sees all models before create_all
 logging.basicConfig(level=logging.DEBUG)
 
 
+def _run_migrations(engine):
+    """
+    Idempotent schema migrations that create_all cannot handle
+    (adding columns to already-existing tables).
+    Safe to run on every startup — each ALTER is guarded by a column-exists check.
+    """
+    with engine.connect() as conn:
+        # 1. Kahera.pin_is_temporary  (added for the temp-PIN flow)
+        try:
+            result = conn.execute(
+                __import__("sqlalchemy").text("PRAGMA table_info(kahera)")
+            )
+            columns = {row[1] for row in result}
+            if "pin_is_temporary" not in columns:
+                conn.execute(
+                    __import__("sqlalchemy").text(
+                        "ALTER TABLE kahera ADD COLUMN pin_is_temporary BOOLEAN NOT NULL DEFAULT 0"
+                    )
+                )
+                conn.commit()
+                logging.info("Migration: added kahera.pin_is_temporary column.")
+        except Exception as e:
+            logging.warning(f"Migration kahera.pin_is_temporary skipped: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Retry create_all so Railway's internal DNS has time to resolve
@@ -24,6 +49,11 @@ async def lifespan(app: FastAPI):
             time.sleep(3)
     else:
         logging.error("Could not connect to database after 10 attempts.")
+    # Run additive column migrations that create_all cannot handle.
+    try:
+        _run_migrations(engine)
+    except Exception as e:
+        logging.error(f"Migration error (non-fatal): {e}")
     yield
 
 

@@ -206,14 +206,15 @@ def kahera_login_by_pin(body: KaheraLoginByPinRequest, db: Session = Depends(get
     offline_cache = build_offline_cache_payload(matched.id, matched.pin_hash)
 
     return {
-        "access_token":  token,
-        "token_type":    "bearer",
-        "full_name":     matched.full_name,
-        "kahera_id":     f"TH-KH-{matched.id:04d}",
-        "owner_id":      f"TH-MA-{matched.owner_id:04d}",
-        "role":          "cashier",
-        "expires_in":    8 * 3600,
-        "offline_cache": offline_cache,
+        "access_token":    token,
+        "token_type":      "bearer",
+        "full_name":       matched.full_name,
+        "kahera_id":       f"TH-KH-{matched.id:04d}",
+        "owner_id":        f"TH-MA-{matched.owner_id:04d}",
+        "role":            "cashier",
+        "expires_in":      8 * 3600,
+        "offline_cache":   offline_cache,
+        "pin_is_temporary": bool(matched.pin_is_temporary),
     }
 
 

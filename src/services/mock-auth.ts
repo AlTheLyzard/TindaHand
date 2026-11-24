@@ -51,6 +51,7 @@ export type KaheraLoginResult =
       name: string;
       kaheraId: string;
       ownerId: string;
+      pinIsTemporary: boolean;
     }
   | { status: "invalid"; message?: string }
   | { status: "locked" }
@@ -125,6 +126,7 @@ export async function loginKahera(
         name: data.full_name ?? "",
         kaheraId: data.kahera_id ?? "",
         ownerId: data.owner_id ?? ownerId,
+        pinIsTemporary: data.pin_is_temporary === true,
       };
     }
     if (res.status === 401 || res.status === 404) {

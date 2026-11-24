@@ -6,13 +6,14 @@ import { PosIcon } from "@/components/pos/pos-icon";
 import { CredentialForm } from "@/components/settings/credential-form";
 import { SettingsCard } from "@/components/settings/settings-ui";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
 import { MotionPressable as Pressable } from "@/components/ui/motion-pressable";
 import { useKaheraList } from "@/hooks/use-kahera-list";
 import { useProfileSnapshot } from "@/hooks/use-owner-profile";
 import { authenticationService } from "@/services/authentication";
 import { createKahera } from "@/services/kahera-api";
 import { MOCK_AUTH_ENABLED } from "@/config/mock-auth";
-import { updateCashier, getCashierPermissions, updateCashierPermissions } from "@/services/settings";
+import { updateCashier, getCashierPermissions, updateCashierPermissions, setTempCashierPin } from "@/services/settings";
 import { useAuthFlow } from "@/state/auth-flow";
 import { useSettings } from "@/state/settings";
 import type { OperatorPermission } from "@/types/auth";
@@ -488,11 +489,38 @@ export function ResetOperatorPinScreen() {
     ? cashiers.find((item) => item.id === operatorId)
     : null;
   const [toast, setToast] = useState<number | null>(null);
+  const [ownerPin, setOwnerPin] = useState('');
+  const [tempPin, setTempPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const dismiss = useCallback(() => setToast(null), []);
+
+  async function save() {
+    setError('');
+    if (!ownerPin || ownerPin.length !== 4) { setError('Enter your 4-digit May-Ari PIN.'); return; }
+    if (!tempPin || tempPin.length !== 4)   { setError('Enter a 4-digit temporary PIN for Kahera.'); return; }
+    if (tempPin !== confirmPin)              { setError('Temporary PINs do not match.'); return; }
+    if (!operator) return;
+    setBusy(true);
+    try {
+      await setTempCashierPin(operator.id, ownerPin, tempPin);
+      setOwnerPin('');
+      setTempPin('');
+      setConfirmPin('');
+      setToast(Date.now() + 15000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not set temporary PIN. Please try again.';
+      setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <ProfileFrame
-      title="Set / Reset Kahera PIN"
-      subtitle="Verify your May-Ari identity, then assign a new four-digit PIN."
+      title="Set Temporary PIN"
+      subtitle="Kahera will be prompted to create a new PIN when they next log in."
     >
       {!operator ? (
         <ProfileError message="Kahera unavailable in this store." />
@@ -505,23 +533,59 @@ export function ResetOperatorPinScreen() {
             <RegistrationToast
               expiresAt={toast}
               onDismiss={dismiss}
-              title="PIN updated"
-              message={`The PIN for ${operator.name} has been reset. Previous sessions are invalidated.`}
+              title="Temporary PIN set"
+              message={`${operator.name} will be asked to set a new PIN on next login.`}
             />
           )}
-          <View className="mt-5 flex-1">
-            <CredentialForm
-              key={operator.id}
-              mode="cashier"
-              onCancel={() => router.back()}
-              onSave={(values) =>
-                authenticationService.resetOperatorPin({
-                  ...values,
-                  operatorId: operator.id,
-                })
-              }
-              onSuccess={() => setToast(Date.now() + 15000)}
-            />
+          <View className="mt-5 gap-4">
+            <SettingsCard>
+              <ProfileText small bold>Your May-Ari PIN</ProfileText>
+              <FormField
+                label="May-Ari PIN"
+                value={ownerPin}
+                onChangeText={setOwnerPin}
+                pin
+                keyboardType="number-pad"
+                maxLength={4}
+                placeholder="Your 4-digit PIN"
+                editable={!busy}
+              />
+            </SettingsCard>
+            <SettingsCard>
+              <ProfileText small bold>Temporary PIN for {operator.name}</ProfileText>
+              <FormField
+                label="Temporary PIN"
+                value={tempPin}
+                onChangeText={setTempPin}
+                pin
+                keyboardType="number-pad"
+                maxLength={4}
+                placeholder="4-digit temporary PIN"
+                editable={!busy}
+              />
+              <FormField
+                label="Confirm Temporary PIN"
+                value={confirmPin}
+                onChangeText={setConfirmPin}
+                pin
+                keyboardType="number-pad"
+                maxLength={4}
+                placeholder="Repeat temporary PIN"
+                editable={!busy}
+              />
+            </SettingsCard>
+            {!!error && <ProfileError message={error} />}
+            <ProfileNotice title="How this works">
+              Kahera logs in with this temporary PIN, then must immediately set a new permanent PIN before accessing the POS. Tell Kahera the temporary PIN in person.
+            </ProfileNotice>
+            <View className="gap-3">
+              <Button loading={busy} disabled={busy} onPress={() => void save()}>
+                Set Temporary PIN
+              </Button>
+              <Button variant="ghost" disabled={busy} onPress={() => router.back()}>
+                Cancel
+              </Button>
+            </View>
           </View>
         </>
       )}

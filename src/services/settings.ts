@@ -452,6 +452,34 @@ export async function resetCashierPin(operatorId: string, ownerPin: string, newP
   });
 }
 
+/**
+ * May-Ari sets a temporary PIN for a Kahera.
+ * Marks pin_is_temporary=true on the backend.
+ * On next Kahera login, the app will force a permanent PIN change.
+ */
+export async function setTempCashierPin(
+  operatorId: string,
+  ownerPin: string,
+  tempPin: string,
+): Promise<void> {
+  return apiFetch<void>(`/settings/cashiers/${operatorId}/set-temp-pin`, {
+    method: 'POST',
+    body: JSON.stringify({ owner_pin: ownerPin, temp_pin: tempPin }),
+  });
+}
+
+/**
+ * Kahera sets her own permanent PIN after a forced change.
+ * Requires a valid Kahera JWT (the token obtained at login).
+ * Clears pin_is_temporary so the forced-change screen is not shown again.
+ */
+export async function kaheraChangePin(newPin: string): Promise<void> {
+  return apiFetch<void>('/settings/cashiers/change-pin', {
+    method: 'POST',
+    body: JSON.stringify({ new_pin: newPin }),
+  });
+}
+
 /** Overwrite the full permissions list for a single cashier. */
 export async function updateCashierPermissions(
   kahera_id: string,

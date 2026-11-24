@@ -228,7 +228,13 @@ export function RoleLoginScreen({
         flow.setSelectedRole(role);
         flow.notifyLogin();
         completed = true;
-        onSuccess();
+        // If the backend flagged the PIN as temporary, force Kahera to change it
+        // before accessing the POS.
+        if (result.pinIsTemporary) {
+          router.replace("/kahera-change-pin");
+        } else {
+          onSuccess();
+        }
       } else if (result.status === "locked") {
         setOperatorState("failed");
         // Wipe the offline cache for the last known kaheraId so the lockout cannot be bypassed offline.

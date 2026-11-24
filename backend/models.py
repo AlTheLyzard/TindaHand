@@ -84,16 +84,17 @@ class Kahera(Base):
     """
     __tablename__ = "kahera"
 
-    id              = Column(Integer, primary_key=True, index=True)
-    full_name       = Column(String(100), nullable=False)
-    pin_hash        = Column(String(255), nullable=False)
-    avatar_id       = Column(String(20), nullable=True)
-    is_active       = Column(Boolean, default=True)
-    pin_hash_cache  = Column(Text, nullable=True)
-    failed_attempts = Column(Integer, default=0)
-    locked_until    = Column(DateTime(timezone=True), nullable=True)
-    created_at      = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at      = Column(DateTime(timezone=True), onupdate=func.now())
+    id               = Column(Integer, primary_key=True, index=True)
+    full_name        = Column(String(100), nullable=False)
+    pin_hash         = Column(String(255), nullable=False)
+    avatar_id        = Column(String(20), nullable=True)
+    is_active        = Column(Boolean, default=True)
+    pin_is_temporary = Column(Boolean, default=False, nullable=False)
+    pin_hash_cache   = Column(Text, nullable=True)
+    failed_attempts  = Column(Integer, default=0)
+    locked_until     = Column(DateTime(timezone=True), nullable=True)
+    created_at       = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at       = Column(DateTime(timezone=True), onupdate=func.now())
 
     owner_id = Column(Integer, ForeignKey("may_ari.id"), nullable=False)
     owner    = relationship("MayAri", back_populates="kaheras")
