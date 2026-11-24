@@ -1,4 +1,4 @@
-import { API_URL } from '@/services/api';
+import { API_URL, timeoutSignal } from '@/services/api';
 
 /** Shape returned by GET /auth/me */
 interface MeApiResponse {
@@ -25,6 +25,7 @@ export async function fetchMe(token: string): Promise<MeResult | null> {
   try {
     const res = await fetch(`${API_URL}/auth/me`, {
       headers: { Authorization: `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+      signal: timeoutSignal(),
     });
     if (!res.ok) return null;
     const data: MeApiResponse = await res.json();

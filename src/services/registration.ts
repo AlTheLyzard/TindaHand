@@ -1,6 +1,6 @@
 import type { RegistrationFormValues, RegistrationResult } from "@/types/auth";
 
-import { API_URL } from "@/services/api";
+import { API_URL, timeoutSignal } from "@/services/api";
 import { saveToken } from "@/services/token-storage";
 
 export async function registerOwner(
@@ -12,6 +12,7 @@ export async function registerOwner(
       "Content-Type": "application/json",
       "ngrok-skip-browser-warning": "true",
     },
+    signal: timeoutSignal(),
     body: JSON.stringify({
       full_name: values.name.trim(),
       email: values.email.trim().toLowerCase(),

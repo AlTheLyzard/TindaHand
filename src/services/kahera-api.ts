@@ -2,7 +2,7 @@
  * Kahera (cashier) account management API calls.
  * All endpoints require a valid May-Ari (owner) JWT.
  */
-import { API_URL, ApiError, apiFetch } from '@/services/api';
+import { API_URL, ApiError, apiFetch, timeoutSignal } from '@/services/api';
 import type { SettingsResult } from '@/types/settings';
 
 export interface KaheraRecord {
@@ -24,6 +24,7 @@ export async function fetchHasAccounts(): Promise<{ has_owners: boolean; has_kah
   try {
     const res = await fetch(`${API_URL}/auth/has-accounts`, {
       headers: { 'ngrok-skip-browser-warning': 'true' },
+      signal: timeoutSignal(),
     });
     if (!res.ok) return { has_owners: false, has_kaheras: false };
     return res.json() as Promise<{ has_owners: boolean; has_kaheras: boolean }>;
@@ -36,7 +37,7 @@ export async function hasKaheraOperators(ownerId: string): Promise<boolean> {
   try {
     const res = await fetch(
       `${API_URL}/auth/kahera/has-operators?owner_id=${encodeURIComponent(ownerId)}`,
-      { headers: { 'ngrok-skip-browser-warning': 'true' } },
+      { headers: { 'ngrok-skip-browser-warning': 'true' }, signal: timeoutSignal() },
     );
     if (!res.ok) return false;
     const data = await res.json() as { has_operators: boolean };

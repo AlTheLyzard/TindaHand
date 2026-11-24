@@ -17,6 +17,17 @@ export class ApiError extends Error {
   }
 }
 
+/** Default request timeout in milliseconds. */
+const REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * Returns an AbortSignal that fires after `ms` milliseconds.
+ * Use this for raw fetch() calls that don't go through apiFetch().
+ */
+export function timeoutSignal(ms = REQUEST_TIMEOUT_MS): AbortSignal {
+  return AbortSignal.timeout(ms);
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
   init: RequestInit = {},
@@ -28,7 +39,21 @@ export async function apiFetch<T = unknown>(
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...init, headers, signal: controller.signal });
+  } catch (err) {
+    // AbortError means we timed out; re-throw as a recognisable network error
+    // so callers can show "slow connection" rather than a generic failure.
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Request timed out. Your connection may be slow — please try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;

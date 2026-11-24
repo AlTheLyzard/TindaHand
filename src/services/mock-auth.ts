@@ -27,7 +27,7 @@ export function authenticateMockOwner(
 }
 
 // ── REAL LOGIN ───────────────────────────────────────────────────
-import { API_URL } from "@/services/api";
+import { API_URL, timeoutSignal } from "@/services/api";
 
 /** Extract FastAPI's error detail string from a non-ok response body. */
 async function extractDetail(res: Response): Promise<string | undefined> {
@@ -72,6 +72,7 @@ export async function loginOwner(
         "ngrok-skip-browser-warning": "true",
       },
       body: JSON.stringify({ owner_id: ownerId.trim().toUpperCase(), pin }),
+      signal: timeoutSignal(),
     });
 
     if (res.ok) {
@@ -113,6 +114,7 @@ export async function loginKahera(
         "ngrok-skip-browser-warning": "true",
       },
       body: JSON.stringify({ owner_id: ownerId.trim().toUpperCase(), pin }),
+      signal: timeoutSignal(),
     });
 
     if (res.ok) {

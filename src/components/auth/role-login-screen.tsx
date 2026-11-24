@@ -196,7 +196,7 @@ export function RoleLoginScreen({
               onSuccess();
             }
           } else {
-            setNotice("Unable to reach server. Connect to the internet and try again.");
+            setNotice("Unable to reach server. Check your connection or try again on a stronger signal.");
           }
         }
         return;
@@ -276,7 +276,7 @@ export function RoleLoginScreen({
             }
           } else {
             setOperatorState("failed");
-            setNotice("Unable to reach server. Connect to the internet and try again.");
+            setNotice("Unable to reach server. Check your connection or try again on a stronger signal.");
           }
         } else {
           setOperatorState("failed");
