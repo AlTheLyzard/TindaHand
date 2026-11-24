@@ -64,7 +64,7 @@ export function ChangePinScreen({ cashier = false }: { cashier?: boolean }) {
     {cashier && !selected ? <EmptyState title="Kahera unavailable" description="This Kahera is not in the current store's list." icon="profile" action="Back to Kahera PIN Management" onAction={() => router.dismissTo(`${settingsRoot}/cashier-pins`)} /> : <>
       <View className="mb-6">{selected ? <KaheraSettingsIdentityCard cashier={selected} /> : <OwnerSettingsIdentityCard owner={owner} />}</View>
       <CredentialForm key={cashier ? selected!.id : 'owner'} mode={cashier ? 'cashier' : 'owner'}
-        labelOverrides={{ ownerPin: 'Current PIN', pin: 'New PIN', confirmPin: 'Confirm new PIN' }}
+        labelOverrides={{ ownerPin: 'Your PIN', pin: `Temporary PIN for ${selected!.name}`, confirmPin: 'Confirm Temporary PIN' }}
         successMessage={cashier ? `The Kahera PIN for ${selected!.name} has been updated.` : 'Your May-Ari PIN has been updated.'}
         successEventKey={cashier ? `kahera-pin-${selected?.id}` : `may-ari-pin-${owner.id}`}
         onCancel={() => router.dismissTo(parent)}
