@@ -7,10 +7,10 @@ import { MotionPressable } from './motion-pressable';
 import tokens from '@/constants/design-tokens.json';
 
 /** Lookup UI is shared; callers keep Customer and Creditor records/IDs distinct. */
-export function PartyNameField<T extends { id: string; name: string }>({ kind, label, value, selectedId, records, onChange, onMatch, onSelect, error, inputRef, onNext, onFieldBlur, floatingSuggestions = false, placeholder, selectAdornment, selectAccessibilityLabel }: {
+export function PartyNameField<T extends { id: string; name: string }>({ kind, label, value, selectedId, records, onChange, onMatch, onSelect, error, errorBackground, inputRef, onNext, onFieldBlur, floatingSuggestions = false, placeholder, selectAdornment, selectAccessibilityLabel }: {
   kind: 'customer' | 'creditor'; label: string; value: string; selectedId?: string; records: readonly T[];
   onChange: (name: string) => void; onMatch: (record: T) => void; onSelect: () => void; error?: string; inputRef?: Ref<TextInputInstance>; onNext?: () => void;
-  onFieldBlur?: () => void; floatingSuggestions?: boolean; placeholder?: string; selectAdornment?: ReactNode; selectAccessibilityLabel?: string;
+  onFieldBlur?: () => void; floatingSuggestions?: boolean; placeholder?: string; errorBackground?: string; selectAdornment?: ReactNode; selectAccessibilityLabel?: string;
 }) {
   const { fontScale } = useWindowDimensions();
   const fieldHeight = Math.max(tokens.size.touchTarget, tokens.typography.bodyPrimary.lineHeight * fontScale + tokens.spacing.two);
@@ -31,7 +31,7 @@ export function PartyNameField<T extends { id: string; name: string }>({ kind, l
     <View style={{ position: 'relative', zIndex: floatingSuggestions && show ? 10 : 0 }}>
       <View style={{ minHeight: fieldHeight, flexDirection: 'row', alignItems: 'center', borderWidth: 1,
         borderColor: error ? tokens.color.errorBase : focused ? tokens.color.brightBlue : tokens.color.borderOutline,
-        borderRadius: tokens.radius.control, backgroundColor: tokens.color.surfaceCard, paddingHorizontal: tokens.spacing.three }}>
+        borderRadius: tokens.radius.control, backgroundColor: error ? errorBackground ?? tokens.color.surfaceCard : tokens.color.surfaceCard, paddingHorizontal: tokens.spacing.three }}>
         <KeyboardInput ref={inputRef} value={value} onChangeText={text => { keepOpen(); setActive(-1); onChange(text); }}
           accessibilityLabel={`${kind === 'customer' ? 'Customer' : 'Creditor'} name, required`} accessibilityHint={error ?? `Type a name to find existing ${kind}s. Use Select to open the full list.`}
           placeholder={placeholder ?? `Enter ${kind} name`} placeholderTextColor={tokens.color.textPlaceholder} autoCorrect={false} autoCapitalize="words" returnKeyType="next"

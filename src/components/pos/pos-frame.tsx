@@ -24,10 +24,11 @@ export function posHref(basePath: PosRouteBase, child?: 'cart' | 'payment') {
   return child === 'cart' ? '/operator-pos/cart' : child === 'payment' ? '/operator-pos/payment' : '/operator-pos';
 }
 
-export function PosFrame({ owner, step, onPos, children, backAction, basePath = '/owner-pos' }: {
+export function PosFrame({ owner, step, onPos, children, backAction, basePath = '/owner-pos', title }: {
   owner: OwnerIdentity; step: 'select' | 'cart' | 'payment'; onPos: () => void; children: ReactNode;
   backAction?: { label: string; onPress: () => void };
   basePath?: PosRouteBase;
+  title?: string;
 }) {
   const { t } = useTranslation();
   const metrics = usePosMetrics();
@@ -49,7 +50,7 @@ export function PosFrame({ owner, step, onPos, children, backAction, basePath = 
     <View className="w-full max-w-[460px] self-center" style={{ paddingHorizontal: metrics.gutter, paddingTop: metrics.titleTop }}>
       <View className="flex-row items-center gap-2">
         {backAction && <PosBackButton {...backAction} />}
-        <Text testID="pos-title" accessibilityRole="header" className="flex-1 type-h1-display text-brand" style={{ lineHeight: tokens.typography.h1Display.lineHeight * fontScale }}>{t('pos.title')}</Text>
+        <Text testID="pos-title" accessibilityRole="header" className="flex-1 type-h1-display text-brand" style={{ lineHeight: tokens.typography.h1Display.lineHeight * fontScale }}>{title ?? t('pos.title')}</Text>
       </View>
       <View className="flex-row gap-2" style={{ marginTop: metrics.stepsTop, marginBottom: metrics.stepsBottom }}>
         {(['select', 'cart', 'payment'] as const).map(value => <View key={value} className="flex-1 border-t-2 pt-2" style={{ borderColor: value === 'select' || step === 'payment' || (value === 'cart' && step === 'cart') ? tokens.color.royalBlue : tokens.color.iceContainer }}>

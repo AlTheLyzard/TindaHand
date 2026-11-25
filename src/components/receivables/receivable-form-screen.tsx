@@ -1,16 +1,13 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, Platform, Text, View, type TextInputInstance } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Keyboard, Text, View, type TextInputInstance } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { InventoryFrame, InvDateField } from '@/components/inventory/inventory-ui';
 import { QuickAddField, quickAddColors } from '@/components/dashboard/quick-add-ui';
 import { QuickAddSuccess } from '@/components/dashboard/quick-add-success';
-import { CreditProductBrowser } from '@/components/pos/credit-product-browser';
 import { CreditProductSelector } from '@/components/pos/credit-product-selector';
-import { BalancePanel } from '@/components/payables/payables-ui';
 import { ConfirmationContent } from '@/components/ui/confirmation-content';
-import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
+import { KeyboardAwareScrollView as ScrollView } from '@/components/ui/keyboard-aware-scroll-view';
 import { MotionModal } from '@/components/ui/motion-modal';
 import { PartySelectionSheet } from '@/components/ui/party-selection-sheet';
 import { Button } from '@/components/ui/button';
@@ -18,40 +15,39 @@ import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { PosIcon } from '@/components/pos/pos-icon';
 import { useQuickAdd } from '@/state/quick-add';
 import { useInventory } from '@/state/inventory';
-import { useAuthFlow } from '@/state/auth-flow';
 import { useApiCustomers } from '@/hooks/use-customers';
 import { newReceivableDraft, useReceivableDraft } from '@/state/receivable-draft';
 import { customerDebtErrors } from '@/utils/receivables';
 import { quickAddTotal } from '@/utils/quick-add';
-import { selectionSummary, removeSelectedProduct } from '@/utils/pos';
+import { removeSelectedProduct } from '@/utils/pos';
 import { formatPesos } from '@/utils/dashboard';
 import { formatCalendarDate } from '@/utils/date';
 import type { QuickAddDraft, QuickAddRecord } from '@/types/quick-add';
 import type { Customer } from '@/types/pos';
-import { CustomerList, CustomerNameField, debtDescription, receivablesRoot } from './receivables-ui';
-import { motion } from '@/constants/motion';
+import { CustomerList, CustomerNameField, debtDescription, useReceivablesRoot, ReceivableSummaryCard } from './receivables-ui';
 import tokens from '@/constants/design-tokens.json';
+import { MotionContent, MotionLayout } from '@/components/ui/motion-content';
+import { useStoreOwner } from '@/hooks/use-store-owner';
 
-type Picker = 'customer' | 'products' | null;
+type Picker = 'customer' | null;
 
 export function ReceivableFormScreen() {
   const { draft, setDraft, setQuery } = useReceivableDraft();
   const { save } = useQuickAdd();
   const { store } = useInventory();
-  const { owner } = useAuthFlow();
-  const confirmedMode = owner?.mode === 'confirmed';
-  const { customers: apiCustomers, addCustomer } = useApiCustomers(confirmedMode ? owner?.id : undefined);
+  const storeOwner = useStoreOwner();
+  const root = useReceivablesRoot();
+  const confirmedMode = storeOwner?.mode === 'confirmed';
+  const { customers: apiCustomers } = useApiCustomers(confirmedMode ? storeOwner?.id : undefined);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState('');
   const [picker, setPicker] = useState<Picker>(null);
-  const [pickerSession, setPickerSession] = useState(0);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [savedRecord, setSavedRecord] = useState<QuickAddRecord | null>(null);
   const busy = useRef(false);
   const confirmationDismissed = useRef(true);
   const pendingSaveDraft = useRef<QuickAddDraft | null>(null);
-  const focusCustomerAfterPicker = useRef(false);
   const nameInput = useRef<TextInputInstance>(null);
   const amountInput = useRef<TextInputInstance>(null);
   const dateInput = useRef<TextInputInstance>(null);
@@ -59,11 +55,18 @@ export function ReceivableFormScreen() {
   const insets = useSafeAreaInsets();
 
   useEffect(() => { setDraft(newReceivableDraft()); }, [setDraft]);
+  const product = draft.borrowing === 'product';
   const errors = customerDebtErrors(draft, store.products);
   const invalid = Object.keys(errors).length > 0;
-  const error = (field: keyof QuickAddDraft) => submitted ? errors[field] : undefined;
+  const error = (field: keyof QuickAddDraft) => {
+    if (!submitted) return undefined;
+    if (product && field === 'name' && invalid) return 'Please complete the required fields.';
+    if (!errors[field]) return undefined;
+    if (field === 'name') return 'Please enter customer name or identifying details.';
+    if (field === 'amount') return 'Please input the amount borrowed.';
+    return errors[field];
+  };
   const update = (patch: Partial<QuickAddDraft>) => { setDraft(previous => ({ ...previous, ...patch })); setFailure(''); };
-  const product = draft.borrowing === 'product';
   const summaryLines = [
     `Customer: ${draft.name.trim()}`,
     `Debt Type: ${product ? 'Product' : 'Cash'}`,
@@ -76,16 +79,20 @@ export function ReceivableFormScreen() {
     Keyboard.dismiss();
     setPicker(null);
   }
-  function openPicker(next: Exclude<Picker, null>) {
+  function openPicker(next: Picker) {
+    if (!next) return;
     Keyboard.dismiss();
-    setPickerSession(session => session + 1);
     setPicker(next);
+  }
+  function openProducts() {
+    Keyboard.dismiss();
+    router.push(`${root}/products`);
   }
   function focusFirstInvalid() {
     if (errors.name) nameInput.current?.focus();
     else if (errors.amount) amountInput.current?.focus();
     else if (errors.dueDate) dateInput.current?.focus();
-    else if (errors.items) openPicker('products');
+    else if (errors.items) openProducts();
   }
   function submit() {
     if (busy.current || savedRecord || !confirmationDismissed.current || confirmationOpen) return;
@@ -125,7 +132,7 @@ export function ReceivableFormScreen() {
   function finishSuccess() {
     if (!savedRecord) return;
     setSavedRecord(null);
-    router.dismissTo({ pathname: receivablesRoot, params: { section: 'receivable', status: 'unpaid' } });
+    router.dismissTo({ pathname: root, params: { section: 'receivable', status: 'unpaid' } } as Href);
   }
   function afterConfirmationHidden() {
     confirmationDismissed.current = true;
@@ -136,7 +143,7 @@ export function ReceivableFormScreen() {
   function back() {
     if (busy.current) return;
     Keyboard.dismiss();
-    router.dismissTo({ pathname: receivablesRoot, params: { section: 'receivable', status: 'unpaid' } });
+    router.dismissTo({ pathname: root, params: { section: 'receivable', status: 'unpaid' } } as Href);
   }
   function selectCustomer(customer: Customer) {
     // For confirmed owners, only pass customerId if it's a real backend ID (not a local mock)
@@ -146,27 +153,11 @@ export function ReceivableFormScreen() {
   }
 
   const overlay = <>
-    <PartySelectionSheet visible={picker === 'customer'} title="Select Customer" subtitle="Choose an existing name. Your debt details are kept."
-      onClose={closePicker} onHidden={() => {
-        if (focusCustomerAfterPicker.current) {
-          focusCustomerAfterPicker.current = false;
-          nameInput.current?.focus();
-        }
-      }} disabled={saving} testID="customer-picker">
-      <CustomerList key={pickerSession} customers={confirmedMode ? apiCustomers : (store.pos?.customers ?? [])} searchPlaceholder="Search Customer..."
-        onAddNew={() => { focusCustomerAfterPicker.current = true; closePicker(); }} onSelect={selectCustomer} />
+    <PartySelectionSheet visible={picker === 'customer'} title="Select Customer" subtitle="Record what a customer owes your store."
+      onClose={closePicker} disabled={saving} testID="customer-picker">
+      <CustomerList customers={confirmedMode ? apiCustomers : (store.pos?.customers ?? [])} searchLabel="Customer name:"
+        searchPlaceholder="Enter Customer Name" description="" onSelect={selectCustomer} />
     </PartySelectionSheet>
-    <MotionModal visible={picker === 'products'} sheet transitionDuration={motion.quickAddSheet} backdropColor={quickAddColors.backdrop}
-      onRequestClose={closePicker}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: tokens.color.appBackground }}>
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            {picker === 'products' && <CreditProductBrowser key={pickerSession} name={draft.name} selection={draft.items}
-              onConfirm={items => { setDraft(previous => ({ ...previous, items })); setFailure(''); closePicker(); }} onReturn={closePicker} />}
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </GestureHandlerRootView>
-    </MotionModal>
     <MotionModal visible={confirmationOpen} backdropColor={quickAddColors.backdrop} onRequestClose={() => setConfirmationOpen(false)} onHidden={afterConfirmationHidden}>
       <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, paddingBottom: Math.max(insets.bottom, 24) }}>
@@ -184,10 +175,10 @@ export function ReceivableFormScreen() {
     </MotionModal>
   </>;
 
-  return <InventoryFrame title="New Customer Debt" back inlineTitle onBack={back} overlay={overlay} onNavigate={action => { if (!busy.current) action(); }}>
-    <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">{debtDescription}</Text>
-    <View className="gap-5" pointerEvents={saving ? 'none' : 'auto'}>
-      <CustomerNameField onMatch={selected => selectCustomer(selected)} inputRef={nameInput} value={draft.name} customerId={draft.customerId} onChange={name => update({ name, customerId: undefined })} error={error('name')} onSelect={() => openPicker('customer')} onNext={() => (product ? dateInput : amountInput).current?.focus()} customers={confirmedMode ? apiCustomers : undefined} />
+  return <InventoryFrame title="Customer Debt" back inlineTitle subtitle={debtDescription} background hideNavigationWithKeyboard
+    onBack={back} overlay={overlay} onNavigate={action => { if (!busy.current) action(); }}>
+    <MotionLayout className="gap-5" pointerEvents={saving ? 'none' : 'auto'}>
+      <CustomerNameField onMatch={selected => selectCustomer(selected)} inputRef={nameInput} value={draft.name} customerId={draft.customerId} onChange={name => update({ name, customerId: undefined })} error={error('name')} errorBackground={tokens.color.errorTint} placeholder="Creditor information" onSelect={() => openPicker('customer')} onNext={() => (product ? dateInput : amountInput).current?.focus()} customers={confirmedMode ? apiCustomers : undefined} />
       <View className="gap-2"><Text className=" type-label-nav text-text-secondary">Debt Type</Text>
         <View accessibilityRole="radiogroup" className="flex-row gap-3">{(['cash', 'product'] as const).map(type => {
           const selected = draft.borrowing === type;
@@ -201,14 +192,16 @@ export function ReceivableFormScreen() {
           </Pressable>;
         })}</View>
       </View>
-      {product ? <CreditProductSelector fullPage selection={draft.items} onChange={change => setDraft(previous => ({ ...previous, items: change(previous.items) }))} onRemove={id => update({ items: removeSelectedProduct(draft.items, id) })} onBrowse={() => openPicker('products')} error={error('items')} /> : <QuickAddField ref={amountInput} label="Amount borrowed" money value={draft.amount} onChangeText={amount => update({ amount })} placeholder="0.00" inputMode="decimal" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => dateInput.current?.focus()} error={error('amount')} />}
-      <BalancePanel dark title={product ? `Total Items: ${selectionSummary(draft.items).quantity} pcs` : 'Total Cash Borrowed'} amount={formatPesos(quickAddTotal(draft))} caption="This amount will be recorded as a customer receivable." />
-      <InvDateField compact inputRef={dateInput} label="Due date (30 days default)" value={draft.dueDate} onChange={dueDate => update({ dueDate })} error={error('dueDate')} />
+      <MotionContent changeKey={product} className="gap-5">
+      {product ? <CreditProductSelector fullPage selection={draft.items} onChange={change => setDraft(previous => ({ ...previous, items: change(previous.items) }))} onRemove={id => update({ items: removeSelectedProduct(draft.items, id) })} onBrowse={openProducts} error={error('items')} /> : <QuickAddField ref={amountInput} label="Amount borrowed (Required):" money value={draft.amount} onChangeText={amount => update({ amount })} placeholder="0.00" inputMode="decimal" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => dateInput.current?.focus()} error={error('amount')} errorBackground={tokens.color.errorTint} />}
+        <ReceivableSummaryCard dark title="Total Cash Borrowed" amountCentavos={quickAddTotal(draft)} caption="This amount will be recorded as a customer receivable." />
+      </MotionContent>
+      <InvDateField compact inputRef={dateInput} label="Due date (30 days default):" value={draft.dueDate} onChange={dueDate => update({ dueDate })} error={error('dueDate')} />
       {!!failure && <Text accessibilityRole="alert" className=" type-micro-caption text-error-base">{failure}</Text>}
-      <View className="mt-3 flex-row flex-wrap gap-3">
-        <View className="min-w-[110px] flex-1"><Button variant="secondary" disabled={saving} onPress={() => { Keyboard.dismiss(); setDraft(newReceivableDraft()); setSubmitted(false); setFailure(''); }}>Clear</Button></View>
-        <View className="min-w-[130px] flex-1"><Button loading={saving} disabled={saving || !!savedRecord || (submitted && invalid)} onPress={submit}>Save Debt</Button></View>
+      <View className="gap-3 pt-2">
+        <Button loading={saving} disabled={saving || !!savedRecord || (submitted && invalid)} onPress={submit}>Save Debt</Button>
+        <Button variant="secondary" disabled={saving || !!savedRecord} onPress={back}>Cancel</Button>
       </View>
-    </View>
+    </MotionLayout>
   </InventoryFrame>;
 }
