@@ -45,10 +45,10 @@ export function InventoryScreen({
 }) {
   const push = usePushOnce();
   const { tab, status: routeStatus } = useLocalSearchParams<{ tab?: string; status?: string }>();
-  const { store: liveStore, refetchProducts, refetchAssets } = useInventory();
+  const { store: liveStore, refetchProducts } = useInventory();
   // Re-sync with the backend whenever this screen comes into focus.
   // This ensures May-Ari sees Kahera's restocks, and Kahera sees May-Ari's edits.
-  useFocusEffect(useCallback(() => { void refetchProducts(); void refetchAssets(); }, [refetchProducts, refetchAssets]));
+  useFocusEffect(useCallback(() => { void refetchProducts(); }, [refetchProducts]));
   const preview = useContentPreview(listPreviewStates);
   const store = preview.empty ? { ...liveStore, products: [], assets: [] } : liveStore;
   const [assets, setAssets] = useState(showAssets && tab === 'assets');

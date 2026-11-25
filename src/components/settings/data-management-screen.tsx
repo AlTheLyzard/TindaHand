@@ -29,7 +29,7 @@ export function DataManagementScreen() {
     : null);
 
   const service = useSettings();
-  const { refetchProducts, refetchAssets } = useInventory();
+  const { refetchProducts } = useInventory();
   const insets = useSafeAreaInsets();
   const mounted = useRef(true);
   const locked = useRef(false);
@@ -61,7 +61,7 @@ export function DataManagementScreen() {
       setRealStatus('syncing');
       setNotice('');
       try {
-        await Promise.all([refetchProducts(), refetchAssets()]);
+        await refetchProducts();
         if (!mounted.current) return;
         setRealStatus('complete');
         setToast({ title: 'Sync complete.', message: 'Products and assets are up to date.', expiresAt: Date.now() + 10000 });
