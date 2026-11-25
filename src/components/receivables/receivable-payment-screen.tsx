@@ -150,7 +150,7 @@ export function ReceivablePaymentScreen() {
             <Text className="type-list-financial text-white">Total Debt</Text>
             <Text className="type-micro-caption text-white">{formatCalendarDate(debt.occurredAt.slice(0, 10))}</Text>
           </View>
-          <AnimatedPesoValue centavos={balance.originalCentavos} className="type-large-metric" style={{ color: tokens.color.surfaceCard }} />
+          <AnimatedPesoValue centavos={balance.originalCentavos} className="type-large-metric leading-[45px]" style={{ color: tokens.color.surfaceCard }} />
         </View>
 
         <QuickAddField ref={input} label="Amount Paid" required money value={amount} onChangeText={update} placeholder="0.00"
@@ -159,7 +159,7 @@ export function ReceivablePaymentScreen() {
 
         <View accessibilityLiveRegion="polite" className={`gap-3 rounded-card border p-5 ${validation ? 'border-error-base bg-error-tint' : 'border-success-base bg-success-tint'}`}>
           <Text className="type-label-nav" style={{ color: previewColor }}>Preview</Text>
-          <AnimatedPesoValue centavos={remaining} prefix="Balance: " className="type-large-metric" style={{ color: previewColor }} />
+          <AnimatedPesoValue centavos={remaining} prefix="Balance: " className="type-large-metric leading-[45px]" style={{ color: previewColor }} />
           <Text className="type-micro-financial-rate text-text-secondary">{formatPesos(outstanding)} − {formatPesos(entered)} = {formatPesos(remaining)}</Text>
         </View>
         {!!failure && <Text accessibilityRole="alert" className="type-micro-caption text-error-base">{failure}</Text>}

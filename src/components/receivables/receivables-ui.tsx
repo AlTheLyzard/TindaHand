@@ -145,7 +145,7 @@ export function ReceivableSummaryCard({ title, amountCentavos, caption, paid = f
   const surface = dark ? tokens.color.darkNavy : paid ? receivableColors.greenSurface : receivableColors.blueSurface;
   return <MotionSurface className="gap-3 rounded-card border p-4" style={{ borderColor: ink, backgroundColor: surface }}>
     <MotionText className="type-h3-heading" style={{ color: ink }}>{title}</MotionText>
-    <AnimatedPesoValue centavos={amountCentavos} prefix={amountPrefix} className="type-large-metric" style={{ color: ink }} />
+    <AnimatedPesoValue centavos={amountCentavos} prefix={amountPrefix} className="type-large-metric leading-[45px]" style={{ color: ink }} />
     {!!caption && <Text className="type-micro-caption text-text-secondary" style={dark ? { color: tokens.color.surfaceCard } : undefined}>{caption}</Text>}
   </MotionSurface>;
 }
