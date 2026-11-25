@@ -524,3 +524,19 @@ class CashierPermissionsUpdate(BaseModel):
 class OkResponse(BaseModel):
     ok: bool = True
     message: Optional[str] = None
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# FINANCIAL
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class JournalLineOut(BaseModel):
+    accountId: str
+    debit: int
+    credit: int
+
+class JournalEntryOut(BaseModel):
+    id: str
+    date: str          # YYYY-MM-DD (Asia/Manila)
+    description: str
+    lines: List[JournalLineOut]

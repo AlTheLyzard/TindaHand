@@ -255,3 +255,30 @@ export async function updateAsset(
 export async function deleteAsset(id: string): Promise<void> {
   return apiFetch<void>(`/inventory/assets/${id}`, { method: "DELETE" });
 }
+
+// ── Financial ─────────────────────────────────────────────────────────────────
+
+export interface ApiJournalLine {
+  accountId: string;
+  debit: number;
+  credit: number;
+}
+
+export interface ApiJournalEntry {
+  id: string;
+  date: string;        // YYYY-MM-DD (Asia/Manila)
+  description: string;
+  lines: ApiJournalLine[];
+}
+
+/** Fetch real journal entries from the backend for the given date range. */
+export async function getJournalEntries(
+  fromDate?: string,
+  toDate?: string,
+): Promise<ApiJournalEntry[]> {
+  const params = new URLSearchParams();
+  if (fromDate) params.set('from_date', fromDate);
+  if (toDate) params.set('to_date', toDate);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<ApiJournalEntry[]>(`/financial/journal${qs}`);
+}

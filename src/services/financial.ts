@@ -43,3 +43,20 @@ export const financialRepository = createFinancialRepository();
 export function financialRepositoryWithLocal(local: readonly JournalEntry[]) {
   return createFinancialRepository(mergeLocalEntries(financialSeed, local));
 }
+
+/**
+ * Build a repository from an explicit set of journal entries, without using the seed dataset.
+ * Use this when real backend entries are available — the seed's placeholder data is excluded
+ * so only real transactions appear in the reports.
+ */
+export function financialRepositoryFromEntries(entries: readonly JournalEntry[], clock = () => new Date().toISOString()): FinancialRepository {
+  const data: FinancialDataset = {
+    ...financialSeed,     // inherit storeName, timezone, accounts (chart of accounts)
+    entries,
+    updatedAt: new Date().toISOString(),
+  };
+  return {
+    async getStatus(owner) { requireOwner(owner); return { updatedAt: data.updatedAt, storeName: data.storeName }; },
+    async getReport(owner, kind, selection) { requireOwner(owner); return calculateFinancialReport(data, kind, selection, clock()); },
+  };
+}
