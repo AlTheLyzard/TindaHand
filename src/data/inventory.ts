@@ -9,9 +9,9 @@ import type { BusinessAsset, InventoryProduct } from '../types/inventory';
 // - UI State to Wire: Replace product fixtures and refresh lists, stock totals, and POS availability
 export const inventoryProducts: readonly InventoryProduct[] = [
   { id: 'demo-delata', name: 'Delata Premium Rice', category: 'canned', unitPriceCentavos: 2500, costCentavos: 1800, stock: 12, expirationDate: '2027-02-05' },
-  { id: 'demo-sunsilk', name: 'Sunsilk', category: 'personalCare', unitPriceCentavos: 2000, costCentavos: 1600, stock: 3, expirationDate: '2027-03-11' },
-  { id: 'demo-dinorado', name: 'Dinorado Rice 5kg', category: 'groceries', unitPriceCentavos: 18500, costCentavos: 17700, stock: 0, expirationDate: '2027-07-30' },
-  { id: 'demo-c2', name: 'C2 Solo', category: 'drinks', unitPriceCentavos: 1700, costCentavos: 1200, stock: 8, expirationDate: '2027-07-17' },
+  { id: 'demo-sunsilk', name: 'Sunsilk', category: 'personalCare', unitPriceCentavos: 2000, costCentavos: 1600, stock: 3, expirationDate: '2027-03-11', note: 'Hindi gagano mabenta yung color blue...' },
+  { id: 'demo-dinorado', name: 'Dinorado Rice 5kg', category: 'groceries', unitPriceCentavos: 18500, costCentavos: 17700, stock: 0, expirationDate: '2027-07-30', note: 'Mas maraming bumibili' },
+  { id: 'demo-c2', name: 'C2 Solo', category: 'drinks', unitPriceCentavos: 1700, costCentavos: 1200, stock: 8, expirationDate: '2027-07-17', note: 'Masarap siya tapos mas mabenta sa...' },
   { id: 'demo-charmee', name: 'Charmee', category: 'personalCare', unitPriceCentavos: 1200, costCentavos: 900, stock: 2, expirationDate: '2028-01-01' },
   { id: 'demo-zonrox', name: 'Zonrox', category: 'household', unitPriceCentavos: 3500, costCentavos: 2800, stock: 14, expirationDate: '2027-01-01' },
   { id: 'demo-biscuits', name: 'Butter Biscuits', category: 'snacks', unitPriceCentavos: 1000, costCentavos: 700, stock: 20, expirationDate: '2026-11-01' },

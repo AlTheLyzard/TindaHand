@@ -2,7 +2,7 @@ import { KeyboardAwareScrollView as ScrollView, KeyboardViewport as KeyboardAvoi
 import { Button, IconButton } from '@/components/ui/button';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Alert, Keyboard, Platform, Text, View, type TextInputInstance, type ViewInstance } from 'react-native';
+import { Alert, Keyboard, Platform, Text, View, useWindowDimensions, type TextInputInstance, type ViewInstance } from 'react-native';
 import { MotionContent } from '@/components/ui/motion-content';
 import { PosDialog } from '@/components/pos/pos-dialog';
 import { PosChip } from '@/components/pos/pos-chip';
@@ -22,6 +22,7 @@ import type { PaymentMethod } from '@/types/pos';
 import { formatPesos } from '@/utils/dashboard';
 import { cartCountsLabel, selectionSummary } from '@/utils/pos';
 import { orderSelectionKey, paymentAmounts, paymentErrors, paymentMethodLabels as modeLabels, sanitizePaymentReference } from '@/utils/pos-payment';
+import { formatPosDenomination, previewPosChangeBreakdown } from '@/utils/pos-change-breakdown';
 import { usePosMetrics } from './pos-metrics';
 
 const errorLabels = { required: 'Enter the amount received.', invalid: 'Enter a valid peso amount with up to two decimal places.',
@@ -33,6 +34,7 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
   owner: OwnerIdentity; basePath?: PosRouteBase; allowPartialPayment?: boolean;
 }) {
   const metrics = usePosMetrics();
+  const { width: viewportWidth } = useWindowDimensions();
   const { selection, paymentDraft: draft, updatePayment, completeOrder, clear, hasStockConflict, customers } = usePos();
   const preview = useContentPreview();
   const [attempted, setAttempted] = useState(false);
@@ -127,6 +129,9 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
     }
   }
   const balanceAmount = partial || amounts.remainingCentavos > 0 ? amounts.remainingCentavos : amounts.changeCentavos;
+  const changeBreakdown = errors.gcash === 'overpayment' || partial
+    ? [] : previewPosChangeBreakdown(amounts.changeCentavos);
+  const compactChangeCard = viewportWidth < 360;
 
   const paymentMethods = (Object.keys(modeLabels) as PaymentMethod[]).filter(method => allowPartialPayment || method !== 'partial');
 
@@ -180,13 +185,30 @@ export function PaymentScreen({ owner, basePath = '/owner-pos', allowPartialPaym
                 trailingAccessory={<IconButton accessibilityLabel="Open camera to capture GCash reference" disabled={cameraBusy}
                   onPress={openReferenceCamera} icon={({ color }) => <AppIcon name="camera" size={24} color={color} />} />} />}
             </View>
-            <View testID="payment-balance-card" accessibilityLiveRegion="polite" className="mt-4 gap-2 rounded-control border border-bright-blue p-4"
+            <View testID="payment-balance-card" accessibilityLiveRegion="polite" className="mt-4 rounded-control border border-bright-blue p-4"
               style={{ backgroundColor: tokens.color.iceContainerOverlay }}>
-              <Text className=" type-button-cta text-brand">{partial || amounts.remainingCentavos > 0 ? 'Remaining Balance' : 'Change'}</Text>
-              <Text className=" type-micro-financial-rate text-text-secondary">{partial || amounts.remainingCentavos > 0
-                ? `${formatPesos(summary.totalCentavos)} − ${formatPesos(amounts.paidCentavos)} = ${formatPesos(amounts.remainingCentavos)}`
-                : errors.gcash === 'overpayment' ? 'Review the GCash amount before completing the order.' : `${formatPesos(amounts.paidCentavos)} − ${formatPesos(summary.totalCentavos)} = ${formatPesos(amounts.changeCentavos)}`}</Text>
-              <Text testID="payment-balance-amount" className=" type-large-metric" style={{ color: tokens.color.darkNavy }}>{formatPesos(balanceAmount)}</Text>
+              <View className={compactChangeCard ? 'gap-4' : 'flex-row items-start gap-4'}>
+                <View className={compactChangeCard ? 'gap-2' : 'min-w-0 flex-[1.15] gap-2'}>
+                  <Text className=" type-button-cta text-brand">{partial || amounts.remainingCentavos > 0 ? 'Remaining Balance' : 'Total Change'}</Text>
+                  <Text className=" type-micro-financial-rate text-text-secondary">{partial || amounts.remainingCentavos > 0
+                    ? `${formatPesos(summary.totalCentavos)} − ${formatPesos(amounts.paidCentavos)} = ${formatPesos(amounts.remainingCentavos)}`
+                    : errors.gcash === 'overpayment' ? 'Review the GCash amount before completing the order.' : `${formatPesos(amounts.paidCentavos)} − ${formatPesos(summary.totalCentavos)} = ${formatPesos(amounts.changeCentavos)}`}</Text>
+                  <Text testID="payment-balance-amount" className=" type-large-metric" style={{ color: tokens.color.darkNavy }}>{formatPesos(balanceAmount)}</Text>
+                </View>
+                <View testID="payment-change-breakdown" className={compactChangeCard ? 'gap-2' : 'min-w-0 flex-1 gap-2'}>
+                  <Text className="self-end text-right type-button-cta text-text-primary">Change breakdown</Text>
+                  {changeBreakdown.length > 0 ? <View className="items-end gap-1.5">
+                    {changeBreakdown.map(({ denominationCentavos, count }) => <View key={denominationCentavos} className="self-end flex-row items-center gap-2">
+                      <View className="min-h-6 self-start justify-center rounded-control bg-white px-2">
+                        <Text className="type-button-cta text-text-primary" numberOfLines={1}>{formatPosDenomination(denominationCentavos)}</Text>
+                      </View>
+                      <Text className="shrink-0 type-button-cta text-text-primary">× {count}</Text>
+                    </View>)}
+                  </View> : <Text className="self-end text-right type-micro-financial-rate text-text-secondary">
+                    {errors.gcash === 'overpayment' ? 'Fix the GCash amount to review change.' : 'No change due'}
+                  </Text>}
+                </View>
+              </View>
             </View>
             {attempted && amountError && <Text accessibilityRole="alert" className="mt-3 type-micro-caption text-error-base">{amountError}</Text>}
             {attempted && errors.amount === 'fullyPaid' && draft.partialMethod && <Button variant="text" fullWidth={false} compact style={{ alignSelf: 'flex-start' }} onPress={() => update(draft.partialMethod === 'cash' ? { method: 'cash', cashAmount: draft.partialAmount } : { method: 'gcash', gcashAmount: draft.partialAmount, gcashReference: draft.partialReference })}>{["Use ", modeLabels[draft.partialMethod], "for full payment"].join('')}</Button>}

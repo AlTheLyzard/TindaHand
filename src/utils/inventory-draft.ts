@@ -38,6 +38,7 @@ export function detailsErrors(details: ProductDraft, today: string) {
 }
 export function buildDraftProduct(id: string, draft: InventoryDraft): InventoryProduct {
   return withBatches({ id, name: draft.details.name.trim(), category: draft.details.category as InventoryProduct['category'],
+    note: draft.details.note.trim() || undefined,
     unitPriceCentavos: parsePaymentAmount(draft.details.sellingPrice)!, costCentavos: parsePaymentAmount(draft.details.cost)!,
     photoUri: draft.details.photoUri, stock: 0, expirationDate: '' }, toStockBatches(draft.batches));
 }

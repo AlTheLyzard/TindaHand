@@ -122,7 +122,7 @@ export function InvField({ label, error, inputRef, style, trailing, fieldFooter,
     underlineColorAndroid={presentation || batch ? 'transparent' : undefined}
     className={presentation || batch ? 'min-w-0 flex-1 type-body-primary text-text-primary' : 'min-w-0 flex-1 py-3 pr-4 type-body-primary text-text-primary'}
     style={[presentation || batch
-      ? { minHeight: Math.max(tokens.button.height - 2, tokens.typography.bodyPrimary.lineHeight * fontScale + 24), paddingLeft: money ? 4 : batch ? 8 : 16, paddingRight: batch ? 8 : 16, paddingVertical: 12, textAlignVertical: 'center' }
+      ? { minHeight: Math.max(tokens.button.height - 2, tokens.typography.bodyPrimary.lineHeight * fontScale + 24), paddingLeft: money ? 4 : batch ? 8 : 16, paddingRight: batch ? 8 : 16, paddingVertical: 12, textAlignVertical: props.multiline ? 'top' : 'center' }
       : { paddingLeft: money ? 4 : 16 }, style]} />;
   const input = onFieldPress
     ? <MotionPressable accessibilityRole="button" accessibilityLabel={props.accessibilityLabel ?? label.replace(/\s*\*$/, '')}

@@ -196,6 +196,7 @@ export function ProductScreen() {
         const created = await createProduct({
           name: builtProduct.name,
           category: builtProduct.category,
+          note: builtProduct.note ?? '',
           unitPriceCentavos: builtProduct.unitPriceCentavos,
           costCentavos: builtProduct.costCentavos,
           photoUri: builtProduct.photoUri,
@@ -216,6 +217,7 @@ export function ProductScreen() {
             await updateProduct(product.id, {
               name: builtProduct.name,
               category: builtProduct.category,
+              note: builtProduct.note ?? '',
               unitPriceCentavos: builtProduct.unitPriceCentavos,
               costCentavos: builtProduct.costCentavos,
               photoUri: builtProduct.photoUri,
@@ -279,6 +281,11 @@ export function ProductScreen() {
     <View className="flex-row flex-wrap gap-3"><View className="min-w-[130px] flex-1"><InvField money label="Cost / Capital Price *" inputRef={costInput} value={draft.details.cost} onChangeText={v => update('cost', v)} error={errors.cost} placeholder="0.00" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => sellingInput.current?.focus()} /></View><View className="min-w-[130px] flex-1"><InvField money label="Selling Price *" inputRef={sellingInput} value={draft.details.sellingPrice} onChangeText={v => update('sellingPrice', v)} error={errors.sellingPrice} placeholder="0.00" keyboardType="decimal-pad" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} /></View></View>
     <View className="flex-row flex-wrap items-center justify-between gap-3 rounded-control border border-accent bg-ice-container p-3"><InvText bold color={tokens.color.royalBlue}>Estimated profit per item</InvText><InvText bold color={tokens.color.textPrimary}>{parsePaymentAmount(draft.details.sellingPrice) !== null && parsePaymentAmount(draft.details.cost) !== null ? formatPesos(parsePaymentAmount(draft.details.sellingPrice)! - parsePaymentAmount(draft.details.cost)!) : '₱0.00'}</InvText></View>
   </>;
+  const noteField = <InvField label="Note" value={draft.details.note} onChangeText={value => update('note', value)}
+    accessibilityHint="Optional product note, up to 200 characters."
+    placeholder="e.g. mabilis mabenta yung chilimansi" multiline numberOfLines={5} maxLength={200} textAlignVertical="top"
+    style={{ minHeight: 132, paddingTop: 14, paddingBottom: 30 }}
+    fieldFooter={<Text accessibilityLabel={`${draft.details.note.length} of 200 characters`} className="type-helper text-text-secondary">{draft.details.note.length}/200</Text>} />;
   const batchCards = <>
     {draft.batches.map((batch, index) => <BatchCard key={batch.id} batch={batch} index={index} errors={batchValidation[batch.id]} expanded onChange={updateBatch}
       onNoExpiryChange={mode === 'add' && step === 'stock' ? value => {
@@ -336,6 +343,8 @@ export function ProductScreen() {
       {mode === 'edit' && <View className="items-center gap-2 pb-2"><Pressable accessibilityRole="button" accessibilityLabel="Edit product photo" disabled={picking} onPress={pickPhoto}><ProductPhoto uri={draft.details.photoUri} size={112} /><View className="absolute bottom-1 right-1 rounded-pill bg-white p-1"><PosIcon name="edit" size={20} color={tokens.color.textPrimary} /></View></Pressable>{!!draft.details.photoUri && <Button compact fullWidth={false} variant="text" onPress={() => update('photoUri', undefined)}>Remove photo</Button>}</View>}
       {mode === 'edit' && <InvText bold size={11} color={tokens.color.textSecondary}>PRODUCT INFORMATION</InvText>}
       {detailsFields}
+      {mode === 'edit' && <InvText bold size={11} color={tokens.color.textSecondary}>ADDITIONAL NOTES</InvText>}
+      {noteField}
       {mode === 'add' ? <><InvText bold size={11} color={tokens.color.textSecondary}>PRODUCT PHOTO</InvText>{photoControl}{!!draft.details.photoUri && <Button variant="text" onPress={() => update('photoUri', undefined)}>Remove photo</Button>}</>
       : <><InvText bold size={11} color={tokens.color.textSecondary}>STOCK LOTS</InvText>{batchCards}<View className="mt-8 gap-2 border-t border-outline pt-4"><InvText size={10}>This action cannot be undone.</InvText><Button variant="destructiveOutline" disabled={saving || picking} onPress={() => setConfirmation({ kind: 'productDelete' })}>Delete Product</Button></View></>}
     </>}
@@ -353,6 +362,7 @@ function ProductReview({ product }: { product: InventoryProduct }) {
     <View className="flex-row items-center gap-4 rounded-control border border-outline bg-white p-3"><ProductPhoto uri={product.photoUri} size={84} /><View className="min-w-0 flex-1 gap-1"><InvText bold size={15} color={tokens.color.textPrimary}>{product.name}</InvText><InvText>{categoryLabels[product.category]} · {formatPesos(product.unitPriceCentavos)}</InvText></View></View>
     <InvText bold size={11} color={tokens.color.textSecondary}>PRODUCT INFORMATION</InvText><InvCard><ReviewRow label="Product Name" value={product.name} /><ReviewRow label="Category" value={categoryLabels[product.category]} /></InvCard>
     <InvText bold size={11} color={tokens.color.textSecondary}>PRICING DETAILS</InvText><InvCard><ReviewRow label="Cost / Capital Price" value={formatPesos(product.costCentavos)} /><ReviewRow label="Selling Price" value={formatPesos(product.unitPriceCentavos)} /><View className="flex-row flex-wrap justify-between gap-3 border-t border-outline pt-3"><View className="min-w-[120px] flex-1"><InvText size={11}>Estimated profit per item</InvText></View><Text className="text-right type-label-nav text-text-primary">{formatPesos(product.unitPriceCentavos - product.costCentavos)}</Text></View></InvCard>
+    <InvText bold size={11} color={tokens.color.textSecondary}>ADDITIONAL NOTES</InvText><InvCard><InvText color={tokens.color.textPrimary}>{product.note?.trim() || 'No note added.'}</InvText></InvCard>
     <InvText bold size={11} color={tokens.color.textSecondary}>INITIAL STOCK &amp; STOCK LOTS</InvText><InvCard><ReviewRow label="Total Stock" value={productStock(product) + ' PCS'} /><ReviewRow label="Stock status" value={status === 'good' ? 'In Stock' : status === 'low' ? 'Low Stock' : 'Out of Stock'} /></InvCard>
     {expiry.expired && <InvText bold color={tokens.color.errorBase}>This product has expired stock.</InvText>}
     {expiry.nearExpiry && <InvText bold color={warningStockStatusColor}>This product has stock nearing expiry.</InvText>}

@@ -6,7 +6,7 @@ import { usePushOnce } from '@/hooks/use-push-once';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Image, Keyboard, View } from 'react-native';
+import { Image, Keyboard, Text, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { InvCard, InventoryFrame, InvModal, InvText } from './inventory-ui';
 import { getInventorySales } from '@/services/inventory';
@@ -111,9 +111,9 @@ export function InventoryScreen({
       {preview.loading ? <RecordSkeleton kind="product" /> : !visible.length ? emptyList(false) : visible.map(p => {
         const status = stockCategory(productStock(p)), expiry = productExpiry(p, today);
         return <InvCard key={p.id}>
-          <Pressable accessibilityRole="button" accessibilityLabel={'View ' + p.name} onPress={() => productRoute(p.id, 'details')} className="flex-row items-center gap-3">
+          <Pressable accessibilityRole="button" accessibilityLabel={'View ' + p.name + (p.note?.trim() ? '. Note: ' + p.note.trim() : '')} onPress={() => productRoute(p.id, 'details')} className="flex-row items-center gap-3">
             <View className="h-20 w-20 overflow-hidden rounded-control bg-ice-container">{p.photoUri && <Image source={{ uri: p.photoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />}</View>
-            <View className="min-w-0 flex-1 gap-1"><InvText bold size={16} color={tokens.color.textPrimary}>{p.name}</InvText><InvText size={14}>{categoryLabels[p.category]}</InvText><View className="flex-row flex-wrap items-center gap-x-1"><InvText bold size={16} color={tokens.color.darkNavy}>{formatPesos(p.unitPriceCentavos)}</InvText><InvText size={14} color={tokens.color.textSecondary}>|</InvText><InvText size={14} color={inventoryStatusAppearance(status).color}>{statuses[status]}</InvText></View></View>
+            <View className="min-w-0 flex-1 gap-1"><InvText bold size={16} color={tokens.color.textPrimary}>{p.name}</InvText><InvText size={14}>{categoryLabels[p.category]}</InvText><View className="flex-row flex-wrap items-center gap-x-1"><InvText bold size={16} color={tokens.color.darkNavy}>{formatPesos(p.unitPriceCentavos)}</InvText><InvText size={14} color={tokens.color.textSecondary}>|</InvText><InvText size={14} color={inventoryStatusAppearance(status).color}>{statuses[status]}</InvText></View>{!!p.note?.trim() && <Text numberOfLines={1} ellipsizeMode="tail" className="type-micro-caption text-text-secondary">{p.note.trim()}</Text>}</View>
             <View className="min-w-[56px] items-center justify-center"><InvText size={14} color={tokens.color.textPrimary}>{productStock(p)} PCS</InvText></View>
           </Pressable>
           {(expiry.expired || expiry.nearExpiry) && <View className="flex-row flex-wrap gap-2">{expiry.expired && <InvText size={11} color={tokens.color.errorBase}>● Expired stock</InvText>}{expiry.nearExpiry && <InvText size={11} color={warningStockStatusColor}>● Nearing expiry</InvText>}</View>}

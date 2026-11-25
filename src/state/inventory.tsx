@@ -17,7 +17,7 @@ const InventoryContext = createContext<{ store: InventoryStore; getStore: () => 
 type ApiProductBatch = { id: string; quantity: number; noExpiry: boolean; expirationDate: string | null };
 
 /** Map API product shape to the local InventoryProduct type. */
-function mapApiProduct(p: ReturnType<typeof Object.assign> & { id: string; name: string; category: string; unitPriceCentavos: number; costCentavos: number; stock: number; expirationDate: string | null; photoUri: string | null; batches?: ApiProductBatch[] | null }): InventoryProduct {
+function mapApiProduct(p: ReturnType<typeof Object.assign> & { id: string; name: string; category: string; unitPriceCentavos: number; costCentavos: number; stock: number; expirationDate: string | null; photoUri: string | null; note?: string | null; batches?: ApiProductBatch[] | null }, localNote?: string): InventoryProduct {
   return {
     id: p.id,
     name: p.name,
@@ -26,6 +26,7 @@ function mapApiProduct(p: ReturnType<typeof Object.assign> & { id: string; name:
     costCentavos: p.costCentavos,
     stock: p.stock,
     expirationDate: p.expirationDate ?? '',
+    note: p.note ?? localNote,
     photoUri: p.photoUri ?? undefined,
     batches: p.batches?.map((b: ApiProductBatch) => b.noExpiry
       ? { id: b.id, quantity: b.quantity, noExpiry: true as const, expirationDate: null }
@@ -46,8 +47,9 @@ function SessionInventory({ children }: { children: ReactNode }) {
       // Trust the API's answer — even an empty array means "this store has no
       // products yet", so replace mock data with the real (empty) list.
       // We only keep existing data if the call throws (offline / server error).
-      const realProducts: InventoryProduct[] = apiProducts.map(mapApiProduct);
       setStore(previous => {
+        const localNotes = new Map(previous.products.filter(product => product.note !== undefined).map(product => [product.id, product.note!]));
+        const realProducts: InventoryProduct[] = apiProducts.map(product => mapApiProduct(product, localNotes.get(product.id)));
         const next = { ...previous, products: realProducts };
         current.current = next;
         return next;
@@ -70,8 +72,9 @@ function SessionInventory({ children }: { children: ReactNode }) {
       // Trust the API's answer — even an empty array means "this store has no
       // products yet". Replace mock data with the real list (which may be empty).
       // Only keep existing data if the call throws (offline / server error).
-      const realProducts: InventoryProduct[] = apiProducts.map(mapApiProduct);
       setStore(previous => {
+        const localNotes = new Map(previous.products.filter(product => product.note !== undefined).map(product => [product.id, product.note!]));
+        const realProducts: InventoryProduct[] = apiProducts.map(product => mapApiProduct(product, localNotes.get(product.id)));
         const next = { ...previous, products: realProducts };
         current.current = next;
         return next;
