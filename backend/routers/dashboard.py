@@ -111,28 +111,31 @@ def dashboard_summary(
         .all()
     )
 
-    # Push period boundaries down to PostgreSQL so timestamptz comparisons are unambiguous.
-    # Manila is UTC+8, so "today in Manila" starts at UTC 00:00 - 8h = previous day 16:00 UTC.
-    today_start_utc = datetime(today.year, today.month, today.day, tzinfo=timezone.utc) - MANILA_OFFSET
-    today_end_utc   = today_start_utc + timedelta(days=1)
+    # IMPORTANT: occurred_at values in the DB are stored as Manila local time with NO
+    # timezone offset (naive datetimes). The frontend sends UTC ISO strings, but older
+    # rows were inserted without timezone normalization. PostgreSQL's timestamptz column
+    # treats naive inserts as the server's local time — which on Railway is UTC — so a
+    # Manila-time value like "2026-11-26 04:58:00" is stored and compared as if it were
+    # UTC. To filter correctly we must compare against Manila-local naive boundaries too.
+    today_start_naive = datetime(today.year, today.month, today.day)          # 00:00 Manila, naive
+    today_end_naive   = today_start_naive + timedelta(days=1)                  # 00:00 next day Manila, naive
     week_start_manila = today - timedelta(days=today.weekday())
-    week_start_utc  = datetime(week_start_manila.year, week_start_manila.month, week_start_manila.day, tzinfo=timezone.utc) - MANILA_OFFSET
-    month_start_utc = datetime(month_start.year, month_start.month, month_start.day, tzinfo=timezone.utc) - MANILA_OFFSET
+    week_start_naive  = datetime(week_start_manila.year, week_start_manila.month, week_start_manila.day)
+    month_start_naive = datetime(month_start.year, month_start.month, month_start.day)
 
     # Helper: amount actually received for a sale (total minus any unpaid remainder).
-    # This matches what Transaction History shows and what the customer actually paid.
     def _received(s) -> int:
         return s.total_centavos - s.remaining_centavos
 
-    # Period-filtered totals — queried directly in Postgres so timestamptz math is correct
-    # regardless of whether SQLAlchemy returns naive or aware datetimes to Python.
+    # Period-filtered totals — push the filter to PostgreSQL using naive Manila boundaries
+    # so the comparison matches the naive Manila timestamps actually stored in the DB.
     today_sales_centavos = sum(
         _received(s)
         for s in db.query(Sale)
         .filter(
             Sale.owner_id == owner_id,
-            Sale.occurred_at >= today_start_utc,
-            Sale.occurred_at < today_end_utc,
+            Sale.occurred_at >= today_start_naive,
+            Sale.occurred_at < today_end_naive,
         )
         .all()
     )
@@ -142,7 +145,7 @@ def dashboard_summary(
         for s in db.query(Sale)
         .filter(
             Sale.owner_id == owner_id,
-            Sale.occurred_at >= week_start_utc,
+            Sale.occurred_at >= week_start_naive,
         )
         .all()
     )
@@ -152,7 +155,7 @@ def dashboard_summary(
         for s in db.query(Sale)
         .filter(
             Sale.owner_id == owner_id,
-            Sale.occurred_at >= month_start_utc,
+            Sale.occurred_at >= month_start_naive,
         )
         .all()
     )
@@ -277,30 +280,24 @@ def debug_sales_timestamps(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
-    """Returns raw occurred_at values for the last 10 sales, plus today's UTC window."""
+    """Returns raw occurred_at values for the last 10 sales, plus today's Manila window."""
     owner_id = current_user["db_id"]
     today = _manila_today()
-    today_start_utc = datetime(today.year, today.month, today.day, tzinfo=timezone.utc) - MANILA_OFFSET
-    today_end_utc   = today_start_utc + timedelta(days=1)
+    today_start_naive = datetime(today.year, today.month, today.day)
+    today_end_naive   = today_start_naive + timedelta(days=1)
     sales = db.query(Sale).filter(Sale.owner_id == owner_id).order_by(Sale.occurred_at.desc()).limit(10).all()
     return {
         "manila_today": str(today),
-        "today_start_utc": today_start_utc.isoformat(),
-        "today_end_utc": today_end_utc.isoformat(),
+        "today_start_naive_manila": today_start_naive.isoformat(),
+        "today_end_naive_manila": today_end_naive.isoformat(),
         "server_utc_now": datetime.now(timezone.utc).isoformat(),
         "sales": [
             {
                 "id": s.id,
                 "occurred_at_raw": str(s.occurred_at),
-                "occurred_at_repr": repr(s.occurred_at),
                 "tzinfo": str(getattr(s.occurred_at, "tzinfo", None)),
                 "total_centavos": s.total_centavos,
-                "in_today_window": (
-                    today_start_utc <= (
-                        s.occurred_at.replace(tzinfo=timezone.utc) if s.occurred_at.tzinfo is None
-                        else s.occurred_at.astimezone(timezone.utc)
-                    ) < today_end_utc
-                ),
+                "in_today_window": today_start_naive <= s.occurred_at < today_end_naive,
             }
             for s in sales
         ],
