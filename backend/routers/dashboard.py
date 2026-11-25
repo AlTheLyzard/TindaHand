@@ -111,45 +111,50 @@ def dashboard_summary(
         .all()
     )
 
-    # Convert today and month_start to UTC boundaries for safe comparison.
+    # Push period boundaries down to PostgreSQL so timestamptz comparisons are unambiguous.
     # Manila is UTC+8, so "today in Manila" starts at UTC 00:00 - 8h = previous day 16:00 UTC.
     today_start_utc = datetime(today.year, today.month, today.day, tzinfo=timezone.utc) - MANILA_OFFSET
     today_end_utc   = today_start_utc + timedelta(days=1)
-    # Week starts on Monday in Manila time
     week_start_manila = today - timedelta(days=today.weekday())
     week_start_utc  = datetime(week_start_manila.year, week_start_manila.month, week_start_manila.day, tzinfo=timezone.utc) - MANILA_OFFSET
     month_start_utc = datetime(month_start.year, month_start.month, month_start.day, tzinfo=timezone.utc) - MANILA_OFFSET
-
-    def _utc(dt: datetime) -> datetime:
-        """Return dt as UTC-aware, handling both naive (assume UTC) and aware datetimes."""
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
 
     # Helper: amount actually received for a sale (total minus any unpaid remainder).
     # This matches what Transaction History shows and what the customer actually paid.
     def _received(s) -> int:
         return s.total_centavos - s.remaining_centavos
 
-    # Today's sales (Manila time) — sum of amounts actually received
+    # Period-filtered totals — queried directly in Postgres so timestamptz math is correct
+    # regardless of whether SQLAlchemy returns naive or aware datetimes to Python.
     today_sales_centavos = sum(
         _received(s)
-        for s in all_sales
-        if today_start_utc <= _utc(s.occurred_at) < today_end_utc
+        for s in db.query(Sale)
+        .filter(
+            Sale.owner_id == owner_id,
+            Sale.occurred_at >= today_start_utc,
+            Sale.occurred_at < today_end_utc,
+        )
+        .all()
     )
 
-    # This week's sales (Monday–Sunday, Manila time)
     week_sales_centavos = sum(
         _received(s)
-        for s in all_sales
-        if _utc(s.occurred_at) >= week_start_utc
+        for s in db.query(Sale)
+        .filter(
+            Sale.owner_id == owner_id,
+            Sale.occurred_at >= week_start_utc,
+        )
+        .all()
     )
 
-    # This month's sales
     month_sales_centavos = sum(
         _received(s)
-        for s in all_sales
-        if _utc(s.occurred_at) >= month_start_utc
+        for s in db.query(Sale)
+        .filter(
+            Sale.owner_id == owner_id,
+            Sale.occurred_at >= month_start_utc,
+        )
+        .all()
     )
 
     # All-time sales total (for Money In)
