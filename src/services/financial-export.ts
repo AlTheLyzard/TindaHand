@@ -8,10 +8,9 @@ import { financialFilename, financialReportHtml } from '@/utils/financial-pdf';
 export async function exportFinancialPdf(report: FinancialReport): Promise<'ready' | 'print-dialog'> {
   if (!await Sharing.isAvailableAsync()) throw new Error('File sharing is unavailable on this device.');
   const filename = financialFilename(report);
-  const generated = await Print.printToFileAsync({ html: financialReportHtml(report), width: 595, height: 842 });
-  // Copy into the cache directory — expo-sharing requires a file in a world-readable location.
-  const destination = FileSystem.cacheDirectory + filename;
-  await FileSystem.copyAsync({ from: generated.uri, to: destination });
-  await Sharing.shareAsync(destination, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: filename });
+  // Write directly into cacheDirectory so expo-sharing can read it without a copy step.
+  const filePath = (FileSystem.cacheDirectory ?? '') + filename;
+  const generated = await Print.printToFileAsync({ html: financialReportHtml(report), width: 595, height: 842, filePath });
+  await Sharing.shareAsync(generated.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: filename });
   return 'ready';
 }
