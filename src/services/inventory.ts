@@ -74,6 +74,7 @@ export interface ApiProduct {
   id: string; // "prod-abc123" — matches backend ProductOut.id: str
   name: string;
   category: string;
+  note?: string | null;
   unitPriceCentavos: number; // backend field name (not priceCentavos)
   costCentavos: number;
   stock: number; // backend field name (not stockQuantity)
@@ -125,6 +126,7 @@ export async function getProducts(): Promise<ApiProduct[]> {
 export async function createProduct(data: {
   name: string;
   category: string;
+  note?: string;
   unitPriceCentavos: number;
   costCentavos: number;
   stock?: number;
@@ -149,6 +151,7 @@ export async function updateProduct(
   data: Partial<{
     name: string;
     category: string;
+    note: string;
     unitPriceCentavos: number;
     costCentavos: number;
     expirationDate: string;

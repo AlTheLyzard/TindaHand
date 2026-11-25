@@ -18,7 +18,7 @@ export const operatorSettingsHref = {
 } as const;
 
 export function OperatorSettingsLandingScreen() {
-  return <SettingsFrame title="Settings" landing parent="/operator-pos" navigationRole="operator" showBack={false}>
+  return <SettingsFrame title="Settings" landing parent="/operator-pos" navigationRole="operator" showBack={false} storefrontArtwork={false}>
     <View className="mb-3"><SettingsDescription>Make TindaHand work for your store</SettingsDescription></View>
     <SettingsSection>PREFERENCES</SettingsSection>
     <SettingsRow title="Language" description="English" icon="language"

@@ -7,6 +7,15 @@ import type { QuickAddRecord } from './quick-add';
 // - Expected Response: PosProduct[] or canonical sale/payment records with current stock and integer-centavo totals
 // - UI State to Wire: Refresh catalog/stock and clear checkout drafts only after confirmed sale responses
 export type ProductCategory = 'drinks' | 'canned' | 'snacks' | 'coldCuts' | 'groceries' | 'household' | 'personalCare';
+export type PosCatalogPriceRange = 'all' | 'under50' | '50to100' | 'over100';
+export type PosCatalogAvailability = 'all' | 'inStock' | 'lowStock' | 'outOfStock';
+export type PosCatalogSort = 'default' | 'az' | 'za';
+export type PosCatalogFilters = {
+  category: ProductCategory | 'all';
+  priceRange: PosCatalogPriceRange;
+  sort: PosCatalogSort;
+  availability: PosCatalogAvailability;
+};
 export type PosProduct = {
   id: string;
   name: string;

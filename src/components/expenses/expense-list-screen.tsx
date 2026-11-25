@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Text, View, useWindowDimensions, type ScrollViewInstance } from 'react-native';
+import { ScrollView, Text, View, type ScrollViewInstance } from 'react-native';
 import { InventoryFrame, InvField } from '@/components/inventory/inventory-ui';
 import { RegistrationToast } from '@/components/auth/registration-toast';
 import { PosChip } from '@/components/pos/pos-chip';
@@ -26,10 +26,6 @@ export function ExpenseListScreen() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<ExpenseFilter>('all');
   const [today, setToday] = useState(todayInManila);
-  const { width } = useWindowDimensions();
-  const contentWidth = Math.max(0, Math.min(width, 460) - 40);
-  const chipColumns = contentWidth >= 344 ? 4 : 2;
-  const chipWidth = (contentWidth - (chipColumns - 1) * 8) / chipColumns;
   const scroll = useRef<ScrollViewInstance>(null);
   const push = usePushOnce();
   // Use real API data for confirmed sessions; fall back to local seed for mock/preview.
@@ -60,12 +56,12 @@ export function ExpenseListScreen() {
     </View>
     {expenseFeedback && <RegistrationToast expiresAt={expenseFeedback.expiresAt} onDismiss={dismissExpenseFeedback} title="Expense recorded" message="Your expense has been saved successfully." />}
     <Button onPress={newRecord}>New Record</Button>
-    <View accessibilityRole="radiogroup" accessibilityLabel="Filter expenses by category" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      <View style={{ width: chipWidth }}><PosChip label="All" appearance="category" singleLine stretch selected={category === 'all'} onPress={() => setCategory('all')} /></View>
-      {expenseCategories.map(value => <View key={value} style={{ width: chipWidth }}>
-        <PosChip label={expenseCategoryLabel(value)} appearance="category" singleLine stretch selected={category === value} onPress={() => setCategory(value)} />
-      </View>)}
-    </View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 8 }}>
+      <View accessibilityRole="radiogroup" accessibilityLabel="Filter expenses by category" style={{ flexDirection: 'row', gap: 8 }}>
+        <PosChip label="All" singleLine selected={category === 'all'} onPress={() => setCategory('all')} />
+        {expenseCategories.map(value => <PosChip key={value} label={expenseCategoryLabel(value)} singleLine selected={category === value} onPress={() => setCategory(value)} />)}
+      </View>
+    </ScrollView>
     {allExpenses.length === 0 ? <EmptyState icon="expense" title="No expenses yet" description="Record your first store expense to start tracking your spending." /> : expenses.length === 0 ?
       <EmptyState icon="search" title={query.trim() ? 'No expenses found' : 'No expenses in this category'}
         description="Try a different search or category to find your expenses." /> :

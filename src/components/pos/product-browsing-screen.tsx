@@ -46,7 +46,7 @@ export function ProductBrowsingScreen({ owner, basePath = '/owner-pos', title, b
   return <PosFrame owner={owner} basePath={basePath} step="select" title={title} backAction={backAction} onPos={() => { Keyboard.dismiss(); catalog.current?.scrollToTop(); }}>
     {!embeddedSelection && <PaymentPreviewToast ownerMode={basePath === '/owner-pos'} />}
     <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ProductCatalog ref={catalog} products={preview.empty ? [] : products} selection={selection} onAdd={add} preview={preview} searchPlaceholder={searchPlaceholder}
+      <ProductCatalog ref={catalog} products={preview.empty ? [] : products} selection={selection} onAdd={add} preview={preview} searchPlaceholder={searchPlaceholder} showFilter
         control={__DEV__ && previewControl === 'controls' ? preview.control : null} onOpenInventory={() => { preview.reset(); router.navigate(basePath === '/owner-pos' ? '/owner-inventory' : '/operator-inventory'); }} />
       <View testID="pos-cart-sheet" className="w-full justify-center rounded-t-[14px] border border-outline bg-white py-3" style={{ minHeight: metrics.sheetHeight }}>
         <View className="w-full max-w-[460px] self-center" style={{ paddingHorizontal: metrics.sheetPadding }}>

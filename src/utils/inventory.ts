@@ -47,15 +47,16 @@ export function filterInventory(products: readonly InventoryProduct[], query: st
     });
 }
 export function emptyProductDraft(): ProductDraft {
-  return { name: '', category: '', expirationDate: '', sellingPrice: '', cost: '', quantity: '', stockDate: todayInManila() };
+  return { name: '', category: '', expirationDate: '', note: '', sellingPrice: '', cost: '', quantity: '', stockDate: todayInManila() };
 }
 export function productDraft(product: InventoryProduct): ProductDraft {
-  return { name: product.name, category: product.category, expirationDate: product.expirationDate,
+  return { name: product.name, category: product.category, expirationDate: product.expirationDate, note: product.note ?? '',
     sellingPrice: (product.unitPriceCentavos / 100).toFixed(2), cost: (product.costCentavos / 100).toFixed(2), quantity: String(product.stock), stockDate: todayInManila(), photoUri: product.photoUri };
 }
 export function validateProduct(draft: ProductDraft, mode: 'add' | 'edit' | 'restock', today: string) {
   const errors: Partial<Record<keyof ProductDraft, string>> = {};
   if (!draft.name.trim()) errors.name = t("inventory.product.name.is.required");
+  if (draft.note.length > 200) errors.note = 'Note must be 200 characters or fewer.';
   if (!Object.prototype.hasOwnProperty.call(categoryLabels, draft.category)) errors.category = t("inventory.select.a.category");
   if (!validDate(draft.expirationDate)) errors.expirationDate = t("inventory.enter.a.valid.date.as.yyyy.mm");
   const selling = parsePaymentAmount(draft.sellingPrice), cost = parsePaymentAmount(draft.cost);
@@ -91,7 +92,7 @@ export function inventoryReducer(state: InventoryStore, action: InventoryAction)
     case 'saveProduct': {
       if (action.product.batches && !validBatches(action.product.batches, false)) return state;
       const product = action.product.batches ? withBatches(action.product, action.product.batches) : action.product;
-      if (!product.id || !product.name.trim() || !Object.prototype.hasOwnProperty.call(categoryLabels, product.category) || (!product.batches && !validDate(product.expirationDate)) || !Number.isSafeInteger(product.stock) || product.stock < 0 || product.stock > inventoryRules.maxStock || !Number.isSafeInteger(product.unitPriceCentavos) || product.unitPriceCentavos <= 0 || !Number.isSafeInteger(product.costCentavos) || product.costCentavos < 0) return state;
+      if (!product.id || !product.name.trim() || (product.note?.length ?? 0) > 200 || !Object.prototype.hasOwnProperty.call(categoryLabels, product.category) || (!product.batches && !validDate(product.expirationDate)) || !Number.isSafeInteger(product.stock) || product.stock < 0 || product.stock > inventoryRules.maxStock || !Number.isSafeInteger(product.unitPriceCentavos) || product.unitPriceCentavos <= 0 || !Number.isSafeInteger(product.costCentavos) || product.costCentavos < 0) return state;
       const products = state.products.some(p => p.id === product.id) ? state.products.map(p => p.id === product.id ? { ...product } : p) : [...state.products, { ...product }];
       return safeTotal(products.map(p => p.costCentavos * p.stock)) ? { ...state, products } : state;
     }

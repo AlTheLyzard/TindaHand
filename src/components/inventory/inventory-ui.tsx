@@ -2,6 +2,7 @@ import { MoneyInput } from '@/components/ui/money-input';
 import { KeyboardField, KeyboardAwareScrollView as ScrollView, KeyboardInput as TextInput, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
 import { ChoiceChip } from '@/components/ui/choice-chip';
 import { MotionRegion } from '@/components/ui/motion-content';
+import { MotionPressable } from '@/components/ui/motion-pressable';
 import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { useTranslation } from '@/i18n/use-translation';
 import { t } from '@/i18n';
@@ -111,22 +112,33 @@ export function InvModal({ visible, title, children, onClose, sheet = false, sub
     </KeyboardAvoidingView></SafeAreaView>}
   </Modal>;
 }
-export function InvField({ label, error, inputRef, style, trailing, fieldFooter, hideLabel = false, batch = false, money = false, ...props }: TextInputProps & { label: string; error?: string; inputRef?: Ref<TextInputInstance>; trailing?: ReactNode; fieldFooter?: ReactNode; hideLabel?: boolean; batch?: boolean; money?: boolean }) {
+export function InvField({ label, error, inputRef, style, trailing, fieldFooter, hideLabel = false, batch = false, money = false, onFieldPress, ...props }: TextInputProps & { label: string; error?: string; inputRef?: Ref<TextInputInstance>; trailing?: ReactNode; fieldFooter?: ReactNode; hideLabel?: boolean; batch?: boolean; money?: boolean; onFieldPress?: () => void }) {
   const { fontScale } = useWindowDimensions();
   const presentation = useContext(InventoryPresentation);
   const Input = money ? MoneyInput : TextInput;
+  const renderInput = (pressable: boolean) => <Input {...props} ref={inputRef} accessible={pressable ? false : props.accessible}
+    pointerEvents={pressable ? 'none' : props.pointerEvents} accessibilityLabel={props.accessibilityLabel ?? label.replace(/\s*\*$/, ', required')}
+    accessibilityHint={error} placeholderTextColor={tokens.color.textPlaceholder} autoCorrect={false}
+    underlineColorAndroid={presentation || batch ? 'transparent' : undefined}
+    className={presentation || batch ? 'min-w-0 flex-1 type-body-primary text-text-primary' : 'min-w-0 flex-1 py-3 pr-4 type-body-primary text-text-primary'}
+    style={[presentation || batch
+      ? { minHeight: Math.max(tokens.button.height - 2, tokens.typography.bodyPrimary.lineHeight * fontScale + 24), paddingLeft: money ? 4 : batch ? 8 : 16, paddingRight: batch ? 8 : 16, paddingVertical: 12, textAlignVertical: props.multiline ? 'top' : 'center' }
+      : { paddingLeft: money ? 4 : 16 }, style]} />;
+  const input = onFieldPress
+    ? <MotionPressable accessibilityRole="button" accessibilityLabel={props.accessibilityLabel ?? label.replace(/\s*\*$/, '')}
+        accessibilityHint={props.accessibilityHint ?? 'Opens the date picker.'} onPress={onFieldPress}
+        style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>{renderInput(true)}</MotionPressable>
+    : renderInput(false);
   if (!presentation && !batch) return <KeyboardField className="gap-1">{!hideLabel && <InvLabel label={label} />}<View className="min-h-12 flex-row items-center rounded-control border bg-white" style={{ borderColor: error ? tokens.color.errorBase : tokens.color.borderOutline }}>
     {money && <Text accessibilityElementsHidden className="pl-4 type-body-primary text-text-primary">₱</Text>}
-    <Input {...props} ref={inputRef} accessibilityLabel={props.accessibilityLabel ?? label.replace(/\s*\*$/, ', required')} accessibilityHint={error} placeholderTextColor={tokens.color.textPlaceholder} autoCorrect={false}
-      className="min-w-0 flex-1 py-3 pr-4 type-body-primary text-text-primary" style={[{ paddingLeft: money ? 4 : 16 }, style]} />{trailing}
+    {input}{trailing}
     </View>
     {!!fieldFooter && <View pointerEvents="none" style={{ alignSelf: 'flex-end', marginTop: 4 }}>{fieldFooter}</View>}
     {!!error && <MotionRegion><Text accessibilityRole="alert" className=" type-helper text-error-base">{error}</Text></MotionRegion>}
   </KeyboardField>;
   return <KeyboardField className="gap-1">{!hideLabel && <InvLabel label={label} />}<View className="flex-row items-center bg-white" style={{ minHeight: tokens.button.height, borderWidth: 1, borderRadius: tokens.radius.control, borderColor: error ? tokens.color.errorBase : tokens.color.borderOutline, position: fieldFooter ? 'relative' : undefined }}>
     {money && <Text accessibilityElementsHidden style={{ paddingLeft: batch ? 8 : 16, color: tokens.color.textPrimary, fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.bodyPrimary.fontSize, lineHeight: tokens.typography.bodyPrimary.lineHeight }}>₱</Text>}
-    <Input {...props} ref={inputRef} accessibilityLabel={props.accessibilityLabel ?? label.replace(/\s*\*$/, ', required')} accessibilityHint={error} placeholderTextColor={tokens.color.textPlaceholder} autoCorrect={false} underlineColorAndroid="transparent"
-      className="min-w-0 flex-1 type-body-primary text-text-primary" style={[{ minHeight: Math.max(tokens.button.height - 2, tokens.typography.bodyPrimary.lineHeight * fontScale + 24), paddingLeft: money ? 4 : batch ? 8 : 16, paddingRight: batch ? 8 : 16, paddingVertical: 12, textAlignVertical: 'center' }, style]} />{trailing}{fieldFooter && <View pointerEvents="none" style={{ position: 'absolute', right: 12, bottom: 6 }}>{fieldFooter}</View>}</View>
+    {input}{trailing}{fieldFooter && <View pointerEvents="none" style={{ position: 'absolute', right: 12, bottom: 6 }}>{fieldFooter}</View>}</View>
     {!!error && <MotionRegion><Text accessibilityRole="alert" className=" type-helper text-error-base">{error}</Text></MotionRegion>}
   </KeyboardField>;
 }
@@ -165,18 +177,6 @@ export function InventoryFeedback() {
     </SafeAreaView>
   </Modal>;
 }
-/** Pads single-digit month/day so "2028-9-1" → "2028-09-01". No-op if already padded or not a date-like string. */
-function normalizeDateInput(raw: string): string {
-  const m = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (m) {
-    const normalized = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-    return validDate(normalized) ? normalized : raw;
-  }
-  const us = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-  if (!us) return raw;
-  const normalized = `${us[3]}-${us[1].padStart(2, '0')}-${us[2].padStart(2, '0')}`;
-  return validDate(normalized) ? normalized : raw;
-}
 function formatDateInput(value: string): string {
   if (!validDate(value)) return value;
   const [year, month, day] = value.split('-');
@@ -186,14 +186,10 @@ function formatDateInput(value: string): string {
 export function InvDateField({ label, value, onChange, error, compact = false, inputRef, required = true, disabled = false, displayLabel }: { label: string; value: string; onChange: (date: string) => void; error?: string; compact?: boolean; inputRef?: Ref<TextInputInstance>; required?: boolean; disabled?: boolean; displayLabel?: string }) {
   const [open, setOpen] = useState(false);
   function pickDate() { if (disabled) return; Keyboard.dismiss(); setOpen(true); }
-  // Normalize (pad month/day) when the user finishes editing, not while typing.
-  function handleBlur() { const n = normalizeDateInput(value); if (n !== value) onChange(n); }
-  const updateDate = (raw: string) => onChange(normalizeDateInput(raw));
   return <View className="gap-2" style={{ opacity: disabled ? 0.5 : 1 }} pointerEvents={disabled ? 'none' : 'auto'}>
-    <InvField batch={compact} inputRef={inputRef} editable={!disabled} label={(compact ? displayLabel ?? label : label) + (required ? ' *' : '')}
-      accessibilityLabel={label + (required ? ', required' : '')} value={formatDateInput(value)} onChangeText={updateDate} onBlur={handleBlur}
-      placeholder="MM/DD/YYYY" keyboardType="numbers-and-punctuation" error={error} maxLength={10} returnKeyType="done"
-      onSubmitEditing={() => { handleBlur(); Keyboard.dismiss(); }}
+    <InvField batch={compact} inputRef={inputRef} editable={false} showSoftInputOnFocus={false} onFieldPress={pickDate} accessibilityRole="button" label={(compact ? displayLabel ?? label : label) + (required ? ' *' : '')}
+      accessibilityLabel={label + (required ? ', required' : '')} value={formatDateInput(value)}
+      placeholder="MM/DD/YYYY" keyboardType="numbers-and-punctuation" error={error} maxLength={10}
       trailing={<IconButton disabled={disabled} accessibilityLabel={'Choose ' + label.toLowerCase()} onPress={pickDate} icon={() => <PosIcon name="calendarDue" size={18} color={tokens.color.textSecondary} />} />} />
     <InvModal visible={open} title={fieldLabel(label)} onClose={() => setOpen(false)} bottomPadding={0}>
       {open && <DatePicker value={value} minYear={compact ? 1 : 1900} onChange={date => { onChange(date); setOpen(false); }} onClose={() => setOpen(false)} />}

@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { resolveOwnerAvatarId } from '@/constants/profile-avatar-ids';
 import { SettingsCard } from '@/components/settings/settings-ui';
 import { Button } from '@/components/ui/button';
+import { Skeleton, SkeletonBar } from '@/components/ui/content-state';
 import { useAuthFlow } from '@/state/auth-flow';
 import { useProfileSnapshot } from '@/hooks/use-owner-profile';
 import { ProfileAvatar } from './profile-avatar';
@@ -50,5 +51,18 @@ export function ProfileError({ message, retry }: { message: string; retry?: () =
   return <View className="gap-3 py-3"><Text accessibilityRole="alert" accessibilityLiveRegion="polite" className=" type-micro-caption leading-[18px] text-error-base">{message}</Text>{retry && <Button variant="secondary" onPress={retry}>Retry</Button>}</View>;
 }
 export function ProfileUnavailable({ loading, error, retry }: { loading: boolean; error?: string; retry: () => void }) {
-  return <SettingsCard>{loading ? <Text accessibilityRole="progressbar" className="type-inline-status text-brand">Loading profile…</Text> : <ProfileError message={error || 'Profile unavailable.'} retry={retry} />}</SettingsCard>;
+  if (loading) return <Skeleton label="Loading profile">
+    <SettingsCard>
+      <View className="gap-4">
+        <View className="flex-row items-center gap-3">
+          <View style={{ width: 60, height: 60, borderRadius: 9999, backgroundColor: tokens.color.surfaceSubtle }} />
+          <View className="flex-1 gap-2"><SkeletonBar width="62%" height={20} /><SkeletonBar width="38%" height={14} /></View>
+        </View>
+        <View style={{ height: 1, backgroundColor: tokens.color.surfaceSubtle }} />
+        <SkeletonBar width="34%" height={14} /><SkeletonBar width="58%" height={18} />
+        <SkeletonBar height={48} />
+      </View>
+    </SettingsCard>
+  </Skeleton>;
+  return <SettingsCard><ProfileError message={error || 'Profile unavailable.'} retry={retry} /></SettingsCard>;
 }

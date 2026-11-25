@@ -12,7 +12,7 @@ import { SettingsIcon } from './settings-icon';
 import { SettingsCard, SettingsDescription, SettingsRow, SettingsSection } from './settings-ui';
 
 export function SettingsLandingScreen() {
-  return <SettingsFrame title="Settings" parent="/owner-dashboard">
+  return <SettingsFrame title="Settings" parent="/owner-dashboard" storefrontArtwork={false}>
     <View className="mb-3"><SettingsDescription>Make TindaHand work for your store</SettingsDescription></View>
     <SettingsSection>PREFERENCES</SettingsSection>
     <SettingsRow title="Language" description="English" icon="language" onPress={() => router.navigate(`${settingsRoot}/language`)} />

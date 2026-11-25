@@ -1,4 +1,36 @@
-import type { PosProduct, ProductCategory, ProductSelection } from '@/types/pos';
+import type { PosCatalogFilters, PosProduct, ProductCategory, ProductSelection } from '@/types/pos';
+import { inventoryRules } from '@/constants/inventory-rules';
+
+export const defaultPosCatalogFilters: PosCatalogFilters = {
+  category: 'all', priceRange: 'all', sort: 'az', availability: 'all',
+};
+
+export function hasPosCatalogFilters(filters: PosCatalogFilters) {
+  return filters.category !== 'all' || filters.priceRange !== 'all'
+    || filters.sort !== 'az' || filters.availability !== 'all';
+}
+
+/** Local POS catalog filtering; prices remain integer centavos. */
+export function filterPosCatalogProducts(products: readonly PosProduct[], query: string, filters: PosCatalogFilters) {
+  const search = query.trim().toLocaleLowerCase('en');
+  const filtered = products.filter(product => {
+    const price = product.unitPriceCentavos;
+    const matchesPrice = filters.priceRange === 'all'
+      || (filters.priceRange === 'under50' && price <= 5_000)
+      || (filters.priceRange === '50to100' && price > 5_000 && price <= 10_000)
+      || (filters.priceRange === 'over100' && price > 10_000);
+    const matchesAvailability = filters.availability === 'all'
+      || (filters.availability === 'inStock' && product.stock > inventoryRules.lowStock)
+      || (filters.availability === 'lowStock' && product.stock > 0 && product.stock <= inventoryRules.lowStock)
+      || (filters.availability === 'outOfStock' && product.stock <= 0);
+    return product.name.toLocaleLowerCase('en').includes(search)
+      && (filters.category === 'all' || product.category === filters.category)
+      && matchesPrice && matchesAvailability;
+  });
+  if (filters.sort === 'default') return filtered;
+  return filtered.sort((a, b) => filters.sort === 'za'
+    ? b.name.localeCompare(a.name, 'en') : a.name.localeCompare(b.name, 'en'));
+}
 
 /** Preserve cart name/price snapshots while checking the current live catalog. */
 export function stockConflicts(selection: ProductSelection, products: readonly PosProduct[]) {

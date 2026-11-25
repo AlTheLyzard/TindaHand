@@ -1,19 +1,20 @@
 import tokens from '@/constants/design-tokens.json';
-import { PosIcon } from '@/components/pos/pos-icon';
+import { Image } from 'expo-image';
+import { AppIcon } from '@/components/ui/app-icon';
 
 const icons = {
-  settings: 'settings',
-  profile: 'profile',
-  manageOperators: 'users',
-  language: 'info',
-  security: 'lock',
-  lock: 'lock',
-  data: 'download',
-  help: 'book',
-  replay: 'history',
+  language: require('@/assets/images/settings/language.svg'),
+  security: require('@/assets/images/settings/security.svg'),
+  data: require('@/assets/images/settings/data.svg'),
+  help: require('@/assets/images/settings/help.svg'),
 } as const;
+type SettingsIconName = 'settings' | 'profile' | 'manageOperators' | 'language' | 'security' | 'lock' | 'data' | 'help' | 'replay';
 
-/** Settings glyphs use the app-wide icon family, with shared sizing and tint. */
-export function SettingsIcon({ name, size = 24 }: { name: keyof typeof icons; size?: number }) {
-  return <PosIcon name={icons[name]} color={tokens.color.darkNavy} size={size} />;
+/** Keep the supplied settings illustrations and use vector app icons for standard actions. */
+export function SettingsIcon({ name, size = 24 }: { name: SettingsIconName; size?: number }) {
+  if (name === 'language' || name === 'security' || name === 'data' || name === 'help') {
+    return <Image source={icons[name]} style={{ width: size, height: size, flexShrink: 0 }} contentFit="contain" tintColor={tokens.color.darkNavy} accessible={false} />;
+  }
+  const appIcons = { settings: 'settings', profile: 'profile', manageOperators: 'users', lock: 'lock', replay: 'history' } as const;
+  return <AppIcon name={appIcons[name]} size={size} color={tokens.color.darkNavy} />;
 }

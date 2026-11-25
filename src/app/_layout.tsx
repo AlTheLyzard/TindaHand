@@ -7,6 +7,7 @@ import { Poppins_400Regular } from "@expo-google-fonts/poppins/400Regular";
 import { Poppins_500Medium } from "@expo-google-fonts/poppins/500Medium";
 import { Poppins_600SemiBold } from "@expo-google-fonts/poppins/600SemiBold";
 import { Poppins_700Bold } from "@expo-google-fonts/poppins/700Bold";
+import { MomoTrustDisplay_400Regular } from "@expo-google-fonts/momo-trust-display/400Regular";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -28,7 +29,7 @@ void SplashScreen.preventAutoHideAsync();
 
 function RootNavigation() {
   const stackMotion = useStackMotion();
-  const [loaded, error] = useFonts({ Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold });
+  const [loaded, error] = useFonts({ Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, MomoTrustDisplay_400Regular });
 
   useEffect(() => {
     if (loaded || error) {

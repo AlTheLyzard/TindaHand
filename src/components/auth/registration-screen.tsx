@@ -59,7 +59,7 @@ export function RegistrationScreen({ onCancel, onContinue, service = registerOwn
   }, []));
 
   function update(field: RegistrationField, value: string) {
-    setTouched((current) => ({ ...current, [field]: true }));
+    setTouched((current) => current[field] ? current : { ...current, [field]: true });
     setValues((current) => ({
       ...current,
       [field]: field === 'pin' || field === 'confirmPin' ? value.replace(/[^0-9]/g, '').slice(0, 4) : value,
@@ -69,10 +69,12 @@ export function RegistrationScreen({ onCancel, onContinue, service = registerOwn
     setDashboardAccess(false);
     setRequestError('');
     setServerErrors((current) => {
+      const fieldsToClear: RegistrationField[] = [field];
+      if (field === 'password') fieldsToClear.push('confirmPassword');
+      if (field === 'pin') fieldsToClear.push('confirmPin');
+      if (fieldsToClear.every(key => !current[key])) return current;
       const next = { ...current };
-      delete next[field];
-      if (field === 'password') delete next.confirmPassword;
-      if (field === 'pin') delete next.confirmPin;
+      fieldsToClear.forEach(key => { delete next[key]; });
       return next;
     });
   }
@@ -120,7 +122,7 @@ export function RegistrationScreen({ onCancel, onContinue, service = registerOwn
   }
 
   return (
-    <AuthBackground>
+    <AuthBackground headerWave>
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}

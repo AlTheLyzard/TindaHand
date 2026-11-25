@@ -1,6 +1,6 @@
 import { KeyboardAwareScrollView as ScrollView } from '@/components/ui/keyboard-aware-scroll-view';
 import { SearchBar } from '@/components/ui/search-bar';
-import { Button } from '@/components/ui/button';
+import { Button, IconButton } from '@/components/ui/button';
 import { MotionContent, MotionRegion } from '@/components/ui/motion-content';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
@@ -8,13 +8,15 @@ import { Keyboard, Text, View, type ScrollViewInstance } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { AlphabetIndex, alphabetIndexWidth } from './alphabet-index';
 import { PosChip } from './pos-chip';
+import { PosFilterSheet } from './pos-filter-sheet';
+import { PosIcon } from './pos-icon';
 import { ProductTile } from './product-tile';
 import { usePosMetrics } from './pos-metrics';
 import { posCategories } from '@/data/pos';
 import { useTranslation } from '@/i18n/use-translation';
 import { useMotionReduced } from '@/state/motion';
-import type { PosProduct, ProductCategory, ProductSelection } from '@/types/pos';
-import { filterProducts } from '@/utils/pos';
+import type { PosCatalogFilters, PosProduct, ProductCategory, ProductSelection } from '@/types/pos';
+import { defaultPosCatalogFilters, filterPosCatalogProducts, filterProducts, hasPosCatalogFilters } from '@/utils/pos';
 import { currentAlphabetSection } from '@/utils/alphabet-index';
 import { EmptyState, type PreviewState } from '@/components/ui/content-state';
 import { RecordSkeleton } from '@/components/ui/content-skeletons';
@@ -24,9 +26,9 @@ const ready = { mode: 'ready' as const, loading: false, reset() {} };
 const categoryEdgePadding = 16;
 
 /** Shared POS/debt catalog; all selection state and commits belong to the caller. */
-export function ProductCatalog({ products, selection, onAdd, onOpenInventory, preview = ready, control, searchPlaceholder, ref }: {
+export function ProductCatalog({ products, selection, onAdd, onOpenInventory, preview = ready, control, searchPlaceholder, showFilter = false, ref }: {
   products: readonly PosProduct[]; selection: ProductSelection; onAdd: (id: string) => void;
-  onOpenInventory?: () => void; preview?: { mode: PreviewState; loading: boolean; reset: () => void }; control?: ReactNode; searchPlaceholder?: string; ref?: Ref<ProductCatalogHandle>;
+  onOpenInventory?: () => void; preview?: { mode: PreviewState; loading: boolean; reset: () => void }; control?: ReactNode; searchPlaceholder?: string; showFilter?: boolean; ref?: Ref<ProductCatalogHandle>;
 }) {
   const metrics = usePosMetrics();
   const { t } = useTranslation();
@@ -45,8 +47,13 @@ export function ProductCatalog({ products, selection, onAdd, onOpenInventory, pr
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const [category, setCategory] = useState<ProductCategory | null>(null);
+  const [catalogFilters, setCatalogFilters] = useState<PosCatalogFilters>(defaultPosCatalogFilters);
+  const [catalogDraft, setCatalogDraft] = useState<PosCatalogFilters>(defaultPosCatalogFilters);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [activeLetter, setActiveLetter] = useState<string | null>(null);
-  const visible = preview.mode === 'search' || preview.mode === 'filtered' ? [] : filterProducts(products, query, category, null);
+  const visible = preview.mode === 'search' || preview.mode === 'filtered' ? [] : showFilter
+    ? filterPosCatalogProducts(products, query, catalogFilters)
+    : filterProducts(products, query, category, null);
   const letters = [...new Set(visible.map(product => product.name.charAt(0).toUpperCase()))];
   const currentLetter = letters.includes(activeLetter ?? '') ? activeLetter : letters[0] ?? null;
   const suggestions = !preview.loading && focused && query.trim() ? visible.slice(0, 3) : [];
@@ -77,7 +84,8 @@ export function ProductCatalog({ products, selection, onAdd, onOpenInventory, pr
     updateActiveLetter();
   }
   useImperativeHandle(ref, () => ({ scrollToTop() { scroll.current?.scrollTo({ y: 0, animated: !reduceMotion }); } }), [reduceMotion]);
-  const reset = () => { preview.reset(); setQuery(''); setCategory(null); resetPosition(); categoriesScroll.current?.scrollTo({ x: 0, animated: false }); };
+  const reset = () => { preview.reset(); setQuery(''); setCategory(null); setCatalogFilters(defaultPosCatalogFilters); resetPosition(); categoriesScroll.current?.scrollTo({ x: 0, animated: false }); };
+  const hasFilters = showFilter ? hasPosCatalogFilters(catalogFilters) : !!category;
   const jumpTo = (letter: string | null, dragging = false) => {
     if (letter && (!letters.includes(letter) || sectionOffsets.current[letter] === undefined)) return;
     setActiveLetter(letter);
@@ -88,7 +96,8 @@ export function ProductCatalog({ products, selection, onAdd, onOpenInventory, pr
     scroll.current?.scrollTo({ y: offset, animated: !reduceMotion && !dragging });
   };
 
-  return <MotionContent changeKey={preview.mode} className="w-full max-w-[460px] flex-1 self-center">
+  return <>
+    <MotionContent changeKey={preview.mode} className="w-full max-w-[460px] flex-1 self-center">
         <View className="flex-1" onLayout={event => { viewportHeight.value = event.nativeEvent.layout.height; updateActiveLetter(); }}>
         <ScrollView ref={scroll} testID="pos-product-list" alwaysBounceVertical={false} contentInsetAdjustmentBehavior="never"
           onContentSizeChange={(_width, height) => { contentHeight.current = height; updateActiveLetter(); }}
@@ -99,31 +108,38 @@ export function ProductCatalog({ products, selection, onAdd, onOpenInventory, pr
         }} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingLeft: metrics.gutter, paddingBottom: 12 }}>
           {control ? <View style={{ marginRight: alphabetIndexWidth }}>{control}</View> : null}
-          <SearchBar containerStyle={{ marginRight: alphabetIndexWidth }} label={t('pos.search')} placeholder={searchPlaceholder ?? t('pos.searchPlaceholder')}
-            value={query} onChangeText={changeQuery} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-            onSubmitEditing={Keyboard.dismiss} onClear={() => changeQuery('')} clearLabel={t('pos.clearSearch')}
-            results={suggestions.length > 0 ? <MotionRegion>
-              {suggestions.map(product => <Pressable key={product.id} accessibilityRole="button" onPress={() => { changeQuery(product.name); setFocused(false); Keyboard.dismiss(); }} className="min-h-12 justify-center px-3"><Text className="type-micro-caption text-brand">{product.name}</Text></Pressable>)}
-            </MotionRegion> : undefined} />
-          <ScrollView ref={categoriesScroll} horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" decelerationRate="fast" snapToOffsets={categorySnaps} contentContainerStyle={{ gap: 8, paddingHorizontal: categoryEdgePadding, paddingVertical: 8, alignItems: 'center' }} style={{ flexGrow: 0, marginLeft: -metrics.gutter, overflow: 'visible' }}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: alphabetIndexWidth }}>
+            <SearchBar containerStyle={{ flex: 1 }} label={t('pos.search')} placeholder={searchPlaceholder ?? t('pos.searchPlaceholder')}
+              value={query} onChangeText={changeQuery} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+              onSubmitEditing={Keyboard.dismiss} onClear={() => changeQuery('')} clearLabel={t('pos.clearSearch')}
+              results={suggestions.length > 0 ? <MotionRegion>
+                {suggestions.map(product => <Pressable key={product.id} accessibilityRole="button" onPress={() => { changeQuery(product.name); setFocused(false); Keyboard.dismiss(); }} className="min-h-12 justify-center px-3"><Text className="type-micro-caption text-brand">{product.name}</Text></Pressable>)}
+              </MotionRegion> : undefined} />
+            {showFilter && <IconButton testID="pos-open-filters" accessibilityLabel={hasFilters ? 'Filter products, filters applied' : 'Filter products'}
+              accessibilityState={{ expanded: filterOpen, selected: hasFilters }} onPress={() => { Keyboard.dismiss(); setCatalogDraft(catalogFilters); setFilterOpen(true); }}
+              icon={({ color }) => <PosIcon name="filter" size={24} color={color} />} />}
+          </View>
+          {!showFilter && <ScrollView ref={categoriesScroll} horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" decelerationRate="fast" snapToOffsets={categorySnaps} contentContainerStyle={{ gap: 8, paddingHorizontal: categoryEdgePadding, paddingVertical: 8, alignItems: 'center' }} style={{ flexGrow: 0, marginLeft: -metrics.gutter, overflow: 'visible' }}
             onContentSizeChange={() => setCategorySnaps(Object.values(categoryOffsets.current).map(value => Math.max(0, value - categoryEdgePadding)).sort((a, b) => a - b))}>
             {([null, ...posCategories] as const).map(value => <View key={value ?? 'all'} style={{ flexShrink: 0 }} onLayout={event => {
               categoryOffsets.current[value ?? 'all'] = event.nativeEvent.layout.x;
               const next = Object.values(categoryOffsets.current).map(x => Math.max(0, x - categoryEdgePadding)).sort((a, b) => a - b);
               setCategorySnaps(previous => previous.length === next.length && previous.every((x, index) => x === next[index]) ? previous : next);
             }}><PosChip selected={category === value} onPress={() => { resetPosition(); setCategory(value); categoriesScroll.current?.scrollTo({ x: Math.max(0, (categoryOffsets.current[value ?? 'all'] ?? categoryEdgePadding) - categoryEdgePadding), animated: !reduceMotion }); }} label={value ? t(`pos.category.${value}`) : t('pos.all')} /></View>)}
-          </ScrollView>
+          </ScrollView>}
           <View className="relative mb-5 mt-3 flex-row items-center justify-between gap-2" style={{ marginRight: alphabetIndexWidth }} onLayout={event => { gridStart.value = event.nativeEvent.layout.y; }}>
             <Text accessibilityRole="header" className=" type-list-financial text-text-primary">{t('pos.products')}</Text>
-            {(!!query || !!category) && <View className="absolute -top-3 right-20"><Button variant="text" fullWidth={false} compact accessibilityLabel={t('pos.reset')} onPress={reset}>{t('pos.resetShort')}</Button></View>}
-            <Text accessibilityLiveRegion="polite" className=" type-helper text-text-secondary">{preview.loading ? 'Loading products' : t(visible.length === 1 ? 'pos.productCountOne' : 'pos.productCount', { count: visible.length })}</Text>
+            <View className="min-w-0 flex-row items-center gap-1">
+              {(!!query || hasFilters) && <Button variant="text" fullWidth={false} compact accessibilityLabel={t('pos.reset')} onPress={reset}>{t('pos.resetShort')}</Button>}
+              <Text accessibilityLiveRegion="polite" className=" type-helper text-text-secondary">{preview.loading ? 'Loading products' : t(visible.length === 1 ? 'pos.productCountOne' : 'pos.productCount', { count: visible.length })}</Text>
+            </View>
           </View>
           <View className="flex-row" style={{ marginRight: alphabetIndexWidth }} onLayout={event => { gridOffset.current = event.nativeEvent.layout.y; updateActiveLetter(); }}>
             <View className="flex-1">
               {preview.loading ? <RecordSkeleton kind="catalog" /> : visible.length === 0 ? <EmptyState icon={products.length ? 'search' : 'inventory'}
-                title={!products.length ? 'No products yet' : preview.mode === 'search' || (preview.mode !== 'filtered' && query.trim()) ? 'No products match your search' : 'No products in this category'}
-                description={!products.length ? 'Add a product in Inventory before starting an order.' : 'Try another name or reset search and category.'}
-                action={!products.length ? onOpenInventory ? 'Open Inventory' : undefined : 'Reset search and category'} onAction={() => { if (products.length) reset(); else onOpenInventory?.(); }} /> : letters.map((initial, index) => <ProductSection key={initial} letter={initial} last={index === letters.length - 1} onMeasure={recordSectionOffset}>
+                title={!products.length ? 'No products yet' : preview.mode === 'search' || (preview.mode !== 'filtered' && query.trim()) ? 'No products match your search' : showFilter ? 'No products match these filters' : 'No products in this category'}
+                description={!products.length ? 'Add a product in Inventory before starting an order.' : showFilter ? 'Try another name or reset the search and filters.' : 'Try another name or reset search and category.'}
+                action={!products.length ? onOpenInventory ? 'Open Inventory' : undefined : showFilter ? 'Reset search and filters' : 'Reset search and category'} onAction={() => { if (products.length) reset(); else onOpenInventory?.(); }} /> : letters.map((initial, index) => <ProductSection key={initial} letter={initial} last={index === letters.length - 1} onMeasure={recordSectionOffset}>
                 <Text accessibilityRole="header" className="mb-2 type-label-nav text-text-primary">{initial}</Text>
                 <View className="flex-row flex-wrap gap-y-4" style={{ marginHorizontal: -metrics.columnGap / 2 }}>
                   {visible.filter(product => product.name.charAt(0).toUpperCase() === initial).map(product => <View key={product.id} style={{ width: '50%', paddingHorizontal: metrics.columnGap / 2 }}>
@@ -136,7 +152,10 @@ export function ProductCatalog({ products, selection, onAdd, onOpenInventory, pr
         </ScrollView>
         {!preview.loading && <AlphabetIndex letters={letters} active={currentLetter} onPick={jumpTo} gridStart={gridStart} viewportHeight={viewportHeight} />}
         </View>
-      </MotionContent>;
+    </MotionContent>
+    {showFilter && <PosFilterSheet visible={filterOpen} filters={catalogDraft} onChange={setCatalogDraft} onClose={() => setFilterOpen(false)}
+      onApply={next => { setCatalogFilters(next); resetPosition(); }} />}
+  </>;
 }
 
 function ProductSection({ letter, last, onMeasure, children }: {

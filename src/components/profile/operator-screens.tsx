@@ -1,5 +1,4 @@
 import tokens from '@/constants/design-tokens.json';
-import { SuccessMark } from '@/components/auth/success-mark';
 import { RegistrationToast } from "@/components/auth/registration-toast";
 import { PosDialog } from "@/components/pos/pos-dialog";
 import { PosIcon } from "@/components/pos/pos-icon";
@@ -304,11 +303,6 @@ function OperatorDetails({
         />
       )}
       <SettingsCard>
-        {created && (
-          <View className="mb-4">
-            <SuccessMark animate eventKey={operator.id} />
-          </View>
-        )}
         <OperatorIdentity operator={operator} />
         <View className="mt-4 gap-1">
           <ProfileText small bold>Linked Owner ID</ProfileText>

@@ -1,11 +1,12 @@
 import tokens from '@/constants/design-tokens.json';
+import { warningStockStatusColor } from '@/constants/stock-status-colors';
 import { SearchBar } from '@/components/ui/search-bar';
 import { MotionContent, MotionRegion } from '@/components/ui/motion-content';
 import { usePushOnce } from '@/hooks/use-push-once';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Image, Keyboard, View } from 'react-native';
+import { Image, Keyboard, Text, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { InvCard, InventoryFrame, InvModal, InvText } from './inventory-ui';
 import { getInventorySales } from '@/services/inventory';
@@ -21,6 +22,7 @@ import { AssetCategoryChips } from './asset-category-chips';
 import { AssetCard } from './asset-card';
 import { InventoryFilterControl } from './inventory-filter-control';
 import { InventoryFilterSheet } from './inventory-filter-sheet';
+import { InventoryContentSkeleton } from './inventory-content-skeleton';
 
 const statuses = { good: 'In Stock', low: 'Low Stock', out: 'Out of Stock' } as const;
 
@@ -86,6 +88,10 @@ export function InventoryScreen({
     action={hasItems ? 'Reset search and filters' : isAsset ? undefined : canAdd ? 'Add Product' : undefined}
     actionVariant={hasItems ? 'text' : undefined} actionTextColor={hasItems ? tokens.color.royalBlue : undefined}
     onAction={() => { if (hasItems) resetResults(); else if (canAdd && !isAsset) { preview.reset(); push({ pathname: productPath, params: { mode: 'add' } }); } }} />; };
+  if (preview.loading) return <InventoryFrame title="Inventory" background><MotionContent changeKey={assets + ':' + preview.mode} className="gap-3">
+    {preview.control}
+    <InventoryContentSkeleton assets={assets} tabs={showAssets} actions={assets ? Number(!readOnly) : canAdd && canRestock ? 2 : Number(canAdd || canRestock)} />
+  </MotionContent></InventoryFrame>;
   return <InventoryFrame title="Inventory" background><MotionContent changeKey={assets + ':' + preview.mode} className="gap-3">
     {showAssets && <SegmentedSelector tone="subtle" options={[{ label: 'Products', value: 'products' }, { label: 'Assets', value: 'assets' }]} value={assets ? 'assets' : 'products'} onChange={value => { setAssets(value === 'assets'); setQuery(''); }} />}
     {!assets ? <>
@@ -93,24 +99,24 @@ export function InventoryScreen({
         <View className="min-w-0 flex-1 gap-2"><InvText bold size={11} color={tokens.color.royalBlue}>Total products</InvText><SkeletonMetric loading={preview.loading}><InvText bold size={26} color={tokens.color.royalBlue}>{summary.total}</InvText></SkeletonMetric></View>
         <View className="min-w-0 flex-[1.65] items-end gap-2"><InvText bold size={11} color={tokens.color.royalBlue}>Total inventory value</InvText><SkeletonMetric loading={preview.loading}><InvText bold size={26} color={tokens.color.royalBlue}>{formatPesos(summary.valueCentavos)}</InvText></SkeletonMetric></View>
       </View>
-      <View className="flex-row flex-wrap gap-x-2">{(['good', 'low', 'out', 'nearExpiry'] as const).map(status => <Pressable key={status} accessibilityRole="button" accessibilityLabel={'Filter ' + (status === 'good' ? 'In Stock' : status === 'low' ? 'Low Stock' : status === 'out' ? 'Out of Stock' : 'Nearing Expiry')} accessibilityState={{ selected: filters.status === status }} onPress={() => setFilters({ ...filters, status: filters.status === status ? 'all' : status })} className="min-h-12 min-w-[44%] flex-1 justify-center">
+      <View className="flex-row flex-wrap gap-x-2">{(['good', 'low', 'out', 'nearExpiry'] as const).map(status => <View key={status} className="min-h-12 min-w-[44%] flex-1 justify-center">
         <View className="rounded-md border px-2 py-1" style={inventoryStatusAppearance(status)}><InvText size={11} color={inventoryStatusAppearance(status).color}>● {preview.loading ? '…' : status === 'low' ? summary.low + summary.critical : summary[status]} {status === 'good' ? 'Good' : status === 'nearExpiry' ? 'Nearing expiry' : statuses[status]}</InvText></View>
-      </Pressable>)}</View>
+      </View>)}</View>
       {canAdd && canRestock ? <View className="flex-row gap-3"><View className="flex-1"><Button compact onPress={() => push({ pathname: productPath, params: { mode: 'add' } })}>Add Product</Button></View><View className="flex-1"><Button compact variant="secondary" disabled={preview.loading || !store.products.length} onPress={() => { Keyboard.dismiss(); setRestockQuery(''); setRestockOpen(true); }}>Restock</Button></View></View>
         : canAdd ? <Button compact onPress={() => push({ pathname: productPath, params: { mode: 'add' } })}>Add Product</Button>
           : canRestock ? <Button compact variant={readOnly ? 'primary' : 'secondary'} disabled={preview.loading || !store.products.length} onPress={() => { Keyboard.dismiss(); setRestockQuery(''); setRestockOpen(true); }}>Restock</Button> : null}
-      <View className="mt-1 flex-row items-center justify-between"><InvText bold color={tokens.color.textPrimary}>Products</InvText><InventoryFilterControl onPress={openFilters} /></View>
+      <View className="mt-1 flex-row items-center justify-between"><InvText bold size={16} color={tokens.color.textPrimary}>Products</InvText><InventoryFilterControl onPress={openFilters} /></View>
       {search}
       {filtered && <View className="flex-row items-center justify-between gap-2"><InvText>{visible.length} matching products</InvText><Button compact variant="text" textColor={tokens.color.royalBlue} fullWidth={false} onPress={resetResults}>Reset search and filters</Button></View>}
       {preview.loading ? <RecordSkeleton kind="product" /> : !visible.length ? emptyList(false) : visible.map(p => {
         const status = stockCategory(productStock(p)), expiry = productExpiry(p, today);
         return <InvCard key={p.id}>
-          <Pressable accessibilityRole="button" accessibilityLabel={'View ' + p.name} onPress={() => productRoute(p.id, 'details')} className="flex-row items-center gap-3">
+          <Pressable accessibilityRole="button" accessibilityLabel={'View ' + p.name + (p.note?.trim() ? '. Note: ' + p.note.trim() : '')} onPress={() => productRoute(p.id, 'details')} className="flex-row items-center gap-3">
             <View className="h-20 w-20 overflow-hidden rounded-control bg-ice-container">{p.photoUri && <Image source={{ uri: p.photoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />}</View>
-            <View className="min-w-0 flex-1 gap-1"><InvText bold size={16} color={tokens.color.textPrimary}>{p.name}</InvText><InvText size={14}>{categoryLabels[p.category]}</InvText><View className="flex-row flex-wrap items-center gap-x-1"><InvText bold size={16} color={tokens.color.darkNavy}>{formatPesos(p.unitPriceCentavos)}</InvText><InvText size={14} color={tokens.color.textSecondary}>|</InvText><InvText size={14} color={inventoryStatusAppearance(status).color}>{statuses[status]}</InvText></View></View>
+            <View className="min-w-0 flex-1 gap-1"><InvText bold size={16} color={tokens.color.textPrimary}>{p.name}</InvText><InvText size={14}>{categoryLabels[p.category]}</InvText><View className="flex-row flex-wrap items-center gap-x-1"><InvText bold size={16} color={tokens.color.darkNavy}>{formatPesos(p.unitPriceCentavos)}</InvText><InvText size={14} color={tokens.color.textSecondary}>|</InvText><InvText size={14} color={inventoryStatusAppearance(status).color}>{statuses[status]}</InvText></View>{!!p.note?.trim() && <Text numberOfLines={1} ellipsizeMode="tail" className="type-micro-caption text-text-secondary">{p.note.trim()}</Text>}</View>
             <View className="min-w-[56px] items-center justify-center"><InvText size={14} color={tokens.color.textPrimary}>{productStock(p)} PCS</InvText></View>
           </Pressable>
-          {(expiry.expired || expiry.nearExpiry) && <View className="flex-row flex-wrap gap-2">{expiry.expired && <InvText size={11} color={tokens.color.errorBase}>● Expired stock</InvText>}{expiry.nearExpiry && <InvText size={11} color={tokens.color.warningText}>● Nearing expiry</InvText>}</View>}
+          {(expiry.expired || expiry.nearExpiry) && <View className="flex-row flex-wrap gap-2">{expiry.expired && <InvText size={11} color={tokens.color.errorBase}>● Expired stock</InvText>}{expiry.nearExpiry && <InvText size={11} color={warningStockStatusColor}>● Nearing expiry</InvText>}</View>}
           {(canEdit || canRestock) && <View className="flex-row gap-3">{canEdit && <View className="min-w-0 flex-1"><Button compact variant="secondary" onPress={() => productRoute(p.id, 'edit')}>Edit</Button></View>}{canRestock && <View className="min-w-0 flex-1"><Button compact onPress={() => productRoute(p.id, 'restock')}>Restock</Button></View>}</View>}
         </InvCard>;
       })}

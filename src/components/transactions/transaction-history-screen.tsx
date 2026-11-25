@@ -74,6 +74,7 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
   const [pageState, setPageState] = useState<{ key: string; index: number }>({ key: '', index: 0 });
   const pageCount = Math.max(1, Math.ceil(filtered.length / transactionPageSize));
   const pageIndex = pageState.key === pageKey ? Math.min(pageState.index, pageCount - 1) : 0;
+  const hasPagination = !loading && !error && filtered.length > transactionPageSize;
   // TODO(backend): Drive history pagination from the transaction API instead of slicing all local rows.
   // - Method/Action: GET / Fetch transaction page
   // - Expected Input/Payload: pageIndex + 1, transactionPageSize, and active history filters
@@ -112,7 +113,8 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
         </View>
         <FlatList ref={list} data={loading || error ? [] : pageRows} keyExtractor={record => record.id} renderItem={({ item }) => <TransactionRow record={item} />}
           style={{ flex: 1, minHeight: 0, width: '100%', maxWidth: 460, alignSelf: 'center' }}
-          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: navigationHeight + insets.bottom + 24, gap: 12, flexGrow: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8,
+            paddingBottom: hasPagination ? 16 : navigationHeight + insets.bottom + 24, gap: 12, flexGrow: 1 }}
           keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}
           ListEmptyComponent={loading ? <TransactionSkeleton /> : <View style={styles.empty}>
             <Text accessibilityRole="header" style={styles.emptyTitle}>{error ? 'Unable to load transactions' : rows.length ? 'No matching transactions' : 'No transactions yet'}</Text>
@@ -122,10 +124,12 @@ export function TransactionHistoryScreen({ operator = false }: { operator?: bool
                 : 'Recorded sales, customer payments, and expenses will appear here.')}
             </Text>
             {error ? <Button onPress={retry}>Try Again</Button> : (rows.length > 0 || query || hasFilters) ? <Button variant="secondary" onPress={reset}>Clear search and filters</Button> : null}
-          </View>}
-          ListFooterComponent={!loading && !error && filtered.length > transactionPageSize ? <View style={styles.pagination}>
+          </View>} />
+        {hasPagination && <View style={[styles.paginationDock, { paddingBottom: 8 + navigationHeight + insets.bottom }]}>
+          <View style={styles.pagination}>
             <PaginationControls pageIndex={pageIndex} pageCount={pageCount} itemName="transaction" onPageChange={goToPage} />
-          </View> : undefined} />
+          </View>
+        </View>}
         </View>
       </KeyboardAvoidingView>
       <DashboardNavigation onHome={() => router.navigate(operator ? '/operator-pos' : '/owner-dashboard')}
@@ -148,5 +152,6 @@ const styles = StyleSheet.create({
   empty: { padding: 20, marginTop: 20, gap: 16, borderRadius: tokens.radius.card, backgroundColor: tokens.color.surfaceCard },
   emptyTitle: { fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.titleAccent.fontSize, lineHeight: 33, color: tokens.color.textPrimary },
   emptyCopy: { fontFamily: tokens.typography.weights.regular, fontSize: tokens.typography.microFinancialRate.fontSize, lineHeight: 21, color: tokens.color.textSecondary },
-  pagination: { width: '100%', paddingTop: 4, paddingBottom: 8 },
+  paginationDock: { width: '100%', paddingHorizontal: 24, paddingTop: 4, backgroundColor: tokens.color.appBackground },
+  pagination: { width: '100%', maxWidth: 460, alignSelf: 'center' },
 });

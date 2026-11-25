@@ -8,6 +8,7 @@ import type { PosProduct } from './pos';
 export type InventoryProduct = PosProduct & {
   costCentavos: number;
   expirationDate: string;
+  note?: string;
   photoUri?: string;
   /** Optional for the existing catalog contract; legacy records adapt to one batch. */
   batches?: StockBatch[];
@@ -51,6 +52,6 @@ export type InventoryFilters = {
   status: 'all' | StockStatus | 'nearExpiry' | 'expired';
 };
 export type ProductDraft = {
-  name: string; category: string; expirationDate: string;
+  name: string; category: string; expirationDate: string; note: string;
   sellingPrice: string; cost: string; quantity: string; stockDate: string; photoUri?: string;
 };

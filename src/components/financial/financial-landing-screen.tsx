@@ -2,8 +2,10 @@ import tokens from '@/constants/design-tokens.json';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { FinancialFrame, financialRoot } from './financial-frame';
 import { PosIcon } from '@/components/pos/pos-icon';
+import { MenuIcon } from '@/components/menu/menu-icon';
 import { MotionPressable } from '@/components/ui/motion-pressable';
 import { EmptyState, Skeleton, SkeletonBar } from '@/components/ui/content-state';
 import { useTranslation } from '@/i18n/use-translation';
@@ -12,10 +14,10 @@ import { useAuthFlow } from '@/state/auth-flow';
 import { reportTimestamp, reportTitles } from '@/utils/financial';
 
 const cards = [
-  { kind: 'general-journal', description: 'financial.journal.description', icon: 'book' },
-  { kind: 'general-ledger', description: 'financial.ledger.description', icon: 'history' },
-  { kind: 'income-statement', description: 'financial.income.description', icon: 'financial' },
-  { kind: 'balance-sheet', description: 'financial.balance.description', icon: 'creditCard' },
+  { kind: 'general-journal', description: 'financial.journal.description', icon: require('@/assets/images/financial/journal.svg') },
+  { kind: 'general-ledger', description: 'financial.ledger.description', icon: require('@/assets/images/financial/ledger.svg') },
+  { kind: 'income-statement', description: 'financial.income.description', icon: require('@/assets/images/financial/income.svg') },
+  { kind: 'balance-sheet', description: 'financial.balance.description', icon: require('@/assets/images/financial/balance.svg') },
 ] as const;
 export function FinancialLandingScreen() {
   const { t } = useTranslation();
@@ -35,9 +37,11 @@ export function FinancialLandingScreen() {
       onPress={() => router.navigate(`${financialRoot}/${card.kind}`)} fadeOnPress={false}
       onPressIn={() => setPressedCard(card.kind)} onPressOut={() => setPressedCard(null)}
       className="min-h-[94px] flex-row items-center gap-4 rounded-card border border-outline bg-white px-4 py-4 active:bg-ice-container">
-      <View className="h-12 w-12 items-center justify-center rounded-pill" style={{ backgroundColor: pressedCard === card.kind ? tokens.color.darkNavy : tokens.color.appBackground }}><PosIcon name={card.icon} size={24} color={pressedCard === card.kind ? tokens.color.surfaceCard : tokens.color.royalBlue} /></View>
+      <View className="h-12 w-12 items-center justify-center rounded-pill" style={{ backgroundColor: pressedCard === card.kind ? tokens.color.darkNavy : tokens.color.appBackground }}>
+        <Image source={card.icon} style={{ width: 24, height: 24 }} contentFit="contain" tintColor={pressedCard === card.kind ? tokens.color.surfaceCard : tokens.color.royalBlue} accessible={false} />
+      </View>
       <View className="min-w-0 flex-1 gap-1"><Text className=" type-button-cta leading-[21px] text-brand">{reportTitles[card.kind]}</Text><Text className=" type-helper leading-[15px] text-text-secondary">{t(card.description)}</Text></View>
-      <PosIcon name="chevronRight" size={18} color={tokens.color.textPrimary} />
+      <MenuIcon name="chevronRight" size={18} />
     </MotionPressable>)}</View>
     <View className="mt-6">
       {failed ? <EmptyState title={t('financial.loadFailed')} description={t('financial.mock')} action={t('financial.refresh')} onAction={() => setRevision(value => value + 1)} /> : status ? <View className="gap-2 rounded-control border border-accent bg-accent-soft p-4">
