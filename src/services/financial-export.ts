@@ -11,6 +11,9 @@ export async function exportFinancialPdf(report: FinancialReport): Promise<'read
   // Write directly into cacheDirectory so expo-sharing can read it without a copy step.
   const filePath = (FileSystem.cacheDirectory ?? '') + filename;
   const generated = await Print.printToFileAsync({ html: financialReportHtml(report), width: 595, height: 842, filePath });
+  console.log('[TindaHand] cacheDirectory:', FileSystem.cacheDirectory);
+  console.log('[TindaHand] requested filePath:', filePath);
+  console.log('[TindaHand] generated.uri:', generated.uri);
   await Sharing.shareAsync(generated.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: filename });
   return 'ready';
 }
