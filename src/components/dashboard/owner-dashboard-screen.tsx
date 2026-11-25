@@ -121,23 +121,26 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
 
   const summary = apiSummary && owner.mode === 'confirmed' ? {
     ...localSummary,
-    // Cash balance comes directly from the backend (includes opening cash + cash movements + sales tenders)
+    // Cash balance comes directly from the backend (all Cash account debits minus credits)
     cashCentavos: apiSummary.cashBalanceCentavos,
-    // Money In = manual cash additions + all sales revenue
-    moneyIn: (apiMoneyIn ?? 0) + apiSummary.totalSalesCentavos,
+    // Money In = cash sales received + customer debt payments + manual cash additions
+    // The backend cashBalanceCentavos already accounts for all of these; we show
+    // all-time sales received as the "Pasok" figure (what came into the till).
+    moneyIn: apiSummary.totalSalesCentavos,
+    // Money Out = expenses + store debt payments + restock costs (from backend)
     moneyOut: apiSummary.totalMoneyOutCentavos,
-    // Sales totals per period — all three now come from the backend
+    // Sales totals per selected period — from backend
     totalSalesCentavos: period === 'daily'
       ? apiSummary.totalSalesTodayCentavos
       : period === 'weekly'
         ? apiSummary.totalSalesThisWeekCentavos
         : apiSummary.totalSalesThisMonthCentavos,
-    // Best sellers from the backend top-K algorithm (quantitySold maps to quantity)
+    // Best sellers from the backend top-K algorithm — empty array if no real sales yet
     bestSellers: apiSummary.topProducts.map(p => ({ id: p.productId, name: p.name, quantity: p.quantitySold })),
   } : {
     ...localSummary,
-    // Override best sellers with real POS data only (no demo sales), if any sales exist.
-    bestSellers: realBestSellers.length > 0 ? realBestSellers : localSummary.bestSellers,
+    // Override best sellers with real POS data only — never fall back to demo/mock sales
+    bestSellers: realBestSellers,
   };
 
   const isLoading = preview.loading || apiLoading;
