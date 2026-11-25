@@ -14,7 +14,7 @@ from datetime import datetime, date, timezone, timedelta
 from typing import List, Dict
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from auth import get_current_user, require_role
@@ -103,8 +103,13 @@ def dashboard_summary(
     today      = _manila_today()
     month_start = _manila_month_start()
 
-    # All sales for this owner
-    all_sales = db.query(Sale).filter(Sale.owner_id == owner_id).all()
+    # All sales for this owner — eager-load lines so top_k_products works without N+1 queries
+    all_sales = (
+        db.query(Sale)
+        .filter(Sale.owner_id == owner_id)
+        .options(joinedload(Sale.lines))
+        .all()
+    )
 
     # Convert today and month_start to UTC boundaries for safe comparison.
     # Manila is UTC+8, so "today in Manila" starts at UTC 00:00 - 8h = previous day 16:00 UTC.
