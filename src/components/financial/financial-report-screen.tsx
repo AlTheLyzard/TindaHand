@@ -45,7 +45,7 @@ export function FinancialReportScreen({ kind }: { kind: ReportKind }) {
       else setFeedback(result);
       setConfirm(false);
     }
-    catch { setExportError(true); }
+    catch (e) { console.error('[TindaHand] PDF export failed:', e); setExportError(true); }
     finally { exportLock.current = false; setGenerating(false); }
   }
   function afterConfirmationHidden() {
