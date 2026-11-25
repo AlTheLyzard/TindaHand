@@ -1,32 +1,78 @@
 import { router, useLocalSearchParams, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, View, type ScrollViewInstance } from 'react-native';
+import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { InventoryFrame } from '@/components/inventory/inventory-ui';
 import { Button } from '@/components/ui/button';
 import { EmptyState as ContentState } from '@/components/ui/content-state';
-import { MotionContent } from '@/components/ui/motion-content';
+import { MotionContent, MotionRegion, MotionText } from '@/components/ui/motion-content';
 import { MotionPressable as Pressable } from '@/components/ui/motion-pressable';
 import { SegmentedSelector } from '@/components/ui/segmented-selector';
-import { BalancePanel } from '@/components/payables/payables-ui';
 import { useApiReceivables } from '@/hooks/use-receivables';
 import { useQuickAdd } from '@/state/quick-add';
 import { useAuthFlow } from '@/state/auth-flow';
 import { useReceivableDraft } from '@/state/receivable-draft';
 import { usePushOnce } from '@/hooks/use-push-once';
+import { motion } from '@/constants/motion';
+import { useMotionReduced } from '@/state/motion';
 import { localCalendarDate, receivableLists } from '@/utils/receivables';
-import { formatPesos } from '@/utils/dashboard';
 import tokens from '@/constants/design-tokens.json';
-import { CustomerSearch, receivableColors as colors, receivablesRoot } from './receivables-ui';
+import type { ReceivableStatus } from '@/types/receivables';
+import { CustomerSearch, receivableStatusStyles, useReceivablesRoot, ReceivableCountBadge, ReceivableSummaryCard } from './receivables-ui';
 import { ReceivableCard } from './receivable-card';
+import { useStoreOwner } from '@/hooks/use-store-owner';
+
+function ReceivableTabs({ paid, onChange }: { paid: boolean; onChange: (paid: boolean) => void }) {
+  const reduced = useMotionReduced();
+  const frames = useRef<Record<string, { x: number; width: number }>>({});
+  const initialized = useRef(false);
+  const x = useSharedValue(0);
+  const width = useSharedValue(0);
+  const selected = paid ? 'paid' : 'unpaid';
+  const moveTo = useCallback((frame: { x: number; width: number }) => {
+    if (reduced || !initialized.current) {
+      x.set(frame.x);
+      width.set(frame.width);
+      initialized.current = true;
+    } else {
+      x.set(withTiming(frame.x, { duration: motion.state, easing: motion.ease, reduceMotion: ReduceMotion.System }));
+      width.set(withTiming(frame.width, { duration: motion.state, easing: motion.ease, reduceMotion: ReduceMotion.System }));
+    }
+  }, [reduced, width, x]);
+  useEffect(() => {
+    const frame = frames.current[selected];
+    if (frame) moveTo(frame);
+  }, [moveTo, selected]);
+  const indicator = useAnimatedStyle(() => ({ left: x.value, width: width.value }));
+  return <View accessibilityRole="tablist" className="px-4">
+    <View className="relative flex-row">
+      <View pointerEvents="none" className="absolute bottom-0 left-0 right-0 h-px bg-text-primary" />
+      <Animated.View pointerEvents="none" className="absolute bottom-0 h-1 bg-accent" style={indicator} />
+      {(['Unpaid', 'Paid'] as const).map(label => {
+        const key = label.toLowerCase();
+        const isSelected = selected === key;
+        return <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: isSelected }} onPress={() => onChange(key === 'paid')}
+          onLayout={event => {
+            const frame = { x: event.nativeEvent.layout.x, width: event.nativeEvent.layout.width };
+            frames.current[key] = frame;
+            if (isSelected) moveTo(frame);
+          }} className="min-h-12 flex-1 items-center justify-center px-3 py-3">
+          <MotionText className="type-button-cta" style={{ color: isSelected ? tokens.color.accentBase : tokens.color.textPrimary }}>{label}</MotionText>
+        </Pressable>;
+      })}
+    </View>
+  </View>;
+}
 
 export function ReceivableOverviewScreen({ pendingOnly = false }: { pendingOnly?: boolean }) {
   const { status, debtId } = useLocalSearchParams<{ status?: string; debtId?: string }>();
   const paid = !pendingOnly && status === 'paid';
-  const { owner } = useAuthFlow();
-  const confirmedMode = owner?.mode === 'confirmed';
+  const { deviceSession } = useAuthFlow();
+  const storeOwner = useStoreOwner();
+  const root = useReceivablesRoot();
+  const confirmedMode = storeOwner?.mode === 'confirmed';
   const { records, receivablePayments: localPayments } = useQuickAdd();
-  const { debts: apiDebts, payments: apiPayments, refresh: refreshReceivables } = useApiReceivables(confirmedMode ? owner?.id : undefined);
-  // Use real API data for confirmed sessions; fall back to local seed for mock/preview.
+  const { debts: apiDebts, payments: apiPayments, refresh: refreshReceivables } = useApiReceivables(confirmedMode ? storeOwner?.id : undefined);
   const receivableRecords = confirmedMode ? apiDebts : records;
   const receivablePayments = confirmedMode ? apiPayments : localPayments;
   const { query, setQuery } = useReceivableDraft();
@@ -39,45 +85,54 @@ export function ReceivableOverviewScreen({ pendingOnly = false }: { pendingOnly?
   const [today, setToday] = useState(localCalendarDate);
   const push = usePushOnce();
   useEffect(() => { const timer = setInterval(() => setToday(localCalendarDate()), 30000); return () => clearInterval(timer); }, []);
-  // Refresh real API data each time screen gains focus (e.g. after recording a new debt).
   useFocusEffect(useCallback(() => { if (confirmedMode) refreshReceivables(); }, [confirmedMode, refreshReceivables]));
   const lists = receivableLists(receivableRecords, receivablePayments, query, today);
-  const groups = paid ? [{ title: '', category: null, rows: lists.paid, color: colors.green, surface: tokens.color.surfaceCard }] : pendingOnly ? [{ title: 'Pending', category: 'pending', rows: lists.pending, color: colors.blue, surface: colors.pendingGroup }] : [
-    { title: 'Overdue', category: 'overdue', rows: lists.overdue, color: colors.red, surface: colors.overdueGroup },
-    { title: 'Pending', category: 'pending', rows: lists.pending, color: colors.blue, surface: colors.pendingGroup },
-    { title: 'Remaining Balance', category: 'remaining', rows: lists.partial, color: colors.orange, surface: colors.partialGroup },
-  ];
+  const groups: { title: string; status: ReceivableStatus; rows: typeof lists.pending }[] = paid
+    ? [{ title: '', status: 'paid', rows: lists.paid }]
+    : pendingOnly
+      ? [{ title: 'Pending', status: 'pending', rows: lists.pending }]
+      : [
+          { title: 'Overdue', status: 'overdue', rows: lists.overdue },
+          { title: 'Pending', status: 'pending', rows: lists.pending },
+          { title: 'Remaining Balance', status: 'partial', rows: lists.partial },
+        ];
   const noRows = groups.every(group => !group.rows.length);
-  // A POS arrival surfaces this sale separately, even for a returning customer.
-  const arrivalGroups = debtId ? groups.slice().sort((a, b) => Number(b.rows.some(row => row.debt.id === debtId)) - Number(a.rows.some(row => row.debt.id === debtId))) : groups;
-  function back() { router.dismissTo({ pathname: receivablesRoot, params: { section: 'receivable', status: 'unpaid' } }); }
-  return <InventoryFrame scrollRef={scroll} title={pendingOnly ? 'Pending debt' : 'Account Balances'} back inlineTitle onBack={pendingOnly ? back : undefined}>
-    {pendingOnly ? <Text className=" type-micro-financial-rate text-text-secondary">Keep track of customers with pending debt.</Text> : <SegmentedSelector tone="subtle"
+  const arrivalGroups = debtId
+    ? groups.slice().sort((a, b) => Number(b.rows.some(row => row.debt.id === debtId)) - Number(a.rows.some(row => row.debt.id === debtId)))
+    : groups;
+  function back() { router.dismissTo({ pathname: root, params: { section: 'receivable', status: 'unpaid' } } as Href); }
+
+  return <InventoryFrame scrollRef={scroll} title={pendingOnly ? 'Pending Debt' : 'Account Balances'} back inlineTitle background onBack={pendingOnly ? back : undefined}>
+    {pendingOnly ? <Text className="type-micro-financial-rate text-text-secondary">Keep track of customers with pending debt.</Text> : deviceSession?.role === 'operator' ? null : <SegmentedSelector tone="subtle"
       options={[{ label: 'Receivable', value: 'receivable' }, { label: 'Payable', value: 'payable' }]}
       value="receivable" onChange={section => { router.setParams({ section, status: 'unpaid' }); }} />}
     {!pendingOnly && !paid && <>
-      <BalancePanel title="Total Amount to Collect" amount={formatPesos(lists.outstandingCentavos)} caption={`${lists.transactionCount} ${lists.transactionCount === 1 ? 'transaction' : 'transactions'} · ${lists.customerCount} ${lists.customerCount === 1 ? 'customer' : 'customers'}`} />
-      <View className="py-1"><Button onPress={() => push(`${receivablesRoot}/customer-new`)}>Record Debt</Button></View>
+      <ReceivableSummaryCard title="Total Amount to Collect" amountCentavos={lists.outstandingCentavos}
+        caption={`${lists.transactionCount} ${lists.transactionCount === 1 ? 'transaction' : 'transactions'} · ${lists.customerCount} ${lists.customerCount === 1 ? 'customer' : 'customers'}`} />
+      <View className="py-1"><Button onPress={() => push(`${root}/customer-new`)}>Record Debt</Button></View>
     </>}
-    {paid && <BalancePanel title="Total Amount Paid" amount={formatPesos(lists.paidCentavos)} paid />}
-    {!pendingOnly && <View accessibilityRole="tablist" className="flex-row px-4">
-      {['Unpaid', 'Paid'].map(label => {
-        const selected = paid === (label === 'Paid');
-        return <Pressable key={label} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => { router.setParams({ status: label.toLowerCase() }); }} className="min-h-12 flex-1 items-center justify-center border-b px-3 py-3" style={{ borderColor: selected ? tokens.color.accentBase : tokens.color.textPrimary, borderBottomWidth: selected ? 3 : 1 }}><Text className=" type-button-cta" style={{ color: selected ? tokens.color.accentBase : tokens.color.textPrimary }}>{label}</Text></Pressable>;
-      })}
-    </View>}
-    <View className="py-3"><CustomerSearch value={query} onChange={setQuery} /></View>
-    <MotionContent changeKey={paid ? 'paid' : 'unpaid'}>
-      {noRows ? <ContentState title={query.trim() ? 'No matching debts' : paid ? 'No paid debts yet' : pendingOnly ? 'No pending debts' : 'No unpaid debts'} description={query.trim() ? 'Try another customer name or clear your search.' : paid ? 'Fully settled debts will appear here.' : 'Record a customer debt to track what is owed to your store.'} /> : <View className="gap-5">
-        {arrivalGroups.filter(group => group.rows.length).map(group => <View key={group.title} className={paid ? 'gap-3' : 'gap-3 rounded-surface p-3'} style={{ backgroundColor: paid ? undefined : group.surface }}>
-          {!!group.title && <View className="flex-row flex-wrap items-center gap-2">
-            <Text accessibilityRole="header" className=" type-micro-financial-rate" style={{ color: group.color }}>{group.title}</Text>
-            <View className="min-h-5 min-w-5 items-center justify-center rounded-pill px-1" style={{ backgroundColor: group.color }}><Text className=" type-helper text-white">{group.rows.length}</Text></View>
-            {!pendingOnly && !paid && group.category && <Button variant="text" compact fullWidth={false} accessibilityLabel={`View all ${group.title.toLowerCase()} debts`} onPress={() => push({ pathname: `${receivablesRoot}/category-transactions`, params: { section: 'receivable', category: group.category } } as unknown as Href)} style={{ marginLeft: 'auto' }}>View all</Button>}
-          </View>}
-          {(!paid && !pendingOnly ? group.rows.slice().sort((a, b) => Number(b.debt.id === debtId) - Number(a.debt.id === debtId)).slice(0, 2) : group.rows).map(row => <ReceivableCard key={row.debt.id} row={row} today={today}
-            onDetails={() => push({ pathname: `${receivablesRoot}/details`, params: { debtId: row.debt.id } } as unknown as Href)} />)}
-        </View>)}
+    {paid && <ReceivableSummaryCard title="Total Amount Paid" amountCentavos={lists.paidCentavos} paid />}
+    {!pendingOnly && <ReceivableTabs paid={paid} onChange={nextPaid => { router.setParams({ status: nextPaid ? 'paid' : 'unpaid' }); }} />}
+    <View className="py-3"><CustomerSearch value={query} onChange={setQuery} placeholder="Search Product" /></View>
+    <MotionContent changeKey={paid ? 'paid' : pendingOnly ? 'pending' : 'unpaid'}>
+      {noRows ? <ContentState title={query.trim() ? 'No matching debts' : paid ? 'No paid debts yet' : pendingOnly ? 'No pending debts' : 'No unpaid debts'} description={query.trim() ? 'Try another customer name or clear your search.' : paid ? 'Fully settled debts will appear here.' : 'Record a customer debt to track what is owed to your store.'} /> : <View className="gap-4">
+        {arrivalGroups.filter(group => group.rows.length).map(group => {
+          const showAll = paid || pendingOnly || group.status !== 'pending';
+          const visibleRows = showAll ? group.rows : group.rows.slice(0, 2);
+          const panelClassName = paid ? 'gap-2' : `gap-2 rounded-surface p-3 ${receivableStatusStyles[group.status].panel}`;
+          return <MotionRegion key={group.status} className={panelClassName} style={!paid ? undefined : { backgroundColor: tokens.color.surfaceCard }}>
+            {!!group.title && <View className="flex-row flex-wrap items-center gap-2">
+              <Text accessibilityRole="header" className={`type-micro-financial-rate font-poppins-semibold ${receivableStatusStyles[group.status].ink}`}>{group.title}</Text>
+              <ReceivableCountBadge count={group.rows.length} backgroundColor={receivableStatusStyles[group.status].badgeBackground} textColor={receivableStatusStyles[group.status].badgeInk} />
+              {!pendingOnly && !paid && group.status === 'pending' && group.rows.length >= 3 && <Button variant="text" compact fullWidth={false}
+                accessibilityLabel="View all pending debts" onPress={() => push(`${root}/pending`)} style={{ marginLeft: 'auto' }}>View all</Button>}
+            </View>}
+            <View className="gap-2">
+              {visibleRows.map(row => <ReceivableCard key={row.debt.id} row={row} today={today}
+                onDetails={() => push({ pathname: `${root}/details`, params: { debtId: row.debt.id } })} />)}
+            </View>
+          </MotionRegion>;
+        })}
       </View>}
     </MotionContent>
   </InventoryFrame>;

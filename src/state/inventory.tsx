@@ -9,6 +9,7 @@ import type { InventoryProduct } from '@/types/inventory';
 import type { Customer } from '@/types/pos';
 import { inventoryReducer, type InventoryAction, type InventoryStore } from '@/utils/inventory';
 import { customerNameKey } from '@/utils/pos-checkout';
+import { hasCapability } from '@/utils/operator-access';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 const InventoryContext = createContext<{ store: InventoryStore; getStore: () => InventoryStore; dispatch: (action: InventoryAction) => boolean; ensureCustomer: (name: string, id: string) => Customer | null; feedback: string; setFeedback: (message: string) => void; refetchProducts: () => Promise<void> } | null>(null);
@@ -88,6 +89,10 @@ function SessionInventory({ children }: { children: ReactNode }) {
     if (auth.owner) next = applyInventoryAction(current.current, auth.owner, action);
     else if (auth.deviceSession?.role === 'operator') {
       if (action.type === 'completeSale') next = applyOperatorPosAction(current.current, auth.deviceSession, action);
+      else if (hasCapability(auth.deviceSession, 'receivables')
+        && (action.type === 'saveCustomerDebt' || action.type === 'confirmReceivablePayment' || action.type === 'registerCustomer')) {
+        next = inventoryReducer(current.current, action);
+      }
       // Operators (Kahera) can restock and save products. applyInventoryAction requires
       // a non-null owner identity for its owner-id guard, which operators don't have.
       // Call inventoryReducer directly — the backend already enforces authorization.

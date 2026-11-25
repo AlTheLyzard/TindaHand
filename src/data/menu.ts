@@ -34,8 +34,17 @@ export const ownerProfileTool: OwnerTool = {
   temporaryMessage: 'Profile editing and cashier access management are not available in this frontend demo yet.',
 };
 
-/** Operator More Tools deliberately exposes only permitted history and settings. */
-export const operatorMenuTools = ownerMenuTools.filter(tool => tool.id === 'transaction-history' || tool.id === 'settings');
+const operatorReceivablesTool: OwnerTool = {
+  id: 'receivables', label: 'Receivables', icon: 'customerDebt',
+  subtitle: 'Manage money owed to you', temporaryMessage: '',
+};
+
+/** Operator More Tools lists permitted tools in their cashier-specific order. */
+export const operatorMenuTools: readonly OwnerTool[] = [
+  ownerMenuTools.find(tool => tool.id === 'transaction-history')!,
+  operatorReceivablesTool,
+  ownerMenuTools.find(tool => tool.id === 'settings')!,
+];
 
 export function findOwnerTool(id: string | undefined): OwnerTool | undefined {
   return [...ownerMenuTools, ownerProfileTool].find(tool => tool.id === id);

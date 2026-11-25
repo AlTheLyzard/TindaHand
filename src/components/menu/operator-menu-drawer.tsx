@@ -21,7 +21,7 @@ import { hasCapability } from '@/utils/operator-access';
 import tokens from '@/constants/design-tokens.json';
 import type { OwnerToolId } from '@/types/menu';
 
-const descriptionLengths = operatorMenuTools.map(tool => 'subtitle' in tool ? Array.from(tool.subtitle).length : 0);
+const descriptionLengths = operatorMenuTools.map(tool => tool.subtitle ? Array.from(tool.subtitle).length : 0);
 
 /** Operator counterpart to the Owner More Tools overlay; keeps its host screen mounted. */
 export function OperatorMenuDrawer({ visible, onClose, onPresentationChange, onNavigate }: {
@@ -60,7 +60,8 @@ export function OperatorMenuDrawer({ visible, onClose, onPresentationChange, onN
   const name = operator?.name ?? session?.operator.name ?? session?.displayName ?? 'Operator';
   const canProfile = hasCapability(session, 'profile');
   const tools = operatorMenuTools.filter(tool => tool.id === 'transaction-history'
-    ? hasCapability(session, 'transactions') : hasCapability(session, 'settings'));
+    ? hasCapability(session, 'transactions')
+    : tool.id === 'receivables' ? hasCapability(session, 'receivables') : hasCapability(session, 'settings'));
 
   useEffect(() => {
     desired.current = visible;
@@ -83,6 +84,7 @@ export function OperatorMenuDrawer({ visible, onClose, onPresentationChange, onN
   }
   function open(tool: OwnerToolId) {
     if (tool === 'transaction-history') navigate(() => router.navigate({ pathname: '/operator-more', params: { section: 'transactions' } }));
+    else if (tool === 'receivables') navigate(() => router.navigate('/operator-receivables' as never));
     else if (tool === 'settings') navigate(() => router.navigate({ pathname: '/operator-more', params: { section: 'settings' } }));
   }
   return <Modal visible={motion.presented} transparent animationType="none" presentationStyle="overFullScreen"
@@ -123,15 +125,19 @@ export function OperatorMenuDrawer({ visible, onClose, onPresentationChange, onN
               </View>
             </Pressable>
             <View>
-              {tools.map((tool, index) => <View key={tool.id}>
-                {tool.id === 'settings' && <View className="mb-1 mt-1 border-t border-outline" />}
-                <MenuRow tool={tool} selected={tool.id === 'settings'
-                  ? (pathname === '/operator-more' && section === 'settings') || pathname.startsWith('/operator-settings')
-                  : pathname === '/operator-more' && section === 'transactions'}
-                  onPress={() => open(tool.id)} optionIndex={index} frame={descriptions.frame}
-                  characters={descriptions.characters[index] ?? 0}
-                  preparing={visible && !motion.opened && !motion.reduced} />
-              </View>)}
+              {tools.map(tool => {
+                const optionIndex = operatorMenuTools.findIndex(option => option.id === tool.id);
+                return <View key={tool.id}>
+                  {tool.id === 'settings' && <View className="mb-1 mt-1 border-t border-outline" />}
+                  <MenuRow tool={tool} selected={tool.id === 'settings'
+                    ? (pathname === '/operator-more' && section === 'settings') || pathname.startsWith('/operator-settings')
+                    : tool.id === 'receivables' ? pathname.startsWith('/operator-receivables')
+                      : pathname === '/operator-more' && section === 'transactions'}
+                    onPress={() => open(tool.id)} optionIndex={optionIndex} frame={descriptions.frame}
+                    characters={descriptions.characters[optionIndex] ?? 0}
+                    preparing={visible && !motion.opened && !motion.reduced} />
+                </View>;
+              })}
               <ButtonSurface variant="destructiveText" accessibilityRole="button" accessibilityLabel="Log Out"
                 accessibilityHint="Asks for confirmation before ending your session" onPress={() => setConfirmLogout(true)}
                 className="min-h-[72px] flex-row items-center gap-3 rounded-surface px-3 py-3">

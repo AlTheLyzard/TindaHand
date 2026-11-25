@@ -7,7 +7,7 @@ export type MenuDescriptionFrame = {
 };
 
 /** Frontend navigation metadata, not a future API contract. */
-export type OwnerToolId = 'financial-statements' | 'transaction-history' | 'store-expenses' | 'receivables-payables' | 'settings' | 'profile';
+export type OwnerToolId = 'financial-statements' | 'transaction-history' | 'store-expenses' | 'receivables-payables' | 'receivables' | 'settings' | 'profile';
 export type OwnerMenuIcon = 'financial' | 'history' | 'expense' | 'customerDebt' | 'settings' | 'profile';
 export type OwnerTool = {
   id: OwnerToolId;

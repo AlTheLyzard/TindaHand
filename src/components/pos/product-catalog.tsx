@@ -24,9 +24,9 @@ const ready = { mode: 'ready' as const, loading: false, reset() {} };
 const categoryEdgePadding = 16;
 
 /** Shared POS/debt catalog; all selection state and commits belong to the caller. */
-export function ProductCatalog({ products, selection, onAdd, onOpenInventory, preview = ready, control, ref }: {
+export function ProductCatalog({ products, selection, onAdd, onOpenInventory, preview = ready, control, searchPlaceholder, ref }: {
   products: readonly PosProduct[]; selection: ProductSelection; onAdd: (id: string) => void;
-  onOpenInventory?: () => void; preview?: { mode: PreviewState; loading: boolean; reset: () => void }; control?: ReactNode; ref?: Ref<ProductCatalogHandle>;
+  onOpenInventory?: () => void; preview?: { mode: PreviewState; loading: boolean; reset: () => void }; control?: ReactNode; searchPlaceholder?: string; ref?: Ref<ProductCatalogHandle>;
 }) {
   const metrics = usePosMetrics();
   const { t } = useTranslation();
@@ -99,7 +99,7 @@ export function ProductCatalog({ products, selection, onAdd, onOpenInventory, pr
         }} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingLeft: metrics.gutter, paddingBottom: 12 }}>
           {control ? <View style={{ marginRight: alphabetIndexWidth }}>{control}</View> : null}
-          <SearchBar containerStyle={{ marginRight: alphabetIndexWidth }} label={t('pos.search')} placeholder={t('pos.searchPlaceholder')}
+          <SearchBar containerStyle={{ marginRight: alphabetIndexWidth }} label={t('pos.search')} placeholder={searchPlaceholder ?? t('pos.searchPlaceholder')}
             value={query} onChangeText={changeQuery} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
             onSubmitEditing={Keyboard.dismiss} onClear={() => changeQuery('')} clearLabel={t('pos.clearSearch')}
             results={suggestions.length > 0 ? <MotionRegion>

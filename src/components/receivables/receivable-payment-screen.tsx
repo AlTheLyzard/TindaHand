@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useRef, useState, type ReactNode } from 'react';
 import { Keyboard, Text, View, type TextInputInstance } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,16 +11,16 @@ import { KeyboardAwareScrollView as ScrollView } from '@/components/ui/keyboard-
 import { MotionModal } from '@/components/ui/motion-modal';
 import { SuccessContent } from '@/components/ui/success-content';
 import { useQuickAdd } from '@/state/quick-add';
-import { useAuthFlow } from '@/state/auth-flow';
 import { useApiReceivables } from '@/hooks/use-receivables';
 import { useReceivableDraft } from '@/state/receivable-draft';
 import { localCalendarDate, receivableBalance, receivablePaymentError } from '@/utils/receivables';
 import { parsePaymentAmount } from '@/utils/pos-payment';
-import { payableAmountInput, payableDueLabel } from '@/utils/payables';
 import { formatPesos } from '@/utils/dashboard';
-import type { ReceivablePayment, ReceivableStatus } from '@/types/receivables';
+import { formatCalendarDate } from '@/utils/date';
+import type { ReceivablePayment } from '@/types/receivables';
 import tokens from '@/constants/design-tokens.json';
-import { debtDescription, receivableStatusAppearance, ReceivableStatusPill, receivablesRoot } from './receivables-ui';
+import { AnimatedPesoValue, debtDescription, useReceivablesRoot } from './receivables-ui';
+import { useStoreOwner } from '@/hooks/use-store-owner';
 
 type PaymentSuccess = Pick<ReceivablePayment, 'id' | 'amountCentavos'> & { remainingCentavos: number };
 type PendingPaymentCommand = { debtId: string; amount: string; outstanding: number };
@@ -28,12 +28,12 @@ type PendingPaymentCommand = { debtId: string; amount: string; outstanding: numb
 export function ReceivablePaymentScreen() {
   const { debtId } = useLocalSearchParams<{ debtId?: string }>();
   const { records, receivablePayments: localPayments, confirmReceivablePayment } = useQuickAdd();
-  const { owner } = useAuthFlow();
-  const confirmedMode = owner?.mode === 'confirmed';
-  const { debts: apiDebts, payments: apiPayments, loading: apiLoading, refresh: refreshReceivables } = useApiReceivables(confirmedMode ? owner?.id : undefined);
+  const storeOwner = useStoreOwner();
+  const root = useReceivablesRoot();
+  const confirmedMode = storeOwner?.mode === 'confirmed';
+  const { debts: apiDebts, payments: apiPayments, loading: apiLoading, refresh: refreshReceivables } = useApiReceivables(confirmedMode ? storeOwner?.id : undefined);
   const receivablePayments = confirmedMode ? apiPayments : localPayments;
   const { setQuery } = useReceivableDraft();
-  // For confirmed owners, find the debt from the API-fetched list; fall back to local records.
   const debt = confirmedMode
     ? apiDebts.find(record => record.kind === 'customerDebt' && record.id === debtId)
     : records.find(record => record.kind === 'customerDebt' && record.id === debtId);
@@ -55,14 +55,12 @@ export function ReceivablePaymentScreen() {
   const validation = receivablePaymentError(amount, outstanding);
   const entered = parsePaymentAmount(amount) ?? 0;
   const remaining = validation ? outstanding : outstanding - entered;
-  const previewStatus: ReceivableStatus = remaining === 0 ? 'paid' : debt?.dueDate && debt.dueDate < today ? 'overdue' : !validation || (balance?.paidCentavos ?? 0) > 0 ? 'partial' : 'pending';
-  const previewAppearance = receivableStatusAppearance(previewStatus);
   const update = (value: string) => { setAmount(value); setFailure(''); };
 
   function back(nextStatus = 'unpaid') {
     if (busy.current) return;
     Keyboard.dismiss();
-    router.dismissTo({ pathname: receivablesRoot, params: { section: 'receivable', status: nextStatus } });
+    router.dismissTo({ pathname: root, params: { section: 'receivable', status: nextStatus } } as Href);
   }
   function submitPayment() {
     if (busy.current || confirmationOpen || !confirmationDismissed.current || !debt) return;
@@ -103,7 +101,7 @@ export function ReceivablePaymentScreen() {
     if (!savedPayment) return;
     const status = savedPayment.remainingCentavos === 0 ? 'paid' : 'unpaid';
     setSavedPayment(null);
-    router.dismissTo({ pathname: receivablesRoot, params: { section: 'receivable', status } });
+    router.dismissTo({ pathname: root, params: { section: 'receivable', status } } as Href);
   }
   function afterConfirmationHidden() {
     confirmationDismissed.current = true;
@@ -114,8 +112,7 @@ export function ReceivablePaymentScreen() {
 
   const overlay: ReactNode = <>
     <MotionModal visible={confirmationOpen} backdropColor={quickAddColors.backdrop}
-      onRequestClose={() => { if (!busy.current) setConfirmationOpen(false); }}
-      onHidden={afterConfirmationHidden}>
+      onRequestClose={() => { if (!busy.current) setConfirmationOpen(false); }} onHidden={afterConfirmationHidden}>
       <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, paddingBottom: Math.max(insets.bottom, 24) }}>
           <ConfirmationContent variant="quickAdd" title="Confirm Payment?"
@@ -138,37 +135,34 @@ export function ReceivablePaymentScreen() {
   </>;
 
   const stillLoading = confirmedMode && apiLoading && !debt;
+  const footer = !stillLoading && debt && balance && outstanding > 0 ? <View className="gap-3">
+    <Button loading={saving} disabled={saving || (submitted && !!validation)} onPress={submitPayment}>Confirm Payment</Button>
+    <Button variant="secondary" disabled={saving} onPress={() => back()}>Cancel</Button>
+  </View> : undefined;
+  const previewColor = validation ? tokens.color.errorBase : tokens.color.successBase;
 
-  return <InventoryFrame title="Record Payment" back inlineTitle onBack={() => back()} onNavigate={action => { if (!busy.current) action(); }} overlay={overlay}>
+  return <InventoryFrame title="Record Payment" back inlineTitle background subtitle={debtDescription}
+    hideNavigationWithKeyboard footer={footer} onBack={() => back()} onNavigate={action => { if (!busy.current) action(); }} overlay={overlay}>
     {stillLoading ? <ContentState title="Loading debt details…" description="Please wait a moment." /> :
-    !debt || !balance || outstanding === 0 ? <ContentState title={debt ? 'This debt is fully paid' : 'Debt not available'} description={debt ? 'You can review this debt in Paid records.' : 'Return to Account Balances and choose an existing unpaid debt.'} action="Back to Account Balances" onAction={() => back(debt ? 'paid' : 'unpaid')} /> : <View className="gap-6" pointerEvents={saving ? 'none' : 'auto'}>
-      <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">{debtDescription}</Text>
-      <View className="gap-5 rounded-control border border-accent bg-brand p-5">
-        <View className="flex-row flex-wrap justify-between gap-2"><Text className="min-w-0 flex-shrink type-micro-financial-rate text-white">{debt.name} · Total Debt</Text><Text className=" type-list-financial text-white">{formatPesos(balance.originalCentavos)}</Text></View>
-        <View className="gap-2"><Text className=" type-label-nav text-white">Current Balance</Text><Text className=" type-large-metric leading-[45px] text-white">{formatPesos(outstanding)}</Text></View>
-        <Text className=" type-micro-caption leading-[18px] text-white">{payableDueLabel(debt.dueDate, today)} · Ref {debt.id.slice(-10)}</Text>
-      </View>
-      <View className="gap-4 rounded-card bg-white p-4">
-        <QuickAddField ref={input} label="Payment Amount" required={false} money value={amount} onChangeText={update} placeholder="0.00" inputMode="decimal" keyboardType="decimal-pad" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} error={submitted ? validation : undefined} />
-        <Text className=" type-label-nav text-text-secondary">Quick Amount</Text>
-        <Button fullWidth={false} shape="pill" disabled={saving} onPress={() => update(payableAmountInput(outstanding))}>Full Payment</Button>
-        <View className="flex-row flex-wrap gap-2">{[10000, 20000, 50000].map(shortcut => {
-          const disabled = saving || shortcut > outstanding;
-          return <Button key={shortcut} fullWidth={false} shape="pill" variant="secondary" accessibilityLabel={`Set payment to ${formatPesos(shortcut)}`} disabled={disabled} onPress={() => update(payableAmountInput(shortcut))} style={{ minWidth: 70, flex: 1 }}>{formatPesos(shortcut)}</Button>;
-        })}</View>
-      </View>
-      <View accessibilityLiveRegion="polite" className="gap-4 rounded-card p-5" style={{ backgroundColor: previewAppearance.surface }}>
-        <View className="flex-row flex-wrap items-center justify-between gap-3"><Text className=" type-label-nav" style={{ color: previewAppearance.color }}>Preview</Text><ReceivableStatusPill status={previewStatus} /></View>
-        <Text className=" type-title-accent leading-[33px]" style={{ color: previewAppearance.color }}>Remaining Balance: {formatPesos(remaining)}</Text>
-        {!validation && <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">{formatPesos(outstanding)} − {formatPesos(entered)} = {formatPesos(remaining)}</Text>}
-        <Text className=" type-micro-caption leading-[18px] text-text-secondary">Preview only. The debt record will be updated once the payment is confirmed.</Text>
-      </View>
-      {!!failure && <Text accessibilityRole="alert" className=" type-micro-caption text-error-base">{failure}</Text>}
-      <View className="mt-3 flex-row flex-wrap gap-3">
-        <View className="min-w-[100px] flex-1"><Button variant="secondary" disabled={saving} onPress={() => back()}>Cancel</Button></View>
-        <View className="min-w-[160px] flex-1"><Button loading={saving} disabled={saving || (submitted && !!validation)} onPress={submitPayment}>Confirm Payment</Button></View>
-      </View>
-    </View>}
-  </InventoryFrame>;
+      !debt || !balance || outstanding === 0 ? <ContentState title={debt ? 'This debt is fully paid' : 'Debt not available'} description={debt ? 'You can review this debt in Paid records.' : 'Return to Account Balances and choose an existing unpaid debt.'} action="Back to Account Balances" onAction={() => back(debt ? 'paid' : 'unpaid')} /> : <View className="gap-6" pointerEvents={saving ? 'none' : 'auto'}>
+        <View className="gap-4 rounded-card border border-accent bg-brand p-5">
+          <View className="flex-row flex-wrap items-center justify-between gap-2">
+            <Text className="type-list-financial text-white">Total Debt</Text>
+            <Text className="type-micro-caption text-white">{formatCalendarDate(debt.occurredAt.slice(0, 10))}</Text>
+          </View>
+          <AnimatedPesoValue centavos={balance.originalCentavos} className="type-large-metric" style={{ color: tokens.color.surfaceCard }} />
+        </View>
 
+        <QuickAddField ref={input} label="Amount Paid" required money value={amount} onChangeText={update} placeholder="0.00"
+          inputMode="decimal" keyboardType="decimal-pad" returnKeyType="done" onSubmitEditing={Keyboard.dismiss}
+          error={submitted ? validation : undefined} errorBackground={tokens.color.errorTint} />
+
+        <View accessibilityLiveRegion="polite" className={`gap-3 rounded-card border p-5 ${validation ? 'border-error-base bg-error-tint' : 'border-success-base bg-success-tint'}`}>
+          <Text className="type-label-nav" style={{ color: previewColor }}>Preview</Text>
+          <AnimatedPesoValue centavos={remaining} prefix="Balance: " className="type-large-metric" style={{ color: previewColor }} />
+          <Text className="type-micro-financial-rate text-text-secondary">{formatPesos(outstanding)} − {formatPesos(entered)} = {formatPesos(remaining)}</Text>
+        </View>
+        {!!failure && <Text accessibilityRole="alert" className="type-micro-caption text-error-base">{failure}</Text>}
+      </View>}
+  </InventoryFrame>;
 }

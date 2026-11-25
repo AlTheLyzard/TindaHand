@@ -13,8 +13,9 @@ import { useReceivableDraft } from '@/state/receivable-draft';
 import { localCalendarDate, receivableLists } from '@/utils/receivables';
 import { payableLists } from '@/utils/payables';
 import { todayInManila } from '@/utils/inventory-stock';
-import { CustomerSearch, receivableColors, receivablesRoot } from '@/components/receivables/receivables-ui';
+import { CustomerSearch, receivableColors, useReceivablesRoot } from '@/components/receivables/receivables-ui';
 import { ReceivableCard } from '@/components/receivables/receivable-card';
+import { useStoreOwner } from '@/hooks/use-store-owner';
 import { CreditorSearch, balancesRoot, payableColors } from './payables-ui';
 import { PayableCard } from './payable-card';
 
@@ -32,22 +33,25 @@ function parseCategory(value?: string): Category | null {
 
 export function CategoryTransactionsScreen() {
   const { section, category: rawCategory } = useLocalSearchParams<{ section?: string; category?: string }>();
+  const { deviceSession } = useAuthFlow();
+  const receivableRoot = useReceivablesRoot();
+  const payable = deviceSession?.role === 'owner' && section === 'payable';
   const category = parseCategory(rawCategory);
   if (!category) {
-    const payable = section === 'payable';
-    const root = payable ? balancesRoot : receivablesRoot;
-    return <InventoryFrame title="Transactions" back inlineTitle onBack={() => router.dismissTo({ pathname: root, params: { section: payable ? 'payable' : 'receivable', status: 'unpaid' } })}>
+    const root = payable ? balancesRoot : receivableRoot;
+    return <InventoryFrame title="Transactions" back inlineTitle onBack={() => router.dismissTo({ pathname: root, params: { section: payable ? 'payable' : 'receivable', status: 'unpaid' } } as Href)}>
       <EmptyState title="Category not available" description="Return to Account Balances and choose a transaction category." />
     </InventoryFrame>;
   }
-  return section === 'payable' ? <PayableCategoryTransactions category={category} /> : <ReceivableCategoryTransactions category={category} />;
+  return payable ? <PayableCategoryTransactions category={category} /> : <ReceivableCategoryTransactions category={category} />;
 }
 
 function ReceivableCategoryTransactions({ category }: { category: Category }) {
   const { records, receivablePayments: localPayments } = useQuickAdd();
-  const { owner } = useAuthFlow();
-  const confirmedMode = owner?.mode === 'confirmed';
-  const { debts: apiDebts, payments: apiPayments, refresh } = useApiReceivables(confirmedMode ? owner?.id : undefined);
+  const storeOwner = useStoreOwner();
+  const receivableRoot = useReceivablesRoot();
+  const confirmedMode = storeOwner?.mode === 'confirmed';
+  const { debts: apiDebts, payments: apiPayments, refresh } = useApiReceivables(confirmedMode ? storeOwner?.id : undefined);
   const receivableRecords = confirmedMode ? apiDebts : records;
   const receivablePayments = confirmedMode ? apiPayments : localPayments;
   const { query, setQuery } = useReceivableDraft();
@@ -62,7 +66,7 @@ function ReceivableCategoryTransactions({ category }: { category: Category }) {
   const lists = receivableLists(receivableRecords, receivablePayments, query, today);
   const rows = category === 'remaining' ? lists.partial : lists[category];
   const color = category === 'overdue' ? receivableColors.red : category === 'pending' ? receivableColors.blue : receivableColors.orange;
-  const back = () => router.dismissTo({ pathname: receivablesRoot, params: { section: 'receivable', status: 'unpaid' } });
+  const back = () => router.dismissTo({ pathname: receivableRoot, params: { section: 'receivable', status: 'unpaid' } } as Href);
 
   return <InventoryFrame title={`${categoryTitle[category]} Debts`} back inlineTitle onBack={back}>
     <View className="flex-row flex-wrap items-center justify-between gap-2">
@@ -75,7 +79,7 @@ function ReceivableCategoryTransactions({ category }: { category: Category }) {
     <MotionContent changeKey={`receivable:${category}`}>
       {!rows.length ? <EmptyState title={query.trim() ? 'No matching debts' : `No ${categoryTitle[category].toLowerCase()} debts`} description={query.trim() ? 'Try another customer name or clear your search.' : 'Transactions in this category will appear here.'} />
         : <View className="gap-3">{rows.map(row => <ReceivableCard key={row.debt.id} row={row} today={today}
-          onDetails={() => push({ pathname: `${receivablesRoot}/details`, params: { debtId: row.debt.id } } as unknown as Href)} />)}</View>}
+          onDetails={() => push({ pathname: `${receivableRoot}/details`, params: { debtId: row.debt.id } } as unknown as Href)} />)}</View>}
     </MotionContent>
   </InventoryFrame>;
 }

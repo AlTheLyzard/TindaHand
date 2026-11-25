@@ -3,6 +3,7 @@ import { quickAddSeed } from '@/data/quick-add';
 import { createQuickAddService } from '@/services/quick-add';
 import { createPayable } from '@/services/payables';
 import { useAuthFlow } from '@/state/auth-flow';
+import { useStoreOwner } from '@/hooks/use-store-owner';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
 import { useInventory } from '@/state/inventory';
 import type { QuickAddDraft, QuickAddRecord } from '@/types/quick-add';
@@ -11,6 +12,7 @@ import { payableAsQuickAdd } from '@/utils/payables';
 import type { PayablesLedger, PayablePayment } from '@/types/payables';
 import type { ReceivablePayment } from '@/types/receivables';
 import { createReceivablesService, createReceivable, createReceivablePayment } from '@/services/receivables';
+import { hasCapability } from '@/utils/operator-access';
 
 type ExpenseFeedback = { recordId: string; expiresAt: number } | null;
 type TransactionLedger = { records: readonly QuickAddRecord[]; receivablePayments: readonly ReceivablePayment[]; payables: PayablesLedger };
@@ -23,7 +25,8 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   // - Expected Input/Payload: Session-derived owner scope, record drafts, linked IDs, and idempotency keys
   // - Expected Response: QuickAddRecord[], PayablesLedger, and payment records
   // - UI State to Wire: Define cache/logout policy, loading/errors, and refresh derived totals after confirmation
-  const { owner } = useAuthFlow();
+  const { owner, deviceSession } = useAuthFlow();
+  const receivableOwner = useStoreOwner();
   const { store, getStore, dispatch } = useInventory();
   const receivables = createReceivablesService(getStore, dispatch);
   const [service] = useState(createQuickAddService);
@@ -33,7 +36,9 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   const [payableFeedback, setPayableFeedback] = useState<{ ownerId: string; message: string } | null>(null);
   const [receivableFeedback, setReceivableFeedback] = useState<{ ownerId: string; message: string } | null>(null);
   const payables = service.readPayables(owner);
-  const records = [...(store.pos?.debts ?? []), ...allRecords, ...payables.debts.map(debt => payableAsQuickAdd(debt, payables.payments))].filter(record => record.ownerId === owner?.id);
+  const records = [...(store.pos?.debts ?? []), ...allRecords, ...payables.debts.map(debt => payableAsQuickAdd(debt, payables.payments))]
+    .filter(record => record.ownerId === receivableOwner?.id
+      && (deviceSession?.role !== 'operator' || record.kind === 'customerDebt'));
   const transactionLedgerForOwner = useCallback((ownerId: string, scope: 'owner' | 'operator'): TransactionLedger => {
     const scopedPayables = scope === 'owner' ? service.readPayablesForOwner(ownerId) : { creditors: [], debts: [], payments: [] };
     const scopedRecords = [...(store.pos?.debts ?? []), ...allRecords].filter(record => record.ownerId === ownerId
@@ -50,9 +55,11 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   // - Expected Response: Canonical record/payment and refreshed ledger balances
   // - UI State to Wire: Preserve modal drafts on error and update success feedback/totals only after confirmation
   async function save(token: string, draft: QuickAddDraft) {
+    if (deviceSession?.role === 'operator' && draft.kind === 'storeDebt') throw new Error('Payables are only available to the May-Ari.');
     if (draft.kind === 'customerDebt') {
-      if (!MOCK_AUTH_ENABLED && owner?.mode === 'confirmed') {
-        if (!owner) throw new Error('An owner session is required.');
+      if (deviceSession?.role === 'operator' && !hasCapability(deviceSession, 'receivables')) throw new Error('Receivables access is not available for this account.');
+      if (!receivableOwner) throw new Error('A store session is required.');
+      if (!MOCK_AUTH_ENABLED && receivableOwner.mode === 'confirmed') {
         const result = await createReceivable({
           name: draft.name.trim(),
           customerId: undefined, // local mock IDs (e.g. "demo-customer-*") are not valid backend IDs
@@ -66,7 +73,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
         });
         const record: QuickAddRecord = {
           id: String(result.id),
-          ownerId: owner.id,
+          ownerId: receivableOwner.id,
           kind: 'customerDebt',
           name: result.name,
           amountCentavos: result.originalAmountCentavos,
@@ -83,10 +90,10 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
           customerId: result.customerId ?? undefined,
           occurredAt: result.occurredAt,
         };
-        setReceivableFeedback({ ownerId: owner.id, message: `Debt saved for ${record.name}.` });
+        setReceivableFeedback({ ownerId: receivableOwner.id, message: `Debt saved for ${record.name}.` });
         return record;
       }
-      const record = receivables.saveDebt(owner, token, draft);
+      const record = receivables.saveDebt(receivableOwner, token, draft);
       setReceivableFeedback({ ownerId: record.ownerId, message: `Debt saved for ${record.name}.` });
       return record;
     }
@@ -127,33 +134,35 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
     return record;
   }
   async function confirmPayablePayment(token: string, debtId: string, amount: string) {
+    if (deviceSession?.role === 'operator') throw new Error('Payables are only available to the May-Ari.');
     const payment = service.confirmPayablePayment(owner, token, debtId, amount);
     setRevision(previous => previous + 1);
     setPayableFeedback({ ownerId: payment.ownerId, message: 'Payment recorded. Debt balance updated.' });
     return payment;
   }
   async function confirmReceivablePayment(token: string, debtId: string, amount: string) {
-    if (!MOCK_AUTH_ENABLED && owner?.mode === 'confirmed') {
-      if (!owner) throw new Error('An owner session is required.');
+    if (deviceSession?.role === 'operator' && !hasCapability(deviceSession, 'receivables')) throw new Error('Receivables access is not available for this account.');
+    if (!receivableOwner) throw new Error('A store session is required.');
+    if (!MOCK_AUTH_ENABLED && receivableOwner.mode === 'confirmed') {
       const amountCentavos = Math.round(parseFloat(amount) * 100);
       const result = await createReceivablePayment({ debtId, amountCentavos, occurredAt: new Date().toISOString() });
       const payment: ReceivablePayment = {
         id: String(result.id),
-        ownerId: owner.id,
+        ownerId: receivableOwner.id,
         debtId: String(result.debtId),
         amountCentavos: result.amountCentavos,
         occurredAt: result.occurredAt,
       };
-      setReceivableFeedback({ ownerId: owner.id, message: 'Payment recorded. Debt balance updated.' });
+      setReceivableFeedback({ ownerId: receivableOwner.id, message: 'Payment recorded. Debt balance updated.' });
       return payment;
     }
-    const payment = receivables.confirmPayment(owner, token, debtId, amount);
+    const payment = receivables.confirmPayment(receivableOwner, token, debtId, amount);
     setReceivableFeedback({ ownerId: payment.ownerId, message: 'Payment recorded. Debt balance updated.' });
     return payment;
   }
   return <Context.Provider value={{ records, totals: summarizeQuickAdd(records), save, payables, transactionLedgerForOwner, confirmPayablePayment,
-    receivablePayments: (store.receivablePayments ?? []).filter(payment => payment.ownerId === owner?.id), confirmReceivablePayment,
-    receivableFeedback: receivableFeedback && receivableFeedback.ownerId === owner?.id ? receivableFeedback.message : '', dismissReceivableFeedback: () => setReceivableFeedback(null),
+    receivablePayments: (store.receivablePayments ?? []).filter(payment => payment.ownerId === receivableOwner?.id), confirmReceivablePayment,
+    receivableFeedback: receivableFeedback && receivableFeedback.ownerId === receivableOwner?.id ? receivableFeedback.message : '', dismissReceivableFeedback: () => setReceivableFeedback(null),
     payableFeedback: payableFeedback && payableFeedback.ownerId === owner?.id ? payableFeedback.message : '', dismissPayableFeedback: () => setPayableFeedback(null),
     expenseFeedback: feedback?.ownerId === owner?.id ? feedback : null, dismissExpenseFeedback: () => setFeedback(null) }}>{children}</Context.Provider>;
 }

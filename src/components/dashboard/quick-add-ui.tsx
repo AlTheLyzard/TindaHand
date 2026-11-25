@@ -63,12 +63,12 @@ export function QuickAddExpenseCategoryField({ value, onChange, error }: {
   </View>;
 }
 
-type FieldProps = TextInputProps & { label: string; required?: boolean; requiredIndicator?: 'text' | 'asterisk'; error?: string; showError?: boolean; money?: boolean; large?: boolean; date?: boolean; dueDate?: boolean; onPickDate?: () => void; ref?: Ref<TextInputInstance> };
+type FieldProps = TextInputProps & { label: string; required?: boolean; requiredIndicator?: 'text' | 'asterisk'; error?: string; errorBackground?: string; showError?: boolean; money?: boolean; large?: boolean; date?: boolean; dueDate?: boolean; onPickDate?: () => void; ref?: Ref<TextInputInstance> };
 function displayDate(value: string) {
   return formatCalendarDate(value).toUpperCase();
 }
 /** Scoped field styling avoids changing registration, inventory or POS inputs. */
-export function QuickAddField({ label, required = true, requiredIndicator: _requiredIndicator, error, showError = true, money = false, large = false, date = false, dueDate: _dueDate, onPickDate, ref, ...props }: FieldProps) {
+export function QuickAddField({ label, required = true, requiredIndicator: _requiredIndicator, error, errorBackground, showError = true, money = false, large = false, date = false, dueDate: _dueDate, onPickDate, ref, ...props }: FieldProps) {
   const [focused, setFocused] = useState(false);
   const input = useRef<TextInputInstance | null>(null);
   const fontSize = tokens.typography.bodyPrimary.fontSize;
@@ -79,7 +79,7 @@ export function QuickAddField({ label, required = true, requiredIndicator: _requ
   const Input = money ? MoneyInput : TextInput;
   return <KeyboardField style={{ gap: 4 }}>
     <FieldLabel label={label} required={required} style={quickAddStyles.label} />
-    <View style={[quickAddStyles.field, { borderColor: error ? tokens.color.errorBase : focused ? tokens.color.brightBlue : tokens.color.borderOutline, backgroundColor: tokens.color.surfaceCard }]}>
+    <View style={[quickAddStyles.field, { borderColor: error ? tokens.color.errorBase : focused ? tokens.color.brightBlue : tokens.color.borderOutline, backgroundColor: error ? errorBackground ?? tokens.color.surfaceCard : tokens.color.surfaceCard }]}>
       {money && <Text accessible={false} style={{ paddingLeft: 20, fontSize, fontFamily: tokens.typography.weights.semibold, color: props.value ? quickAddColors.ink : tokens.color.textPlaceholder }}>₱</Text>}
       <View style={{ flex: 1, minWidth: 0 }}>
       <Input {...props} ref={node => { input.current = node; if (typeof ref === 'function') ref(node); else if (ref) ref.current = node; }}

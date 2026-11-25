@@ -101,7 +101,7 @@ export interface DebtPayment {
 }
 
 export interface Customer {
-  id: number;
+  id: string;
   name: string;
 }
 
