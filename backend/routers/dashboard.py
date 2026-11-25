@@ -273,42 +273,6 @@ def dashboard_summary(
     )
 
 
-# ── DEBUG: sale timestamps ────────────────────────────────────────────────────
-# Temporary endpoint to diagnose why today's sales filter may be wrong.
-# Remove after confirming timestamps are stored correctly.
-
-@router.get("/debug-sales-timestamps")
-def debug_sales_timestamps(
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user),
-):
-    """Returns raw occurred_at values for the last 10 sales, normalized to Manila."""
-    owner_id = current_user["db_id"]
-    today = _manila_today()
-
-    def _to_manila_naive(dt: datetime) -> datetime:
-        if dt.tzinfo is not None:
-            return (dt.astimezone(timezone.utc) + MANILA_OFFSET).replace(tzinfo=None)
-        return dt
-
-    sales = db.query(Sale).filter(Sale.owner_id == owner_id).order_by(Sale.occurred_at.desc()).limit(10).all()
-    return {
-        "manila_today": str(today),
-        "server_utc_now": datetime.now(timezone.utc).isoformat(),
-        "sales": [
-            {
-                "id": s.id,
-                "occurred_at_raw": str(s.occurred_at),
-                "tzinfo": str(getattr(s.occurred_at, "tzinfo", None)),
-                "occurred_at_manila": _to_manila_naive(s.occurred_at).isoformat(),
-                "total_centavos": s.total_centavos,
-                "in_today_window": _to_manila_naive(s.occurred_at).date() == today,
-            }
-            for s in sales
-        ],
-    }
-
-
 # ── CASH MOVEMENTS ───────────────────────────────────────────────────────────
 
 @router.get("/cash-movements", response_model=List[CashMovementOut])

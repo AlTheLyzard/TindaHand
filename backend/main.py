@@ -47,6 +47,29 @@ def _run_migrations(engine):
         except Exception as e:
             logging.error(f"Migration kahera.pin_is_temporary FAILED: {e}")
 
+        # 2. Restock.cost_centavos  (added to track purchase cost of each restock batch)
+        try:
+            if dialect == "sqlite":
+                result = conn.execute(sqlalchemy.text("PRAGMA table_info(restock)"))
+                has_col = any(row[1] == "cost_centavos" for row in result)
+            else:
+                result = conn.execute(sqlalchemy.text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'restock' AND column_name = 'cost_centavos'"
+                ))
+                has_col = result.fetchone() is not None
+
+            if not has_col:
+                conn.execute(sqlalchemy.text(
+                    "ALTER TABLE restock ADD COLUMN cost_centavos BIGINT"
+                ))
+                conn.commit()
+                logging.info("Migration: added restock.cost_centavos column.")
+            else:
+                logging.info("Migration: restock.cost_centavos already exists, skipping.")
+        except Exception as e:
+            logging.error(f"Migration restock.cost_centavos FAILED: {e}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
