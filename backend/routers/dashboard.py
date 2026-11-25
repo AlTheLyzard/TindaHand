@@ -263,6 +263,45 @@ def dashboard_summary(
     )
 
 
+# ── DEBUG: sale timestamps ────────────────────────────────────────────────────
+# Temporary endpoint to diagnose why today's sales filter may be wrong.
+# Remove after confirming timestamps are stored correctly.
+
+@router.get("/debug-sales-timestamps")
+def debug_sales_timestamps(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """Returns raw occurred_at values for the last 10 sales, plus today's UTC window."""
+    owner_id = current_user["db_id"]
+    today = _manila_today()
+    today_start_utc = datetime(today.year, today.month, today.day, tzinfo=timezone.utc) - MANILA_OFFSET
+    today_end_utc   = today_start_utc + timedelta(days=1)
+    sales = db.query(Sale).filter(Sale.owner_id == owner_id).order_by(Sale.occurred_at.desc()).limit(10).all()
+    return {
+        "manila_today": str(today),
+        "today_start_utc": today_start_utc.isoformat(),
+        "today_end_utc": today_end_utc.isoformat(),
+        "server_utc_now": datetime.now(timezone.utc).isoformat(),
+        "sales": [
+            {
+                "id": s.id,
+                "occurred_at_raw": str(s.occurred_at),
+                "occurred_at_repr": repr(s.occurred_at),
+                "tzinfo": str(getattr(s.occurred_at, "tzinfo", None)),
+                "total_centavos": s.total_centavos,
+                "in_today_window": (
+                    today_start_utc <= (
+                        s.occurred_at.replace(tzinfo=timezone.utc) if s.occurred_at.tzinfo is None
+                        else s.occurred_at.astimezone(timezone.utc)
+                    ) < today_end_utc
+                ),
+            }
+            for s in sales
+        ],
+    }
+
+
 # ── CASH MOVEMENTS ───────────────────────────────────────────────────────────
 
 @router.get("/cash-movements", response_model=List[CashMovementOut])
