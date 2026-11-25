@@ -123,10 +123,9 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     ...localSummary,
     // Cash balance comes directly from the backend (all Cash account debits minus credits)
     cashCentavos: apiSummary.cashBalanceCentavos,
-    // Money In = cash sales received + customer debt payments + manual cash additions
-    // The backend cashBalanceCentavos already accounts for all of these; we show
-    // all-time sales received as the "Pasok" figure (what came into the till).
-    moneyIn: apiSummary.totalSalesCentavos,
+    // Money In = all-time sales received + manual cash additions (from cash movements)
+    // Both are Cash debits in the general journal; both should show in Pasok.
+    moneyIn: apiSummary.totalSalesCentavos + (apiMoneyIn ?? 0),
     // Money Out = expenses + store debt payments + restock costs (from backend)
     moneyOut: apiSummary.totalMoneyOutCentavos,
     // Sales totals per selected period — from backend
@@ -221,7 +220,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     <DashboardQuickAdd onSelect={action => { preview.reset(); setQuickKind(action === 'dashboard.quick.customerDebt' ? 'customerDebt' : action === 'dashboard.quick.storeDebt' ? 'storeDebt' : 'expense'); }} />
     {quickKind && <QuickAddModal initialKind={quickKind} onClose={() => { setQuickKind(null); refreshDashboard(); }} />}
     {cashToastExpiresAt !== null && <RegistrationToast expiresAt={cashToastExpiresAt} onDismiss={dismissCashToast} title="Amount Saved!" message="Cash added successfully." />}
-    {cashOpen && <AddCashModal onClose={() => setCashOpen(false)} onSaved={() => { setCashOpen(false); setCashToastExpiresAt(Date.now() + 15000); refreshDashboard(); }} />}
+    {cashOpen && <AddCashModal onClose={() => setCashOpen(false)} onSaved={() => { setCashOpen(false); setCashToastExpiresAt(Date.now() + 15000); setTimeout(refreshDashboard, 400); }} />}
     <Modal visible={!!notice} onRequestClose={() => setNotice(null)}>
       <View className="flex-1 items-center justify-center px-6">
         <View accessibilityViewIsModal className="w-full max-w-[412px] gap-4 rounded-card bg-white p-6">
