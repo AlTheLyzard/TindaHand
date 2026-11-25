@@ -171,14 +171,17 @@ def dashboard_summary(
             payables_centavos += remaining
 
     # Cash balance = current asset value from Assets table (Cash on Hand)
-    cash_asset = (
+    # Sum ALL current assets as initial capital — each one is a form of starting
+    # capital (Cash On Hand, Investment, Lotto winnings, etc.) that the owner
+    # declared before the store started operating.
+    current_assets = (
         db.query(Asset)
         .filter(
             Asset.owner_id == owner_id,
             Asset.classification == "current",
             Asset.is_deleted == False,
         )
-        .first()
+        .all()
     )
     # ── PERA SA KAHA = Cash account in the general journal ────────────────────
     # Cash is DEBITED (dagdag) by:
@@ -222,7 +225,7 @@ def dashboard_summary(
     total_restock_costs_centavos = sum(r.cost_centavos for r in all_restocks if r.cost_centavos is not None)
 
     # Pera sa Kaha = all Cash debits minus all Cash credits
-    initial_capital = cash_asset.value_centavos if cash_asset else 0
+    initial_capital = sum(a.value_centavos for a in current_assets)
     cash_balance = (
         initial_capital
         + cash_sales
