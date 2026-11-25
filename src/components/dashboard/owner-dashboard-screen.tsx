@@ -119,6 +119,14 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     ? apiMovements.reduce((sum, m) => sum + Math.max(0, -m.amountCentavos), 0)
     : null;
 
+  // For confirmed (real backend) sessions:
+  //   • If apiSummary is ready → show real numbers
+  //   • If apiSummary is still loading → keep ALL numbers at 0 so the loading skeleton
+  //     shows instead of the demo ₱12,450. This prevents the wrong amount flashing on
+  //     every login and after every logout/re-login cycle.
+  //   • If not a confirmed session → show localSummary (mock/offline demo data)
+  const confirmedLoading = owner.mode === 'confirmed' && apiLoading && apiSummary === null;
+
   const summary = apiSummary && owner.mode === 'confirmed' ? {
     ...localSummary,
     // Cash balance comes directly from the backend (all Cash account debits minus credits)
@@ -136,6 +144,15 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
         : apiSummary.totalSalesThisMonthCentavos,
     // Best sellers from the backend top-K algorithm — empty array if no real sales yet
     bestSellers: apiSummary.topProducts.map(p => ({ id: p.productId, name: p.name, quantity: p.quantitySold })),
+  } : confirmedLoading ? {
+    // Show zeroed-out summary while backend data loads — prevents demo ₱12,450 from
+    // flashing on every login/logout/re-login. Cards show loading skeleton instead.
+    ...localSummary,
+    cashCentavos: 0,
+    moneyIn: 0,
+    moneyOut: 0,
+    totalSalesCentavos: 0,
+    bestSellers: [],
   } : {
     ...localSummary,
     // Override best sellers with real POS data only — never fall back to demo/mock sales
