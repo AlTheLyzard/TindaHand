@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import { quickAddSeed } from '@/data/quick-add';
 import { createQuickAddService } from '@/services/quick-add';
 import { createPayable } from '@/services/payables';
+import { createExpense } from '@/services/expenses';
 import { useAuthFlow } from '@/state/auth-flow';
 import { useStoreOwner } from '@/hooks/use-store-owner';
 import { MOCK_AUTH_ENABLED } from '@/config/mock-auth';
@@ -124,6 +125,37 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
       setPayableFeedback({ ownerId: owner.id, message: `Debt saved for ${record.name}.` });
       return record;
     }
+    // Real path for expenses in confirmed sessions — POST to backend.
+    // The expense list screen re-fetches via useFocusEffect after navigation.
+    if (draft.kind === 'expense' && !MOCK_AUTH_ENABLED && owner?.mode === 'confirmed') {
+      const result = await createExpense({
+        name: draft.details.trim() || draft.category,
+        category: draft.category,
+        amountCentavos: quickAddTotal(draft),
+        expenseDate: draft.expenseDate || new Date().toISOString().slice(0, 10),
+        details: draft.details.trim() || undefined,
+        occurredAt: new Date().toISOString(),
+      });
+      if (!owner) throw new Error('An owner session is required.');
+      const record: QuickAddRecord = {
+        id: String(result.id),
+        ownerId: owner.id,
+        kind: 'expense',
+        name: result.name,
+        amountCentavos: result.amountCentavos,
+        category: result.category,
+        details: result.details ?? '',
+        expenseDate: result.expenseDate,
+        dueDate: null,
+        borrowing: null,
+        items: {},
+        paymentStatus: null,
+        occurredAt: result.occurredAt,
+      };
+      setFeedback({ recordId: record.id, ownerId: record.ownerId, expiresAt: Date.now() + 5000 });
+      return record;
+    }
+
     const saved = await service.save(owner, token, draft);
     const record = saved;
     if (record.kind === 'storeDebt') {
