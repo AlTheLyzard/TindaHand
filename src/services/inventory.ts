@@ -210,6 +210,7 @@ export async function addRestock(
     stockDate: string; // YYYY-MM-DD
     expirationDate: string; // YYYY-MM-DD or "noExpiry"
     batchId?: string;
+    costCentavos?: number | null; // total purchase cost (optional; omit if unknown)
   },
 ): Promise<RestockRecord> {
   return apiFetch<RestockRecord>(`/inventory/products/${productId}/restock`, {

@@ -64,6 +64,10 @@ export function ProductScreen() {
   const pending = useRef<(() => void) | null>(null);
   const [id] = useState(makeId);
   const [restockId] = useState(makeId);
+  const [restockCost, setRestockCost] = useState(() =>
+    // Pre-fill with the product's unit cost × 0 so the field starts blank but ready
+    product ? (product.costCentavos / 100).toFixed(2) : ''
+  );
   const today = todayInManila();
   const readonly = mode === 'details' || mode === 'delete';
   const dirty = !readonly && JSON.stringify(draft) !== JSON.stringify(initial);
@@ -165,17 +169,21 @@ export function ProductScreen() {
       if (product.id.startsWith('prod-')) {
         try {
           const expiryBatch = draft.batches.find(b => !b.noExpiry && b.expirationDate);
+          const parsedCost = parsePaymentAmount(restockCost);
           await addRestockApi(product.id, {
             quantity: total,
             stockDate: draft.details.stockDate || today,
             expirationDate: expiryBatch?.expirationDate ?? 'noExpiry',
+            costCentavos: parsedCost != null && parsedCost > 0 ? parsedCost : null,
           });
         } catch {
           // Offline or server error — fall through and dispatch locally anyway.
         }
       }
+      const parsedCostLocal = parsePaymentAmount(restockCost);
       const saved = dispatch({ type: 'restock', record: { id: restockId, productId: product.id, itemName: product.name,
-        quantity: total, stockDate: draft.details.stockDate, expirationDate: '', batches: toStockBatches(draft.batches), recordedAt: new Date().toISOString() } });
+        quantity: total, costCentavos: parsedCostLocal != null && parsedCostLocal > 0 ? parsedCostLocal : null,
+        stockDate: draft.details.stockDate, expirationDate: '', batches: toStockBatches(draft.batches), recordedAt: new Date().toISOString() } });
       if (!saved) { busy.current = false; setSaving(false); setConfirmation(null); setError('Changes could not be saved. Check total stock and values, then try again.'); return; }
       finish('Added ' + total + ' units to ' + product!.name + '.');
       return;
@@ -302,7 +310,7 @@ export function ProductScreen() {
       <ProductReview product={product} />
       {mode === 'delete' ? <><Button variant="destructiveOutline" onPress={() => setConfirmation({ kind: 'productDelete' })}>Delete Product</Button><Button variant="secondary" onPress={back}>Cancel</Button></> : <>
         <InvText bold color={tokens.color.darkNavy}>Restock history</InvText>
-        {!restocks.length ? <InvText>No restocks yet.</InvText> : restocks.map(r => <InvCard key={r.id}><InvText bold>+{r.quantity} PCS · {r.stockDate}</InvText>{r.batches ? r.batches.map(b => <InvText key={b.id}>{b.quantity} PCS | {batchExpiryLabel(b)}</InvText>) : <InvText>Expires {r.expirationDate}</InvText>}<InvText size={11}>Recorded {new Date(r.recordedAt).toLocaleString('en-PH', { timeZone: inventoryRules.timeZone })}</InvText></InvCard>)}
+        {!restocks.length ? <InvText>No restocks yet.</InvText> : restocks.map(r => <InvCard key={r.id}><InvText bold>+{r.quantity} PCS · {r.stockDate}</InvText>{r.batches ? r.batches.map(b => <InvText key={b.id}>{b.quantity} PCS | {batchExpiryLabel(b)}</InvText>) : <InvText>Expires {r.expirationDate}</InvText>}{r.costCentavos != null && <InvText size={11}>Cost: {formatPesos(r.costCentavos)}</InvText>}<InvText size={11}>Recorded {new Date(r.recordedAt).toLocaleString('en-PH', { timeZone: inventoryRules.timeZone })}</InvText></InvCard>)}
         {canEditProduct && <Button onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'edit' } })}>Edit Product</Button>}{canRestockProduct && <Button variant="secondary" onPress={() => push({ pathname: productRoot, params: { id: product.id, mode: 'restock' } })}>Restock</Button>}
       </>}
     </> : mode === 'restock' && product ? <>
@@ -311,6 +319,9 @@ export function ProductScreen() {
       <InvText bold size={11} color={tokens.color.textSecondary}>STOCK BATCHES</InvText>{productBatches(product).map((batch, index) => <ExistingBatchCard key={batch.id} batch={batch} index={index} />)}
       {batchCards}
       <InvDateField compact label="Stock date" value={draft.details.stockDate} onChange={v => update('stockDate', v)} error={errors.stockDate} />
+      <InvField money label="Total Restock Cost (optional)" value={restockCost} onChangeText={setRestockCost}
+        placeholder="0.00" keyboardType="decimal-pad" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
+      <InvText size={10}>Halaga ng biniling paninda — ibabawas sa Pera sa Kaha.</InvText>
       <InvText size={10}>Existing batch dates stay unchanged.</InvText>
     </> : mode === 'add' && step === 'review' && reviewProduct ? <ProductReview product={reviewProduct} />
     : mode === 'add' && step === 'stock' ? <>{productHeader({ name: draft.details.name, category: draft.details.category as InventoryProduct['category'], unitPriceCentavos: parsePaymentAmount(draft.details.sellingPrice) ?? 0, photoUri: draft.details.photoUri })}{batchCards}</>

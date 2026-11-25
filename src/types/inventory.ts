@@ -36,6 +36,7 @@ export type RestockRecord = {
   productId: string;
   itemName: string;
   quantity: number;
+  costCentavos?: number | null;  // total purchase cost of this restock batch (optional)
   stockDate: string;
   expirationDate: string;
   recordedAt: string;

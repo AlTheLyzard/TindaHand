@@ -122,15 +122,17 @@ class ProductUpdate(BaseModel):
 class RestockIn(BaseModel):
     """Body for POST /inventory/products/{id}/restock"""
     quantity: int
-    stockDate: str         # YYYY-MM-DD
-    expirationDate: str    # YYYY-MM-DD or 'noExpiry'
+    stockDate: str              # YYYY-MM-DD
+    expirationDate: str         # YYYY-MM-DD or 'noExpiry'
     batchId: Optional[str] = None
+    costCentavos: Optional[int] = None   # total purchase cost of this restock (optional)
 
 class RestockOut(BaseModel):
     id: str
     productId: str
     itemName: str
     quantity: int
+    costCentavos: Optional[int]
     stockDate: str
     expirationDate: str
     recordedAt: str

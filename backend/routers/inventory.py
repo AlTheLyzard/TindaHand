@@ -298,6 +298,7 @@ def restock_product(
         product_id=product_id,
         item_name=p.name,
         quantity=body.quantity,
+        cost_centavos=body.costCentavos,
         stock_date=body.stockDate,
         expiration_date=body.expirationDate,
     )
@@ -310,6 +311,7 @@ def restock_product(
         productId=record.product_id,
         itemName=record.item_name,
         quantity=record.quantity,
+        costCentavos=record.cost_centavos,
         stockDate=record.stock_date,
         expirationDate=record.expiration_date,
         recordedAt=record.recorded_at.isoformat(),
@@ -334,6 +336,7 @@ def list_restocks(
             productId=r.product_id,
             itemName=r.item_name,
             quantity=r.quantity,
+            costCentavos=r.cost_centavos,
             stockDate=r.stock_date,
             expirationDate=r.expiration_date,
             recordedAt=r.recorded_at.isoformat(),

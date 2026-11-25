@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from auth import get_current_user, require_role
-from models import Sale, SaleLine, CustomerDebt, StoreDebt, StoreDebtPayment, CashMovement, Asset, Expense, DebtPayment
+from models import Sale, SaleLine, CustomerDebt, StoreDebt, StoreDebtPayment, CashMovement, Asset, Expense, DebtPayment, Restock
 from schemas import (
     DashboardSummary, TopProduct,
     CashMovementOut, CashMovementCreate,
@@ -216,6 +216,11 @@ def dashboard_summary(
     ).all()
     total_store_debt_payments_centavos = sum(p.amount_centavos for p in all_store_debt_payments)
 
+    # Cash OUT: inventory purchase costs (paninda restock — credit Cash)
+    #   Only counted when cost_centavos was recorded (nullable; older restocks without cost = 0).
+    all_restocks = db.query(Restock).filter(Restock.owner_id == owner_id).all()
+    total_restock_costs_centavos = sum(r.cost_centavos for r in all_restocks if r.cost_centavos is not None)
+
     # Pera sa Kaha = all Cash debits minus all Cash credits
     initial_capital = cash_asset.value_centavos if cash_asset else 0
     cash_balance = (
@@ -225,10 +230,11 @@ def dashboard_summary(
         + cash_added
         - total_expenses_centavos
         - total_store_debt_payments_centavos
+        - total_restock_costs_centavos
     )
 
-    # Money Out shown on dashboard = expenses + store debt payments
-    total_money_out_centavos = total_expenses_centavos + total_store_debt_payments_centavos
+    # Money Out shown on dashboard = expenses + store debt payments + restock costs
+    total_money_out_centavos = total_expenses_centavos + total_store_debt_payments_centavos + total_restock_costs_centavos
 
     # Top products by revenue (Max-Heap Top-K)
     all_lines = []

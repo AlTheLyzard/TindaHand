@@ -162,6 +162,7 @@ class Restock(Base):
     product_id      = Column(String(50), ForeignKey("product.id"), nullable=False)
     item_name       = Column(String(200), nullable=False)   # snapshot of name at restock time
     quantity        = Column(Integer, nullable=False)
+    cost_centavos   = Column(BigInteger, nullable=True)     # total purchase cost of this restock batch (optional)
     stock_date      = Column(String(10), nullable=False)    # YYYY-MM-DD
     expiration_date = Column(String(10), nullable=False)
     recorded_at     = Column(DateTime(timezone=True), server_default=func.now())
