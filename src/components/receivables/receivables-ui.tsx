@@ -81,7 +81,7 @@ export function AnimatedNumber({ value, format = 'peso', prefix = '', className,
     underlineColorAndroid="transparent"
     animatedProps={animatedProps}
     className={className}
-    style={[{ width: format === 'peso' && !fitContent ? '100%' : undefined, padding: 0, paddingVertical: 0, margin: 0, borderWidth: 0, backgroundColor: 'transparent', fontVariant: ['tabular-nums'] }, style]}
+    style={[{ width: format === 'peso' && !fitContent ? '100%' : undefined, padding: 0, paddingTop: 0, paddingBottom: 0, paddingVertical: 0, margin: 0, borderWidth: 0, backgroundColor: 'transparent', fontVariant: ['tabular-nums'], includeFontPadding: false }, style]}
   />;
 }
 
@@ -145,7 +145,7 @@ export function ReceivableSummaryCard({ title, amountCentavos, caption, paid = f
   const surface = dark ? tokens.color.darkNavy : paid ? receivableColors.greenSurface : receivableColors.blueSurface;
   return <MotionSurface className="gap-3 rounded-card border p-4" style={{ borderColor: ink, backgroundColor: surface }}>
     <MotionText className="type-h3-heading" style={{ color: ink }}>{title}</MotionText>
-    <AnimatedPesoValue centavos={amountCentavos} prefix={amountPrefix} className="type-large-metric" style={{ color: ink, lineHeight: 45 }} />
+    <AnimatedPesoValue centavos={amountCentavos} prefix={amountPrefix} className="type-large-metric" style={{ color: ink, lineHeight: 45, height: 45 }} />
     {!!caption && <Text className="type-micro-caption text-text-secondary" style={dark ? { color: tokens.color.surfaceCard } : undefined}>{caption}</Text>}
   </MotionSurface>;
 }
