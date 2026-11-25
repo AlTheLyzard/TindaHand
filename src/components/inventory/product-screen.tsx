@@ -15,7 +15,7 @@ import { InvCard, InvDateField, InvField, InventoryFrame, InvText, InvSelect, in
 import { BatchCard, ExistingBatchCard, batchExpiryLabel } from './batch-card';
 import { useInventory } from '@/state/inventory';
 import { suppressAuthLock, releaseAuthLock, useAuthFlow } from '@/state/auth-flow';
-import { createProduct, updateProduct, deleteProduct as deleteProductApi, deleteBatch as deleteBatchApi, addRestock as addRestockApi } from '@/services/inventory';
+import { createProduct, updateProduct, updateBatch as updateBatchApi, deleteProduct as deleteProductApi, deleteBatch as deleteBatchApi, addRestock as addRestockApi } from '@/services/inventory';
 import type { BatchDraft, BatchErrors, InventoryProduct, ProductDraft } from '@/types/inventory';
 import { categoryLabels, earliestExpiry, productBatches, productExpiry, productStock, stockCategory, todayInManila, validDate } from '@/utils/inventory';
 import { batchErrors, buildDraftProduct, clearInventoryStep, createInventoryDraft, detailsErrors, draftQuantity, newBatch, setBatchNoExpiry, toStockBatches } from '@/utils/inventory-draft';
@@ -234,10 +234,21 @@ export function ProductScreen() {
             // Offline — keep the local edit.
           }
         }
+        // Update quantities for batches that existed before this edit and
+        // whose quantity changed (e.g. owner reduced stock due to damaged goods).
+        const originalBatches = productBatches(product);
+        const originalBatchMap = new Map(originalBatches.map(b => [b.id, b]));
+        const changedBatches = (builtProduct.batches ?? []).filter(b => {
+          const original = originalBatchMap.get(b.id);
+          return original && original.quantity !== b.quantity;
+        });
+        await Promise.allSettled(
+          changedBatches.map(b => updateBatchApi(product.id, b.id, b.quantity))
+        );
         // Delete any batches that were removed during this edit.
         // Compare the original product's batches against the saved draft's batches
         // and call the backend for each one that was removed.
-        const originalBatchIds = new Set(productBatches(product).map(b => b.id));
+        const originalBatchIds = new Set(originalBatches.map(b => b.id));
         const remainingBatchIds = new Set((builtProduct.batches ?? []).map(b => b.id));
         const deletedBatchIds = [...originalBatchIds].filter(id => !remainingBatchIds.has(id));
         await Promise.allSettled(

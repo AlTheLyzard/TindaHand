@@ -18,7 +18,7 @@ from database import get_db
 from auth import get_current_user, require_role
 from models import Product, StockBatch, Asset, Restock, Kahera
 from schemas import (
-    ProductOut, ProductCreate, ProductUpdate,
+    ProductOut, ProductCreate, ProductUpdate, BatchUpdate,
     StockBatchOut, RestockIn, RestockOut,
     AssetOut, AssetCreate, AssetUpdate,
     ExpiryAlert, OkResponse,
@@ -242,8 +242,45 @@ def delete_batch(
     if not batch:
         raise HTTPException(404, "Batch not found")
     db.delete(batch)
+    # Recalculate product stock after deletion
+    _recalc_stock(p)
     db.commit()
     return OkResponse(message="Batch deleted")
+
+
+@router.patch("/products/{product_id}/batches/{batch_id}", response_model=ProductOut)
+def update_batch(
+    product_id: str,
+    batch_id: str,
+    body: BatchUpdate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role("owner")),
+):
+    """Update the quantity of a single stock batch. Recalculates product.stock."""
+    if body.quantity < 0:
+        raise HTTPException(422, "Quantity cannot be negative")
+    owner_id = current_user["db_id"]
+    p = db.query(Product).filter(
+        Product.id == product_id,
+        Product.owner_id == owner_id,
+        Product.is_deleted == False,
+    ).first()
+    if not p:
+        raise HTTPException(404, "Product not found")
+    batch = db.query(StockBatch).filter(
+        StockBatch.id == batch_id,
+        StockBatch.product_id == product_id,
+    ).first()
+    if not batch:
+        raise HTTPException(404, "Batch not found")
+    batch.quantity = body.quantity
+    _recalc_stock(p)
+    # Keep product-level expiration in sync with earliest live batch expiry
+    dated_batches = [b for b in p.batches if not b.no_expiry and b.expiration_date and b.quantity > 0]
+    p.expiration_date = min(b.expiration_date for b in dated_batches) if dated_batches else None
+    db.commit()
+    db.refresh(p)
+    return _product_to_out(p)
 
 
 # ── RESTOCK ──────────────────────────────────────────────────────────────────

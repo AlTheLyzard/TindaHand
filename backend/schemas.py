@@ -119,6 +119,10 @@ class ProductUpdate(BaseModel):
     expirationDate: Optional[str] = None
     photoUri: Optional[str] = None
 
+class BatchUpdate(BaseModel):
+    """Body for PATCH /inventory/products/{id}/batches/{batch_id}"""
+    quantity: int   # new absolute quantity (must be >= 0)
+
 class RestockIn(BaseModel):
     """Body for POST /inventory/products/{id}/restock"""
     quantity: int

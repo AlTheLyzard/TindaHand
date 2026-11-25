@@ -174,6 +174,18 @@ export async function deleteBatch(productId: string, batchId: string): Promise<v
   return apiFetch<void>(`/inventory/products/${productId}/batches/${batchId}`, { method: "DELETE" });
 }
 
+/** Update the quantity of a single stock batch. Returns the updated product. */
+export async function updateBatch(
+  productId: string,
+  batchId: string,
+  quantity: number,
+): Promise<ApiProduct> {
+  return apiFetch<ApiProduct>(`/inventory/products/${productId}/batches/${batchId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ quantity }),
+  });
+}
+
 /** Get expiry alerts — products expiring within `daysAhead` days, sorted by soonest first. */
 export async function getExpiryAlerts(daysAhead = 30): Promise<ExpiryAlert[]> {
   return apiFetch<ExpiryAlert[]>(
