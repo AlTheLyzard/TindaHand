@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from auth import get_current_user, require_role
-from models import Sale, SaleLine, CustomerDebt, StoreDebt, StoreDebtPayment, CashMovement, Asset, Expense
+from models import Sale, SaleLine, CustomerDebt, StoreDebt, StoreDebtPayment, CashMovement, Asset, Expense, DebtPayment
 from schemas import (
     DashboardSummary, TopProduct,
     CashMovementOut, CashMovementCreate,
@@ -180,38 +180,55 @@ def dashboard_summary(
         )
         .first()
     )
-    # Total revenue received from sales (all payment methods: cash, GCash, split).
-    # = total amount paid to the store, regardless of tender method.
-    # For a fully paid sale: total_centavos - 0 = full price.
-    # For a partial payment: total_centavos - remaining_centavos = amount actually received.
+    # ── PERA SA KAHA = Cash account in the general journal ────────────────────
+    # Cash is DEBITED (dagdag) by:
+    #   • Sales received in cash/GCash (amount actually collected, not utang portion)
+    #   • Customer debt payments received (bayad sa utang)
+    #   • Manual cash additions (puhunan, deposito, etc.)
+    #   • Initial capital (asset value on record)
+    #
+    # Cash is CREDITED (bawas) by:
+    #   • Expenses (kuryente, water, supplies, etc.)
+    #   • Store debt payments made to suppliers/creditors (bayad sa 5-6, etc.)
+    #
+    # Note: Inventory restocks are NOT subtracted here because the Restock model
+    # only tracks quantity, not purchase cost. If a cost field is added later,
+    # subtract it here as cash out.
+
+    # Cash IN: sales received (excludes the still-unpaid utang portion of credit sales)
     cash_sales = sum(s.total_centavos - s.remaining_centavos for s in all_sales)
-    # Manual cash movements (additions)
+
+    # Cash IN: customer debt payments received (bayad sa utang — debit Cash, credit AR)
+    all_debt_payments = db.query(DebtPayment).filter(DebtPayment.owner_id == owner_id).all()
+    cash_from_debt_payments = sum(p.amount_centavos for p in all_debt_payments)
+
+    # Cash IN: manual cash additions (puhunan, etc.)
     cash_movements = db.query(CashMovement).filter(CashMovement.owner_id == owner_id).all()
     cash_added = sum(m.amount_centavos for m in cash_movements)
 
-    # Base cash: initial Cash on Hand asset value + movements + sales
-    base_cash = (cash_asset.value_centavos if cash_asset else 0) + cash_added + cash_sales
-
-    # ── Money Out ──────────────────────────────────────────────────────────────
-    # 1. Expenses — all operating costs recorded by the owner
+    # Cash OUT: expenses (kuryente, water, operating costs — credit Cash)
     all_expenses = db.query(Expense).filter(Expense.owner_id == owner_id).all()
     total_expenses_centavos = sum(e.amount_centavos for e in all_expenses)
 
-    # 2. Store debt payments — cash actually paid out to suppliers
+    # Cash OUT: store debt payments made (bayad sa supplier/5-6 — credit Cash)
     all_store_debt_payments = db.query(StoreDebtPayment).filter(
         StoreDebtPayment.owner_id == owner_id
     ).all()
     total_store_debt_payments_centavos = sum(p.amount_centavos for p in all_store_debt_payments)
 
-    # 3. Customer utang (AR) — value extended on credit to customers
-    #    Use original_amount_centavos: the full debt at the moment it was created,
-    #    regardless of how much has been paid back.
-    all_customer_debts = db.query(CustomerDebt).filter(
-        CustomerDebt.owner_id == owner_id
-    ).all()
-    total_customer_debts_centavos = sum(d.original_amount_centavos for d in all_customer_debts)
+    # Pera sa Kaha = all Cash debits minus all Cash credits
+    initial_capital = cash_asset.value_centavos if cash_asset else 0
+    cash_balance = (
+        initial_capital
+        + cash_sales
+        + cash_from_debt_payments
+        + cash_added
+        - total_expenses_centavos
+        - total_store_debt_payments_centavos
+    )
 
-    total_money_out_centavos = total_expenses_centavos
+    # Money Out shown on dashboard = expenses + store debt payments
+    total_money_out_centavos = total_expenses_centavos + total_store_debt_payments_centavos
 
     # Top products by revenue (Max-Heap Top-K)
     all_lines = []
@@ -220,7 +237,7 @@ def dashboard_summary(
     top_products = top_k_products(all_lines, k=top_k)
 
     return DashboardSummary(
-        cashBalanceCentavos=base_cash,
+        cashBalanceCentavos=cash_balance,
         totalSalesTodayCentavos=today_sales_centavos,
         totalSalesThisWeekCentavos=week_sales_centavos,
         totalSalesThisMonthCentavos=month_sales_centavos,
