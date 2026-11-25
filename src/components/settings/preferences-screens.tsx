@@ -12,7 +12,7 @@ import { useAuthFlow } from '@/state/auth-flow';
 import { useTranslation } from '@/i18n/use-translation';
 
 export function SettingsLandingScreen() {
-  return <SettingsFrame title="Settings" parent="/owner-dashboard">
+  return <SettingsFrame title="Settings" parent="/owner-dashboard" storefrontArtwork={false}>
     <View className="mb-3"><SettingsDescription>Make TindaHand work for your store</SettingsDescription></View>
     <SettingsSection>PREFERENCES</SettingsSection>
     <SettingsRow title="Language" description="English" icon="language" onPress={() => router.navigate(`${settingsRoot}/language`)} />

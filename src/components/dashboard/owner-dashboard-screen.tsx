@@ -4,7 +4,7 @@ import { MotionModal as Modal } from '@/components/ui/motion-modal';
 import { useTranslation } from '@/i18n/use-translation';
 import { Image as BackgroundImage } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { ScrollViewInstance } from 'react-native';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,7 +20,6 @@ import { Button } from '@/components/ui/button';
 import { useContentPreview } from '@/components/ui/content-state';
 import tokens from '@/constants/design-tokens.json';
 import { emptyDashboardDemo } from '@/data/content-preview';
-import { growthPreview } from '@/data/growth-preview';
 import { getLocaleFormats, type NavigationLabelKey } from '@/i18n';
 import type { CashMovement, DashboardSummary } from '@/services/dashboard';
 import { getCashMovements, getDashboardData, getDashboardSummary } from '@/services/dashboard';
@@ -58,11 +57,6 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
         if (activityResult.status === 'fulfilled') setApiActivity(activityResult.value);
         setApiLoading(false);
       });
-  }, [owner.mode]);
-
-  useEffect(() => {
-    refreshDashboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner.mode]);
 
   // Re-fetch every time the dashboard comes back into focus (e.g. after a POS sale)
@@ -123,19 +117,6 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
 
   const isLoading = preview.loading || apiLoading;
   const stock = inventorySummary(preview.empty ? [] : products, todayInManila());
-  // TODO(backend): Replace the decorative growth series and demo comparison with confirmed analytics.
-  // - Method/Action: GET / Fetch sales growth series and comparison summary
-  // - Expected Input/Payload: Selected period, comparison window, timezone, and authenticated store session
-  // - Expected Response: GrowthMetrics and matching summary with the same reporting window
-  // - UI State to Wire: Show a true empty state or server error instead of demo trend data
-  // Growth metrics: use real sales presence (totalSalesCentavos > 0) so that
-  // stores with actual backend sales but no local mock data still show trends.
-  const hasSales = summary.totalSalesCentavos > 0 || summary.saleCount > 0;
-  // For confirmed (real backend) accounts, don't show the demo sparkline or "Demo trend" label —
-  // we don't have a real growth series from the backend yet, so pass null to show "No comparison".
-  const growthMetrics = owner.mode !== 'confirmed' && hasSales && period === growthPreview.reportingPeriod
-    ? { ...growthPreview, percentageChange: summary.growth }
-    : null;
   const [todayDate] = useState(() => new Date());
   const dateOptions = { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' } as const;
   const today = todayDate.toLocaleDateString(getLocaleFormats().date, dateOptions);
@@ -145,7 +126,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
   return <View style={{ flex: 1, backgroundColor: tokens.color.appBackground }}>
     <BackgroundImage source={require('@/assets/images/auth/background.png')} contentFit="fill" style={StyleSheet.absoluteFill} accessible={false} />
     <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
-    <MainHeader />
+    <MainHeader onLogoPress={() => { scroll.current?.scrollTo({ y: 0, animated: true }); refreshDashboard(); }} />
     <ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: navigationHeight + insets.bottom + tokens.spacing.three + 56 + tokens.spacing.three }}>
       <View className="w-full max-w-[460px] self-center" style={{ paddingHorizontal: width < 360 ? 16 : 24, paddingTop: tokens.spacing.headerTitleGap }}>
         <Text accessibilityRole="header" className="type-h1-display text-brand">{t('navigation.dashboard')}</Text>
@@ -161,7 +142,7 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
             <CashCard summary={summary} loading={isLoading} onCashAction={() => { preview.reset(); dismissCashToast(); setCashOpen(true); }} />
           </FocusRise>
           <FocusRise index={1} testID="dashboard-card-sales">
-            <SalesCard summary={summary} period={period} onPeriod={setPeriod} growthMetrics={growthMetrics} loading={isLoading} />
+            <SalesCard summary={summary} period={period} onPeriod={setPeriod} loading={isLoading} />
           </FocusRise>
           <FocusRise index={2} testID="dashboard-card-stock">
             <StockCard summary={{ ...summary, outOfStock: stock.out, lowStock: stock.low + stock.critical }} loading={isLoading} empty={preview.empty || !products.length} onInventory={() => { preview.reset(); router.navigate('/owner-inventory'); }} onSelect={status => router.navigate({ pathname: '/owner-inventory', params: { status } })} />

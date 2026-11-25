@@ -1,6 +1,7 @@
 import { useCallback, useReducer, useRef, useState } from 'react';
 import { router, useFocusEffect, usePreventRemove } from 'expo-router';
-import { Keyboard, View, type TextInputInstance } from 'react-native';
+import { Keyboard, ScrollView, View, type TextInputInstance } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOwnerProfile } from '@/hooks/use-owner-profile';
 import { useAuthFlow } from '@/state/auth-flow';
 import { authenticationService } from '@/services/authentication';
@@ -10,6 +11,8 @@ import { updateOwnerProfile } from '@/services/settings';
 import { FormField } from '@/components/ui/form-field';
 import { Button } from '@/components/ui/button';
 import { PosDialog } from '@/components/pos/pos-dialog';
+import { MotionModal } from '@/components/ui/motion-modal';
+import { SuccessContent } from '@/components/ui/success-content';
 import { SettingsCard } from '@/components/settings/settings-ui';
 import { SettingsIcon } from '@/components/settings/settings-icon';
 import { resolveOwnerAvatarId } from '@/constants/profile-avatar-ids';
@@ -17,7 +20,7 @@ import type { AvatarId, OwnerProfile, ProfileDraft } from '@/types/profile';
 import { PROFILE_LIMITS, profileChanged, profileDraft, validateProfile } from '@/utils/profile';
 import { createProfileEditor, profileEditor } from '@/utils/profile-editor';
 import { ProfileFrame, profileRoot } from './profile-frame';
-import { OwnerProfileAvatar as ProfileAvatar, ProfileError, ProfileNotice, ProfileSection, ProfileText, ProfileUnavailable } from './profile-ui';
+import { OwnerProfileAvatar as ProfileAvatar, ProfileError, ProfileNotice, ProfileReadOnlyValue, ProfileSection, ProfileText, ProfileUnavailable } from './profile-ui';
 import { ProfilePhotoSelectionScreen } from './profile-photo-selection-screen';
 
 export function EditProfileScreen() {
@@ -30,6 +33,8 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
   const { owner, refreshSession } = useAuthFlow();
   const [touched, setTouched] = useState<Partial<Record<keyof ProfileDraft, boolean>>>({});
   const [dialog, setDialog] = useState<'save' | 'discard' | null>(null);
+  const [savedProfile, setSavedProfile] = useState<{ name: string; message: string; eventKey: string } | null>(null);
+  const [successVisible, setSuccessVisible] = useState(false);
   const [pin, setPin] = useState('');
   const [pinTouched, setPinTouched] = useState(false);
   const [pinEpoch, setPinEpoch] = useState(0);
@@ -39,7 +44,10 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
   const pendingExit = useRef<() => void>(() => router.dismissTo(profileRoot));
   const requestLock = useRef(false);
   const active = useRef(true);
-  const nameInput = useRef<TextInputInstance>(null), storeInput = useRef<TextInputInstance>(null), emailInput = useRef<TextInputInstance>(null), pinInput = useRef<TextInputInstance>(null);
+  const saveSequence = useRef(0);
+  const leaveAfterSuccess = useRef(false);
+  const insets = useSafeAreaInsets();
+  const nameInput = useRef<TextInputInstance>(null), storeInput = useRef<TextInputInstance>(null), pinInput = useRef<TextInputInstance>(null);
   const errors = validateProfile(state.draft);
   const dirty = profileChanged(state.draft, state.saved);
   function clearPin() { setPin(''); setPinTouched(false); setPinEpoch(value => value + 1); }
@@ -60,10 +68,9 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
     dispatch({ type: 'field', field, value }); setTouched(current => ({ ...current, [field]: true })); setFailure('');
   }
   function confirmSave() {
-    setTouched({ name: true, storeName: true, email: true });
+    setTouched({ name: true, storeName: true });
     if (errors.name) { nameInput.current?.focus(); return; }
     if (errors.storeName) { storeInput.current?.focus(); return; }
-    if (errors.email) { emailInput.current?.focus(); return; }
     if (dirty && !requestLock.current) {
       Keyboard.dismiss();
       if (!MOCK_AUTH_ENABLED) {
@@ -97,8 +104,14 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
           if (result.message === AVATAR_IN_USE) dispatch({ type: 'pick' });
           return;
         }
-        setLeaving(true); disablePrevention();
-        router.dismissTo({ pathname: profileRoot, params: { updated: result.value.pendingEmail ? 'pending' : 'complete' } });
+        setSavedProfile({
+          name: result.value.name,
+          message: result.value.pendingEmail
+            ? 'Profile saved. Email verification is pending; your registered email is unchanged. No real email was sent in this development mock.'
+            : 'Your profile changes have been saved successfully.',
+          eventKey: `${profile.ownerId}:${++saveSequence.current}`,
+        });
+        setLeaving(true); disablePrevention(); setSuccessVisible(true);
       } else {
         // Real path: call PATCH /settings/profile — no PIN needed (backend uses JWT).
         await updateOwnerProfile({
@@ -111,11 +124,24 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
         // (dashboard greeting, header, etc.) without requiring a full re-login.
         await refreshSession();
         if (!active.current) return;
-        setLeaving(true); disablePrevention();
-        router.dismissTo({ pathname: profileRoot, params: { updated: 'complete' } });
+        setSavedProfile({
+          name: state.draft.name.trim(),
+          message: 'Your profile changes have been saved successfully.',
+          eventKey: `${profile.ownerId}:${++saveSequence.current}`,
+        });
+        setLeaving(true); disablePrevention(); setSuccessVisible(true);
       }
     } catch { if (active.current) setFailure('Unable to save your profile. Please check your connection and try again.'); }
     finally { requestLock.current = false; if (active.current) setBusy(false); }
+  }
+  function closeSavedDialog() {
+    leaveAfterSuccess.current = true;
+    setSuccessVisible(false);
+  }
+  function handleSuccessHidden() {
+    if (!leaveAfterSuccess.current) return;
+    leaveAfterSuccess.current = false;
+    router.dismissTo(profileRoot);
   }
   if (state.phase === 'avatar') return <ProfilePhotoSelectionScreen storeId={profile.ownerId} accountId={profile.ownerId}
     currentAvatarId={resolveOwnerAvatarId(state.preview ?? state.draft.avatarId)} failure={failure}
@@ -141,9 +167,9 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
       <ProfileSection>Personal Information</ProfileSection>
       <FormField ref={nameInput} label="Name" requiredIndicator="asterisk" value={state.draft.name} onChangeText={value => update('name', value)} onBlur={() => setTouched(current => ({ ...current, name: true }))} error={touched.name ? errors.name : undefined} maxLength={PROFILE_LIMITS.name} autoCapitalize="words" returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => storeInput.current?.focus()} />
       <ProfileSection>Store Information</ProfileSection>
-      <FormField ref={storeInput} label="Store Name" required={false} value={state.draft.storeName} onChangeText={value => update('storeName', value)} error={touched.storeName ? errors.storeName : undefined} maxLength={PROFILE_LIMITS.storeName} autoCapitalize="words" returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => emailInput.current?.focus()} />
-      <ProfileSection>Contact Information</ProfileSection>
-      <FormField ref={emailInput} label="Registered Email Address" requiredIndicator="asterisk" value={state.draft.email} onChangeText={value => update('email', value)} onBlur={() => setTouched(current => ({ ...current, email: true }))} error={touched.email ? errors.email : undefined} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" maxLength={PROFILE_LIMITS.email} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
+      <FormField ref={storeInput} label="Store Name" required={false} value={state.draft.storeName} onChangeText={value => update('storeName', value)} error={touched.storeName ? errors.storeName : undefined} maxLength={PROFILE_LIMITS.storeName} autoCapitalize="words" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
+      <ProfileSection>Registered Email Address</ProfileSection>
+      <ProfileReadOnlyValue>{profile.email}</ProfileReadOnlyValue>
       <View className="mt-4"><ProfileNotice title="Permanent Owner ID">{profile.ownerId} · Assigned once and cannot be edited.</ProfileNotice></View>
       {profile.pendingEmail && <View className="mt-3"><ProfileNotice title="Pending email verification">{profile.pendingEmail.address}. Your current registered email stays active until verification succeeds.</ProfileNotice></View>}
       {!!failure && <ProfileError message={failure} />}
@@ -151,5 +177,13 @@ function ProfileEditor({ profile }: { profile: OwnerProfile }) {
     </>}
     <PosDialog visible={dialog === 'save'} title="Save Changes?" message="Are you sure you want to save these changes to this profile?" confirmLabel="Save Changes" onClose={() => setDialog(null)} onConfirm={() => { setDialog(null); clearPin(); setFailure(''); dispatch({ type: 'verify' }); }} />
     <PosDialog visible={dialog === 'discard'} title="Discard Changes?" message="Your unsaved profile changes will be discarded." confirmLabel="Discard Changes" cancelLabel="Keep Editing" destructive onClose={() => setDialog(null)} onConfirm={() => { setDialog(null); clearPin(); dispatch({ type: 'discard' }); setLeaving(true); disablePrevention(); pendingExit.current(); }} />
+    <MotionModal visible={successVisible} onRequestClose={closeSavedDialog} onHidden={handleSuccessHidden}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: Math.max(insets.bottom, 24) }}>
+          {savedProfile && <SuccessContent testID="owner-profile-success" title="Changes Saved" value={savedProfile.name}
+            message={savedProfile.message} eventKey={savedProfile.eventKey} visible={successVisible} onClose={closeSavedDialog} />}
+        </ScrollView>
+      </SafeAreaView>
+    </MotionModal>
   </ProfileFrame>;
 }

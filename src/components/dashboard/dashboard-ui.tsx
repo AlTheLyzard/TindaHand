@@ -1,18 +1,25 @@
 import { ButtonSurface } from '@/components/ui/button';
 import type { ReactNode } from 'react';
-import { Image, Text, View, useWindowDimensions, type ImageSourcePropType } from 'react-native';
+import { Image, Text, View, useWindowDimensions, type ImageSourcePropType, type DimensionValue, type StyleProp, type ViewStyle } from 'react-native';
+import { Skeleton, SkeletonBar } from '@/components/ui/content-state';
 import tokens from '@/constants/design-tokens.json';
 
-export function DashboardCircle({ children, size = tokens.size.badge, backgroundColor = tokens.color.softBlue, borderColor }: {
-  children?: ReactNode; size?: number; backgroundColor?: string; borderColor?: string;
+export function DashboardCircle({ children, size = tokens.size.badge, backgroundColor = tokens.color.softBlue, borderColor, style }: {
+  children?: ReactNode; size?: number; backgroundColor?: string; borderColor?: string; style?: StyleProp<ViewStyle>;
 }) {
-  return <View style={{ width: size, height: size, flexShrink: 0, borderRadius: tokens.radius.pill,
+  return <View style={[{ width: size, height: size, flexShrink: 0, borderRadius: tokens.radius.pill,
     alignItems: 'center', justifyContent: 'center', backgroundColor,
-    borderColor, borderWidth: borderColor ? 1.5 : 0 }}>{children}</View>;
+    borderColor, borderWidth: borderColor ? 1.5 : 0 }, style]}>{children}</View>;
 }
 
 export const dashboardIcons = {
   bottle: require('@/assets/images/dashboard/bottle.png'),
+  settings: require('@/assets/images/dashboard/settings.png'),
+  money: require('@/assets/images/dashboard/money.png'),
+  home: require('@/assets/images/dashboard/home.png'),
+  cart: require('@/assets/images/dashboard/cart.png'),
+  inventory: require('@/assets/images/dashboard/inventory.png'),
+  payment: require('@/assets/images/dashboard/payment-symbol.png'),
 };
 
 export function DashboardIcon({ source, size = 32 }: { source: ImageSourcePropType; size?: number }) {
@@ -30,14 +37,16 @@ export function DashboardAction({ label, onPress, children, selected = false, ta
   </ButtonSurface>;
 }
 
-export function DashboardCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
+export function DashboardCard({ title, children, action, loading = false, titleSkeletonWidth = '50%' }: { title: string; children: ReactNode; action?: ReactNode; loading?: boolean; titleSkeletonWidth?: DimensionValue }) {
   const { fontScale } = useWindowDimensions();
-  return <View className="rounded-card bg-white px-5 pb-5 pt-5" style={{ borderWidth: 1, borderColor: tokens.color.borderOutline }}>
-    <View className="mb-4 flex-row items-center justify-between gap-2">
-      <Text accessibilityRole="header" className="flex-shrink type-h2-section text-text-primary">{title}</Text>
+  const card = <View className="rounded-card bg-white px-5 pb-5 pt-5" style={{ borderWidth: 1, borderColor: tokens.color.borderOutline }}>
+    <View className="mb-4 flex-row items-center justify-between gap-2" style={{ minHeight: tokens.typography.h2Section.lineHeight * fontScale }}>
+      {loading ? <SkeletonBar width={titleSkeletonWidth} height={Math.ceil(tokens.typography.h2Section.fontSize * fontScale)} />
+        : <Text accessibilityRole="header" className="flex-shrink type-h2-section text-text-primary">{title}</Text>}
       {/* Center the full touch target on the title line without increasing its top inset. */}
-      {action && <View style={{ height: tokens.typography.h2Section.lineHeight * fontScale, flexShrink: 0, justifyContent: 'center' }}>{action}</View>}
+      {!loading && action && <View style={{ height: tokens.typography.h2Section.lineHeight * fontScale, flexShrink: 0, justifyContent: 'center' }}>{action}</View>}
     </View>
     {children}
   </View>;
+  return loading ? <Skeleton label={`Loading ${title}`}>{card}</Skeleton> : card;
 }

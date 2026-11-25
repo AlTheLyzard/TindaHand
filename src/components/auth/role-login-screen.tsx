@@ -1,4 +1,3 @@
-import { PosIcon } from "@/components/pos/pos-icon";
 import { SettingsIcon } from "@/components/settings/settings-icon";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -447,17 +446,6 @@ export function RoleLoginScreen({
                           style={{ flexShrink: 1, maxWidth: "100%" }}
                           disabled={busy}
                           onPress={onBack}
-                          icon={({ size }) => (
-                            <PosIcon
-                              name="back"
-                              size={size}
-                              color={
-                                busy
-                                  ? tokens.button.secondary.disabledText
-                                  : tokens.color.accentBase
-                              }
-                            />
-                          )}
                         >
                           Change Role
                         </Button>
@@ -486,17 +474,6 @@ export function RoleLoginScreen({
                           style={{ flexShrink: 1, maxWidth: "100%" }}
                           disabled={busy}
                           onPress={onBack}
-                          icon={({ size }) => (
-                            <PosIcon
-                              name="back"
-                              size={size}
-                              color={
-                                busy
-                                  ? tokens.button.secondary.disabledText
-                                  : tokens.color.accentBase
-                              }
-                            />
-                          )}
                         >
                           Change Role
                         </Button>

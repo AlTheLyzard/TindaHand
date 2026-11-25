@@ -1,7 +1,7 @@
 import tokens from '@/constants/design-tokens.json';
 import { KeyboardInput as TextInput, KeyboardField, KeyboardViewport as KeyboardAvoidingView } from '@/components/ui/keyboard-aware-scroll-view';
-import { useRef, useState } from 'react';
-import { Keyboard, Platform, ScrollView, Text, View, useWindowDimensions, type TextInputInstance } from 'react-native';
+import { useState } from 'react';
+import { Keyboard, Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, IconButton } from '@/components/ui/button';
 import { MotionPressable } from '@/components/ui/motion-pressable';
@@ -23,10 +23,7 @@ export function ReportFilters({ draft, applied, single, busy, onDraft, onApply, 
   const { width, fontScale } = useWindowDimensions();
   const [visible, setVisible] = useState(false);
   const [field, setField] = useState<'from' | 'to'>(single ? 'to' : 'from');
-  const [focused, setFocused] = useState<'from' | 'to' | null>(null);
   const [month, setMonth] = useState(draft.from.slice(0, 7));
-  const fromInput = useRef<TextInputInstance>(null);
-  const toInput = useRef<TextInputInstance>(null);
   const error = selectionError(draft);
   const presets: ReportPreset[] = ['today', 'week', 'month', 'custom'];
   const targets = single ? ['to'] as const : ['from', 'to'] as const;
@@ -41,7 +38,6 @@ export function ReportFilters({ draft, applied, single, busy, onDraft, onApply, 
   }
   function close() {
     Keyboard.dismiss();
-    setFocused(null);
     setVisible(false);
   }
   function choosePreset(preset: ReportPreset) {
@@ -52,7 +48,6 @@ export function ReportFilters({ draft, applied, single, busy, onDraft, onApply, 
       return;
     }
     Keyboard.dismiss();
-    setFocused(null);
     const selection = presetSelection(preset);
     onDraft(single
       ? { preset, from: selection.to, to: selection.to }
@@ -65,9 +60,15 @@ export function ReportFilters({ draft, applied, single, busy, onDraft, onApply, 
       : { ...draft, preset: 'custom', [target]: value });
     if (validCalendarDate(value)) setMonth(value.slice(0, 7));
   }
+  function selectField(target: 'from' | 'to') {
+    Keyboard.dismiss();
+    setField(target);
+    const date = draft[target];
+    setMonth((validCalendarDate(date) ? date : storeToday()).slice(0, 7));
+    if (draft.preset !== 'custom') onDraft({ ...draft, preset: 'custom' });
+  }
   function select(date: string) {
     Keyboard.dismiss();
-    setFocused(null);
     if (single) {
       update(date, 'to');
       return;
@@ -78,7 +79,7 @@ export function ReportFilters({ draft, applied, single, busy, onDraft, onApply, 
   }
   const displayDate = (target: 'from' | 'to') => {
     const date = draft[target];
-    return focused === target || !validCalendarDate(date) ? date : formatCalendarDate(date);
+    return validCalendarDate(date) ? formatCalendarDate(date) : date;
   };
 
   return <>
@@ -125,16 +126,14 @@ export function ReportFilters({ draft, applied, single, busy, onDraft, onApply, 
                       <View className="min-h-12 flex-row items-center rounded-control border bg-white px-3"
                         style={{ borderColor: invalid ? tokens.color.errorBase : field === target && draft.preset === 'custom' ? tokens.color.brightBlue : tokens.color.borderOutline,
                           backgroundColor: invalid ? tokens.color.errorTint : tokens.color.surfaceCard }}>
-                        <TextInput accessibilityLabel={t(single ? 'financial.asOf' : `financial.${target}`)}
-                          accessibilityHint={invalid ? error ?? undefined : 'Enter a date as YYYY-MM-DD, or select it on the calendar.'}
-                          ref={target === 'from' ? fromInput : toInput} value={displayDate(target)}
-                          onFocus={() => { setFocused(target); setField(target); choosePreset('custom'); if (validCalendarDate(draft[target])) setMonth(draft[target].slice(0, 7)); }}
-                          onBlur={() => setFocused(null)} onChangeText={value => update(value, target)}
-                          autoCorrect={false} autoCapitalize="none" inputMode="text" returnKeyType={target === 'from' ? 'next' : 'done'} maxLength={10} selectTextOnFocus
-                          onSubmitEditing={() => { if (target === 'from') toInput.current?.focus(); else Keyboard.dismiss(); }}
-                          className="min-w-0 flex-1 py-3 type-label-nav text-text-primary" />
+                        <MotionPressable accessibilityRole="button" accessibilityLabel={t(single ? 'financial.asOf' : `financial.${target}`)}
+                          accessibilityHint={invalid ? error ?? t('financial.openDateFilter') : t('financial.openDateFilter')}
+                          onPress={() => selectField(target)} style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
+                          <TextInput accessibilityElementsHidden accessible={false} pointerEvents="none" value={displayDate(target)}
+                            editable={false} showSoftInputOnFocus={false} className="min-w-0 py-3 type-label-nav text-text-primary" style={{ flex: 1 }} />
+                        </MotionPressable>
                         <IconButton accessibilityLabel={t(single ? 'financial.asOf' : `financial.${target}`)}
-                          onPress={() => { setField(target); Keyboard.dismiss(); setFocused(null); }}
+                          onPress={() => selectField(target)}
                           icon={({ color }) => <PosIcon name="calendar" size={17} color={color} />} />
                       </View>
                     </View>;

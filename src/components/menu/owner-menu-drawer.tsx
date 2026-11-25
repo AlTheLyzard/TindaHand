@@ -101,7 +101,7 @@ export function OwnerMenuDrawer({ owner, visible, onClose, onPresentationChange,
             <Text accessibilityRole="header" className="min-w-0 flex-1 type-h2-section leading-9 text-brand">More Tools</Text>
             <IconButton ref={closeButton} accessibilityLabel="Close More Tools" onPress={close} className="min-h-12 min-w-12 items-center justify-center" icon={() => <MenuIcon name="close" />} />
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={`Profile: ${owner.name}, ${owner.id}, May-Ari (Owner)`}
+          <Pressable accessibilityRole="button" accessibilityLabel={`Profile: ${owner.name}, ${owner.id}, May-Ari`}
             accessibilityHint="Opens Profile" onPress={() => open('profile')}
             className="mb-6 flex-row items-start gap-3 rounded-card bg-canvas p-4">
             <ProfileAvatar size={40} avatarId={profiles.get(owner.id)?.avatarId} />
@@ -109,7 +109,7 @@ export function OwnerMenuDrawer({ owner, visible, onClose, onPresentationChange,
               <Text className=" type-h3-heading leading-[27px] text-brand">{owner.name}</Text>
               <View className="flex-row items-center justify-between gap-2">
                 <Text className="min-w-0 flex-1 type-micro-caption leading-[18px] text-text-secondary">{owner.id}</Text>
-                <View className="shrink-0 rounded-control bg-brand px-2 py-1"><Text className=" type-label-nav leading-[18px] text-white">Owner</Text></View>
+                <View className="shrink-0 rounded-control bg-brand px-2 py-1"><Text className=" type-label-nav leading-[18px] text-white">May-Ari</Text></View>
               </View>
             </View>
           </Pressable>

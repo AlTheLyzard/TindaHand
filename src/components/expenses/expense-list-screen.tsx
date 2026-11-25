@@ -28,7 +28,7 @@ export function ExpenseListScreen() {
   const [today, setToday] = useState(todayInManila);
   const { width } = useWindowDimensions();
   const contentWidth = Math.max(0, Math.min(width, 460) - 40);
-  const chipColumns = contentWidth >= 344 ? 4 : 2;
+  const chipColumns = 1;
   const chipWidth = (contentWidth - (chipColumns - 1) * 8) / chipColumns;
   const scroll = useRef<ScrollViewInstance>(null);
   const push = usePushOnce();
@@ -61,9 +61,9 @@ export function ExpenseListScreen() {
     {expenseFeedback && <RegistrationToast expiresAt={expenseFeedback.expiresAt} onDismiss={dismissExpenseFeedback} title="Expense recorded" message="Your expense has been saved successfully." />}
     <Button onPress={newRecord}>New Record</Button>
     <View accessibilityRole="radiogroup" accessibilityLabel="Filter expenses by category" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      <View style={{ width: chipWidth }}><PosChip label="All" appearance="category" singleLine stretch selected={category === 'all'} onPress={() => setCategory('all')} /></View>
+      <View style={{ width: chipWidth }}><PosChip label="All" stretch selected={category === 'all'} onPress={() => setCategory('all')} /></View>
       {expenseCategories.map(value => <View key={value} style={{ width: chipWidth }}>
-        <PosChip label={expenseCategoryLabel(value)} appearance="category" singleLine stretch selected={category === value} onPress={() => setCategory(value)} />
+        <PosChip label={expenseCategoryLabel(value)} stretch selected={category === value} onPress={() => setCategory(value)} />
       </View>)}
     </View>
     {allExpenses.length === 0 ? <EmptyState icon="expense" title="No expenses yet" description="Record your first store expense to start tracking your spending." /> : expenses.length === 0 ?

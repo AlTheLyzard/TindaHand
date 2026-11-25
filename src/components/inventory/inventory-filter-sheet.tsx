@@ -40,7 +40,7 @@ export function InventoryFilterSheet({ visible, draft, onChange, onClose, onAppl
     titleStyle={sheetTitleStyle} subtitleStyle={sheetSubtitleStyle} onClose={onClose}
     footer={<View className="flex-row items-center gap-3">
       <View className="flex-1"><Button compact variant="text" onPress={() => onChange({ sort: 'stockDesc', category: 'all', letter: 'all', status: 'all' })}>Reset</Button></View>
-      <View className="flex-[1.5]"><Button compact onPress={onApply}>Apply Filter</Button></View>
+      <View className="flex-[1.5]"><Button compact textStyle={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: tokens.typography.labelNav.lineHeight }} onPress={onApply}>Apply Filter</Button></View>
     </View>}>
     <InvSelect key={String(visible)} anchored label="CATEGORY" value={draft.category}
       options={{ all: 'All', ...categoryLabels }} onChange={category => update({ category })} />

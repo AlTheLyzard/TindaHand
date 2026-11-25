@@ -6,8 +6,8 @@ import { AuthBackground } from './auth-background';
 import { RegistrationProgress } from './registration-progress';
 import { RegistrationToast } from './registration-toast';
 import { SuccessMark } from './success-mark';
+import { AccountIdCard } from './account-id-card';
 import { CredentialForm } from '@/components/settings/credential-form';
-import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { useLeaveOnce } from '@/hooks/use-leave-once';
 import { useAuthFlow } from '@/state/auth-flow';
@@ -54,21 +54,20 @@ export function OperatorSetupScreen() {
         </View>
       </> : <>
         <RegistrationToast expiresAt={toast} onDismiss={dismiss} />
-        <View className="mt-4"><SuccessMark animate eventKey={created.id} /></View>
-        <Text accessibilityRole="header" className="my-6 type-large-metric leading-[42px] text-brand">Kahera Account Created Successfully!</Text>
-        <View className="mt-8 rounded-[20px] bg-brand px-5 py-6">
-          <View className="mb-5 flex-row items-center gap-4">
-            <ProfileAvatar avatarId={created.avatarId} size={52} />
-            <Text className="flex-1 type-label-nav leading-[18px] text-white">Kahera details</Text>
+        <View className="flex-1 justify-center pt-12">
+          <SuccessMark animate eventKey={created.id} />
+          <Text accessibilityRole="header" className="my-6 type-large-metric leading-[42px] text-brand">Kahera Account Created Successfully!</Text>
+          <View className="mt-8">
+            <AccountIdCard
+              avatarId={created.avatarId}
+              nameLabel="Kahera Name"
+              name={created.name}
+              idLabel="May-Ari ID"
+              id={owner.id}
+              footerText="Use this May-Ari ID and the four-digit Kahera PIN to log in."
+            />
           </View>
-          <Text className="type-label-nav leading-[18px] text-white">Kahera Name</Text>
-          <Text className="mt-1 type-large-metric leading-[40px] text-white">{created.name}</Text>
-          <View className="my-4 h-px bg-white/50" />
-          <Text className="type-label-nav leading-[18px] text-white">Associated May-Ari ID</Text>
-          <Text className="mt-1 type-large-metric leading-[40px] text-white">{owner.id}</Text>
         </View>
-        <Text className="mt-4 type-helper leading-[20px] text-text-secondary">Use this May-Ari ID and your four-digit Kahera PIN to log in.</Text>
-        <View className="min-h-12 flex-1" />
         <Button onPress={dashboard}>Go to Dashboard</Button>
       </>}
     </View>

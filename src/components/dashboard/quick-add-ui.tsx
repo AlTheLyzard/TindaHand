@@ -3,8 +3,8 @@ import { KeyboardInput as TextInput, KeyboardField } from '@/components/ui/keybo
 import { MotionPressable } from '@/components/ui/motion-pressable';
 import { ButtonSurface, IconButton } from '@/components/ui/button';
 import { MotionRegion } from '@/components/ui/motion-content';
-import { useRef, useState, type Ref } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions, type TextInputProps, type TextInputInstance } from 'react-native';
+import { useState, type Ref } from 'react';
+import { Keyboard, StyleSheet, Text, View, useWindowDimensions, type TextInputProps, type TextInputInstance } from 'react-native';
 import { PosIcon } from '@/components/pos/pos-icon';
 import tokens from '@/constants/design-tokens.json';
 import type { QuickAddKind } from '@/types/quick-add';
@@ -70,26 +70,32 @@ function displayDate(value: string) {
 /** Scoped field styling avoids changing registration, inventory or POS inputs. */
 export function QuickAddField({ label, required = true, requiredIndicator: _requiredIndicator, error, errorBackground, showError = true, money = false, large = false, date = false, dueDate: _dueDate, onPickDate, ref, ...props }: FieldProps) {
   const [focused, setFocused] = useState(false);
-  const input = useRef<TextInputInstance | null>(null);
   const fontSize = tokens.typography.bodyPrimary.fontSize;
   const fontFamily = large ? tokens.typography.weights.bold : tokens.typography.weights.regular;
   const { fontScale } = useWindowDimensions();
   const inputHeight = Math.max(tokens.size.touchTarget, tokens.typography.bodyPrimary.lineHeight * fontScale + 20);
-  const overlay = !focused && date && !!props.value;
+  const pickDate = () => { Keyboard.dismiss(); onPickDate?.(); };
   const Input = money ? MoneyInput : TextInput;
+  const input = <Input {...props} ref={node => { if (typeof ref === 'function') ref(node); else if (ref) ref.current = node; }}
+    value={date ? displayDate(props.value ?? '') : props.value}
+    editable={date ? false : props.editable} showSoftInputOnFocus={date ? false : props.showSoftInputOnFocus}
+    accessible={!date} accessibilityRole={date ? undefined : props.accessibilityRole}
+    accessibilityLabel={`${fieldLabel(label)}${required ? ', required' : ''}`} accessibilityHint={error || (date ? 'Opens the date picker.' : undefined)}
+    pointerEvents={date ? 'none' : props.pointerEvents}
+    placeholderTextColor={tokens.color.textPlaceholder} autoCorrect={false} spellCheck={false}
+    onPressIn={date ? undefined : props.onPressIn}
+    onFocus={event => { setFocused(true); props.onFocus?.(event); }} onBlur={event => { setFocused(false); props.onBlur?.(event); }}
+    className="web:focus:outline-none" style={{ minHeight: inputHeight, height: props.multiline ? Math.min(120 * fontScale, Math.max(inputHeight, (props.value?.split('\n').length ?? 1) * tokens.typography.bodyPrimary.lineHeight * fontScale + 20)) : undefined, minWidth: 0, paddingLeft: money ? 0 : 20, paddingRight: date ? 4 : 20, paddingVertical: props.multiline ? 10 : 10, fontSize, lineHeight: tokens.typography.bodyPrimary.lineHeight, fontFamily, color: tokens.color.textPrimary }} />;
   return <KeyboardField style={{ gap: 4 }}>
     <FieldLabel label={label} required={required} style={quickAddStyles.label} />
     <View style={[quickAddStyles.field, { borderColor: error ? tokens.color.errorBase : focused ? tokens.color.brightBlue : tokens.color.borderOutline, backgroundColor: error ? errorBackground ?? tokens.color.surfaceCard : tokens.color.surfaceCard }]}>
       {money && <Text accessible={false} style={{ paddingLeft: 20, fontSize, fontFamily: tokens.typography.weights.semibold, color: props.value ? quickAddColors.ink : tokens.color.textPlaceholder }}>₱</Text>}
       <View style={{ flex: 1, minWidth: 0 }}>
-      <Input {...props} ref={node => { input.current = node; if (typeof ref === 'function') ref(node); else if (ref) ref.current = node; }}
-        value={overlay ? displayDate(props.value ?? '') : props.value}
-        accessibilityLabel={`${fieldLabel(label)}${required ? ', required' : ''}`} accessibilityHint={error || (date ? 'Enter date as YYYY-MM-DD.' : undefined)}
-        placeholderTextColor={tokens.color.textPlaceholder} autoCorrect={false} spellCheck={false}
-        onFocus={event => { setFocused(true); props.onFocus?.(event); }} onBlur={event => { setFocused(false); props.onBlur?.(event); }}
-        className="web:focus:outline-none" style={{ minHeight: inputHeight, height: props.multiline ? Math.min(120 * fontScale, Math.max(inputHeight, (props.value?.split('\n').length ?? 1) * tokens.typography.bodyPrimary.lineHeight * fontScale + 20)) : undefined, minWidth: 0, paddingLeft: money ? 0 : 20, paddingRight: date ? 4 : 20, paddingVertical: props.multiline ? 10 : 10, fontSize, lineHeight: tokens.typography.bodyPrimary.lineHeight, fontFamily, color: tokens.color.textPrimary }} />
+        {date ? <MotionPressable accessibilityRole="button" accessibilityLabel={`${fieldLabel(label)}${required ? ', required' : ''}`}
+          accessibilityHint={error || 'Opens the date picker.'} onPress={pickDate}
+          style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>{input}</MotionPressable> : input}
       </View>
-      {date && <IconButton accessibilityLabel={onPickDate ? `Choose ${label.toLowerCase()}` : 'Edit due date'} onPress={onPickDate ?? (() => input.current?.focus())} className="min-h-12 min-w-12 items-center justify-center" icon={({ color }) => <PosIcon name="calendarDue" size={18} color={color} />} />}
+      {date && <IconButton accessibilityLabel={`Choose ${label.toLowerCase()}`} onPress={pickDate} className="min-h-12 min-w-12 items-center justify-center" icon={({ color }) => <PosIcon name="calendarDue" size={18} color={color} />} />}
     </View>
     {!!error && showError && <MotionRegion><Text accessibilityRole="alert" style={quickAddStyles.error}>{error}</Text></MotionRegion>}
   </KeyboardField>;

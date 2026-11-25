@@ -2,6 +2,7 @@ import { Image, Pressable, Text, View, useWindowDimensions } from 'react-native'
 
 import { MotionSurface } from '@/components/ui/motion-content';
 import tokens from '@/constants/design-tokens.json';
+import { warningStockStatusColor } from '@/constants/stock-status-colors';
 import { useTranslation } from '@/i18n/use-translation';
 import type { PosProduct } from '@/types/pos';
 import { formatPesos } from '@/utils/dashboard';
@@ -43,8 +44,8 @@ export function ProductTile({ product, quantity, onAdd }: {
         </View>
         <View className="absolute right-3 top-3 rounded border px-1 py-0.5" style={{ maxWidth: '85%',
           backgroundColor: outOfStock ? tokens.color.errorTint : lowStock ? tokens.color.warningTint : tokens.color.successTint,
-          borderColor: outOfStock ? tokens.color.errorBase : lowStock ? tokens.color.warningBase : tokens.color.successBase }}>
-          <Text className=" type-helper" style={{ color: outOfStock ? tokens.color.errorBase : lowStock ? tokens.color.warningText : tokens.color.successBase }}>{stockLabel}</Text>
+          borderColor: outOfStock ? tokens.color.errorBase : lowStock ? warningStockStatusColor : tokens.color.successBase }}>
+          <Text className=" type-helper" style={{ color: outOfStock ? tokens.color.errorBase : lowStock ? warningStockStatusColor : tokens.color.successBase }}>{stockLabel}</Text>
         </View>
         <Text numberOfLines={nameLines} className=" type-micro-caption" style={{ minHeight: Math.ceil(fontScale * 17) * nameLines, color: ink }}>{product.name}</Text>
         <Text className=" type-button-cta" style={{ color: noStock ? tokens.color.textDisabled : tokens.color.accentBase }}>{formatPesos(product.unitPriceCentavos)}</Text>

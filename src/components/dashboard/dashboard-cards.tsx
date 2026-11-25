@@ -11,6 +11,9 @@ import {
   dashboardIcons,
 } from "@/components/dashboard/dashboard-ui";
 import { PosIcon } from "@/components/pos/pos-icon";
+import { AppIcon } from "@/components/ui/app-icon";
+import { PosChip } from "@/components/pos/pos-chip";
+import { MenuIcon } from "@/components/menu/menu-icon";
 import {
   EmptyState,
   LoadingSlot,
@@ -18,10 +21,10 @@ import {
   SkeletonBar,
 } from "@/components/ui/content-state";
 import tokens from "@/constants/design-tokens.json";
+import { warningStockStatusColor } from "@/constants/stock-status-colors";
 import { getLocaleFormats } from "@/i18n";
 import type {
   DashboardActivity,
-  GrowthMetrics,
   SalesPeriod,
 } from "@/types/dashboard";
 import {
@@ -60,11 +63,16 @@ export function CashCard({
   onCashAction: () => void;
 }) {
   const { t } = useTranslation();
-  const { fontScale } = useWindowDimensions();
+  if (loading) return <Skeleton label="Loading Pera sa Kaha">
+    <View className="gap-3 rounded-card border border-outline bg-white px-5 py-4">
+      <View className="flex-row items-center gap-3"><SkeletonBar width={40} height={40} /><SkeletonBar width="58%" height={26} /></View>
+      <View className="flex-row items-center justify-between gap-2"><SkeletonBar width="48%" height={38} /><View className="h-12 w-12 rounded-pill" style={{ backgroundColor: tokens.color.surfaceSubtle }} /></View>
+    </View>
+  </Skeleton>;
   return (
     <View className="rounded-card bg-action px-5 py-4">
       <View className="flex-row items-center gap-3">
-        <PosIcon name="money" size={40} color={tokens.color.surfaceCard} />
+        <AppIcon name="money" size={40} color={tokens.color.surfaceCard} />
         <Text
           accessibilityRole="header"
           className="flex-shrink type-title-accent text-white"
@@ -72,7 +80,7 @@ export function CashCard({
           {t("dashboard.cashTitle")}
         </Text>
       </View>
-      <View className="mb-4 mt-3 flex-row items-center justify-between gap-2">
+      <View className="mt-3 flex-row items-center justify-between gap-2">
         <View className="min-w-0 flex-1">
           <Metric loading={loading}>
             <Text className=" type-large-metric leading-[45px] text-white">
@@ -89,34 +97,11 @@ export function CashCard({
           onPress={onCashAction}
           className="min-h-12 min-w-12 items-center justify-center rounded-pill "
         >
-          <DashboardCircle size={tokens.size.iconCircle} backgroundColor={tokens.color.surfaceCard}>
+          <DashboardCircle size={tokens.size.iconCircle} backgroundColor={tokens.color.surfaceCard}
+            style={{ boxShadow: tokens.shadow.raised, elevation: 3, shadowColor: tokens.color.black, shadowOpacity: 0.18, shadowRadius: 3, shadowOffset: { width: 0, height: 2 } }}>
             <PosIcon name="plus" size={24} color={tokens.color.darkNavy} active />
           </DashboardCircle>
         </Pressable>
-      </View>
-      <View
-        style={{ flexDirection: fontScale > 1.3 ? "column" : "row", gap: 12 }}
-      >
-        <View className="min-w-0 flex-1 rounded-surface bg-success-tint p-3">
-          <Text className=" type-micro-caption leading-[18px] text-success-base">
-            {t("dashboard.income")}
-          </Text>
-          <Metric loading={loading}>
-            <Text className="mt-2 type-list-financial leading-6 text-success-base">
-              +{formatPesos(summary.moneyIn)}
-            </Text>
-          </Metric>
-        </View>
-        <View className="min-w-0 flex-1 rounded-surface bg-error-tint p-3">
-          <Text className=" type-micro-caption leading-[18px] text-text-secondary">
-            {t("dashboard.expenses")}
-          </Text>
-          <Metric loading={loading}>
-            <Text className="mt-2 type-list-financial leading-6 text-text-secondary">
-              −{formatPesos(summary.moneyOut)}
-            </Text>
-          </Metric>
-        </View>
       </View>
     </View>
   );
@@ -132,23 +117,31 @@ export function SalesCard({
   summary,
   period,
   onPeriod,
-  growthMetrics,
   loading = false,
 }: {
   summary: Summary;
   period: SalesPeriod;
   onPeriod: (period: SalesPeriod) => void;
-  growthMetrics: GrowthMetrics | null;
   loading?: boolean;
 }) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const metricStyle = {
     minHeight: 94 * Math.max(1, fontScale),
-    paddingVertical: tokens.spacing.two,
+    paddingVertical: tokens.spacing.three,
     flex: 1,
     minWidth: 0,
   };
+  if (loading) return <DashboardCard title={t("dashboard.salesTitle")} loading titleSkeletonWidth="46%">
+    <View className="mb-3 flex-row gap-2">
+      {[0, 1, 2].map(index => <View key={index} className="min-w-0 flex-1"><SkeletonBar height={38} /></View>)}
+    </View>
+    <View style={{ flexDirection: fontScale > 1.3 ? "column" : "row", gap: 12 }}>
+      {[0, 1].map(index => <View key={index} className="min-w-0 flex-1 gap-3 rounded-surface p-3" style={{ minHeight: 94 * Math.max(1, fontScale), backgroundColor: tokens.color.surfaceSubtle }}>
+        <SkeletonBar width="55%" height={14} /><SkeletonBar width={index === 0 ? "78%" : "48%"} height={20} />
+      </View>)}
+    </View>
+  </DashboardCard>;
   return (
     <DashboardCard title={t("dashboard.salesTitle")}>
       <View
@@ -157,58 +150,19 @@ export function SalesCard({
       >
         {periods.map(([value, label]) => (
           <View key={value} style={{ flex: 1, minWidth: 0 }}>
-            <Metric loading={loading}>
-              <Pressable
-                disabled={loading}
-                accessibilityRole="button"
-                accessibilityLabel={t(label)}
-                accessibilityState={{
-                  selected: period === value,
-                  disabled: loading,
-                }}
-                onPress={() => onPeriod(value)}
-                style={{
-                  minHeight: tokens.size.touchTarget,
-                  minWidth: tokens.size.touchTarget,
-                  alignItems: "stretch",
-                  justifyContent: "center",
-                }}
-              >
-                <View
-                  testID={`dashboard-period-${value}`}
-                  pointerEvents="none"
-                  style={{
-                    paddingHorizontal: tokens.spacing.two,
-                    paddingVertical: tokens.spacing.one + 2,
-                    borderWidth: 1,
-                    borderColor: "transparent",
-                    borderRadius: tokens.radius.pill,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor:
-                      period === value ? tokens.color.royalBlue : tokens.color.surfaceSubtle,
-                  }}
-                >
-                  <Text
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.7}
-                    className=" type-label-nav leading-[18px] text-center"
-                    style={{ color: period === value ? tokens.color.surfaceCard : tokens.color.textPrimary }}
-                  >
-                    {t(label)}
-                  </Text>
-                </View>
-              </Pressable>
-            </Metric>
+            <PosChip stretch singleLine selected={period === value} onPress={() => onPeriod(value)} label={t(label)} />
           </View>
         ))}
       </View>
+      {/* TODO(backend): Provide the selected period's actual expense total; moneyOut is a temporary cash outflow value. */}
       <View
         style={{ flexDirection: fontScale > 1.3 ? "column" : "row", gap: 12 }}
       >
-        <View className="rounded-surface bg-canvas px-3" style={metricStyle}>
-          <Text className=" type-micro-caption leading-[18px] text-text-secondary">
+        <View
+          className="min-w-0 flex-1 rounded-surface border bg-success-tint p-3"
+          style={[metricStyle, { borderColor: tokens.color.successBase }]}
+        >
+          <Text className=" type-micro-caption leading-[18px] text-success-base">
             {t("dashboard.totalSales")}
           </Text>
           <Metric loading={loading}>
@@ -217,35 +171,28 @@ export function SalesCard({
                 minHeight: tokens.typography.listFinancial.lineHeight * fontScale,
                 fontSize: tokens.typography.listFinancial.fontSize,
               }}
-              className="mt-1 type-list-financial text-text-primary"
+              className="mt-1 type-list-financial text-success-base"
             >
               {formatPesos(summary.totalSalesCentavos)}
             </Text>
           </Metric>
         </View>
         <View
-          className="overflow-hidden rounded-surface bg-canvas px-3"
-          style={metricStyle}
+          className="min-w-0 flex-1 rounded-surface border bg-error-tint p-3"
+          style={[metricStyle, { borderColor: tokens.color.errorBase }]}
         >
-          <Text className=" type-micro-caption leading-[18px] text-text-secondary">
-            {t("dashboard.growth")}
+          <Text className=" type-micro-caption leading-[18px]" style={{ color: tokens.color.errorBase }}>
+            {t("dashboard.totalExpense")}
           </Text>
           <Metric loading={loading}>
             <Text
               className="mt-1 type-list-financial leading-6"
               style={{
                 minHeight: tokens.typography.listFinancial.lineHeight * fontScale,
-                color:
-                  growthMetrics?.percentageChange == null
-                    ? tokens.color.textSecondary
-                    : growthMetrics.percentageChange < 0
-                      ? tokens.color.errorHover
-                      : tokens.color.successBase,
+                color: tokens.color.errorBase,
               }}
             >
-              {growthMetrics?.percentageChange == null
-                ? "—"
-                : `${growthMetrics.percentageChange >= 0 ? "+" : ""}${growthMetrics.percentageChange}%`}
+              {formatPesos(summary.moneyOut)}
             </Text>
           </Metric>
         </View>
@@ -269,6 +216,15 @@ export function StockCard({
 }) {
   const { t } = useTranslation();
   const { fontScale, width } = useWindowDimensions();
+  const lowStockColor = warningStockStatusColor;
+  if (loading) return <DashboardCard title={t("dashboard.stockTitle")} loading titleSkeletonWidth="42%">
+    <View style={{ flexDirection: fontScale > 1.3 ? "column" : "row", gap: 12 }}>
+      {[0, 1].map(index => <View key={index} className="min-w-0 flex-1 gap-4 rounded-surface p-3" style={{ minHeight: 94 * Math.max(1, fontScale), backgroundColor: tokens.color.surfaceSubtle }}>
+        <View className="flex-row items-center gap-2"><View className="h-6 w-6 rounded-pill" style={{ backgroundColor: tokens.color.iceContainer }} /><SkeletonBar width="58%" height={18} /></View>
+        <SkeletonBar width="64%" height={20} />
+      </View>)}
+    </View>
+  </DashboardCard>;
   return (
     <DashboardCard title={t("dashboard.stockTitle")}>
       {!loading && empty ? (
@@ -296,10 +252,10 @@ export function StockCard({
               status: "low" as const,
               label: t("dashboard.lowStock"),
               count: summary.lowStock,
-              color: tokens.color.warningBase,
-              countColor: tokens.color.warningBase,
+              color: lowStockColor,
+              countColor: lowStockColor,
               background: tokens.color.warningTint,
-              border: tokens.color.warningBase,
+              border: lowStockColor,
             },
           ].map((item) => (
             <Pressable
@@ -316,40 +272,22 @@ export function StockCard({
               className="min-w-0 flex-1 rounded-surface border p-3"
               style={{
                 backgroundColor: item.background,
-                borderColor: item.border,
+                borderColor: item.status === "low" ? lowStockColor : item.border,
               }}
             >
               <View
                 className="flex-row items-center gap-2"
                 style={{ minHeight: (width < 360 ? 36 : 22) * fontScale }}
               >
-                <DashboardCircle
-                  size={tokens.size.statusIndicator}
-                  backgroundColor="transparent"
-                  borderColor={item.border}
-                >
-                  <Text
-                    accessible={false}
-                    allowFontScaling={false}
-                    style={{
-                      color: item.border,
-                      fontSize: tokens.typography.microFinancialRate.fontSize,
-                      lineHeight: 18,
-                      fontFamily: tokens.typography.weights.bold,
-                      includeFontPadding: false,
-                    }}
-                  >
-                    !
-                  </Text>
-                </DashboardCircle>
-                <Text className="flex-shrink type-body-primary" style={{ color: item.color }}>
+                <PosIcon name="alert" size={tokens.size.statusIndicator} color={item.status === "low" ? lowStockColor : item.border} />
+                <Text className="flex-shrink type-body-primary" style={{ color: item.status === "low" ? lowStockColor : item.color }}>
                   {item.label}
                 </Text>
               </View>
               <Metric loading={loading}>
                 <Text
                   className="mt-3 type-list-financial leading-6"
-                  style={{ color: item.countColor }}
+                  style={{ color: item.status === "low" ? lowStockColor : item.countColor }}
                 >
                   {t(
                     item.count === 1
@@ -363,14 +301,6 @@ export function StockCard({
           ))}
         </View>
       )}
-      {!loading &&
-        !empty &&
-        summary.outOfStock === 0 &&
-        summary.lowStock === 0 && (
-          <Text className="mt-3 type-micro-caption text-success-base">
-            All products are in stock. No restocking alerts.
-          </Text>
-        )}
     </DashboardCard>
   );
 }
@@ -386,6 +316,9 @@ export function BestSellersCard({
 }) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
+  if (loading) return <DashboardCard title={t("dashboard.bestSellers")} loading titleSkeletonWidth="54%">
+    <DashboardRowsSkeleton kind="products" count={3} />
+  </DashboardCard>;
   return (
     <DashboardCard title={t("dashboard.bestSellers")}>
       {loading && summary.bestSellers.length === 0 ? (
@@ -466,6 +399,9 @@ export function RecentActivityCard({
 }) {
   const { t } = useTranslation();
   const recent = recentDashboardActivity(activity);
+  if (loading) return <DashboardCard title={t("dashboard.activityTitle")} loading titleSkeletonWidth="48%">
+    <DashboardRowsSkeleton kind="activity" count={3} />
+  </DashboardCard>;
   return (
     <DashboardCard
       title={t("dashboard.activityTitle")}
@@ -501,17 +437,15 @@ export function RecentActivityCard({
                     <SkeletonBar width={40} height={40} />
                   </Skeleton>
                 ) : activity.kind === "sale" ? (
-                  <DashboardCircle size={tokens.size.iconCircle} backgroundColor={tokens.color.darkNavy} />
+                  <AppIcon name="cart" size={28} color={tokens.color.royalBlue} />
                 ) : activity.kind === "customerDebt" ||
-                  activity.kind === "storeDebt" ||
                   activity.kind === "expense" ? (
-                  <PosIcon name={activity.kind} size={24} color={tokens.color.royalBlue} />
+                  <MenuIcon name={activity.kind} size={24} />
                 ) : (
                   activity.kind === "payment" ? (
-                    <PosIcon name="money" size={24} color={tokens.color.royalBlue} />
-                  ) : (
-                    <DashboardIcon source={dashboardIcons.bottle} size={tokens.size.iconCircle} />
-                  )
+                    <AppIcon name="creditCard" size={24} color={tokens.color.royalBlue} />
+                  ) : activity.kind === "storeDebt" ? <PosIcon name="storeDebt" size={24} color={tokens.color.royalBlue} />
+                    : <DashboardIcon source={dashboardIcons.bottle} size={tokens.size.iconCircle} />
                 )}
               </View>
               <View className="min-w-0 flex-1">
@@ -598,7 +532,6 @@ function DashboardRowsSkeleton({
   count: number;
 }) {
   return (
-    <Skeleton>
       <View className="gap-3">
         {Array.from({ length: count }, (_, i) => (
           <View
@@ -624,6 +557,5 @@ function DashboardRowsSkeleton({
           </View>
         ))}
       </View>
-    </Skeleton>
   );
 }

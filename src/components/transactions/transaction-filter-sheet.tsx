@@ -245,7 +245,7 @@ export function TransactionFilterSheet({ applied, appliedCategory, appliedSort, 
                   Keyboard.dismiss(); setSortOpen(false); setTypeOpen(false);
                   setDraft(emptyTransactionFilters()); setDraftCategory('all'); setDraftSort('newest');
                 }}>Reset</Button></View>
-                <View style={{ flex: 2 }}><Button compact disabled={!!error} onPress={() => {
+                <View style={{ flex: 2 }}><Button compact disabled={!!error} textStyle={{ fontFamily: tokens.typography.weights.semibold, fontSize: tokens.typography.labelNav.fontSize, lineHeight: tokens.typography.labelNav.lineHeight }} onPress={() => {
                   if (!error) { onApply({ ...draft }, draftCategory, draftSort); dismiss(); }
                 }}>Apply Filter</Button></View>
               </View>

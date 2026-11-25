@@ -12,6 +12,7 @@ import { PosIcon } from '@/components/pos/pos-icon';
 import { Button, IconButton } from '@/components/ui/button';
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
 import tokens from '@/constants/design-tokens.json';
+import { warningStockStatusColor } from '@/constants/stock-status-colors';
 import { inventoryRules } from '@/constants/inventory-rules';
 import { useInventory } from '@/state/inventory';
 import { useTranslation } from '@/i18n/use-translation';
@@ -106,9 +107,9 @@ export function CartReviewScreen({ owner, basePath = '/owner-pos' }: { owner: Ow
                 </View>
               </View>
               <View className="mt-2 flex-row items-start gap-2" style={{ minHeight: 16 }}>
-                {!!status && stockStatus?.kind !== 'unavailable' && stockStatus?.kind !== 'insufficient' && <View accessible={false} style={{ marginTop: 3, width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: tokens.color.warningBase }} />}
+                {!!status && stockStatus?.kind !== 'unavailable' && stockStatus?.kind !== 'insufficient' && <View accessible={false} style={{ marginTop: 3, width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: warningStockStatusColor }} />}
                 {!!status && <Text accessibilityRole={blocking ? 'alert' : undefined} className="flex-1 type-label-nav leading-[16px]"
-                  style={{ color: blocking ? tokens.color.errorBase : stockStatus?.kind === 'low' || stockStatus?.kind === 'depleted' ? tokens.color.warningText : tokens.color.textSecondary }}>{status}</Text>}
+                  style={{ color: blocking ? tokens.color.errorBase : stockStatus?.kind === 'low' || stockStatus?.kind === 'depleted' ? warningStockStatusColor : tokens.color.textSecondary }}>{status}</Text>}
               </View>
             </Animated.View>;
           })}
