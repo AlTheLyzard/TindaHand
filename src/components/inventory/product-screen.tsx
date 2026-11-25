@@ -344,14 +344,10 @@ export function ProductScreen() {
       <InvText bold size={11} color={tokens.color.textSecondary}>STOCK LOTS</InvText>{productBatches(product).map((batch, index) => <ExistingBatchCard key={batch.id} batch={batch} index={index} />)}
       {batchCards}
       <InvDateField compact label="Stock date" value={draft.details.stockDate} onChange={v => update('stockDate', v)} error={errors.stockDate} />
-<<<<<<< HEAD
       <InvField money label="Total Restock Cost (optional)" value={restockCost} onChangeText={setRestockCost}
         placeholder="0.00" keyboardType="decimal-pad" returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
       <InvText size={10}>Halaga ng biniling paninda — ibabawas sa Pera sa Kaha.</InvText>
       <InvText size={10}>Existing batch dates stay unchanged.</InvText>
-=======
-      <InvText size={10}>Existing restock expiry dates stay unchanged.</InvText>
->>>>>>> origin/feature/backend-handoff-2026-11-15
     </> : mode === 'add' && step === 'review' && reviewProduct ? <ProductReview product={reviewProduct} />
     : mode === 'add' && step === 'stock' ? <>{productHeader({ name: draft.details.name, category: draft.details.category as InventoryProduct['category'], unitPriceCentavos: parsePaymentAmount(draft.details.sellingPrice) ?? 0, photoUri: draft.details.photoUri })}{batchCards}</>
     : <>
