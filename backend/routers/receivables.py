@@ -41,6 +41,22 @@ def _deduct_stock(product: Product, quantity: int) -> None:
 router = APIRouter(prefix="/receivables", tags=["receivables"])
 
 
+def _resolve_owner_id(current_user: dict) -> int:
+    """
+    Both owners and Kaheras can access receivables.
+    - Owner JWT:  db_id = owner's DB row id,  owner_db_id = None
+    - Kahera JWT: db_id = kahera's DB row id, owner_db_id = owner's DB row id
+    Always returns the owner's DB row id so queries stay scoped to the store.
+    """
+    if current_user["role"] == "cashier":
+        owner_id = current_user.get("owner_db_id")
+        if owner_id is None:
+            from fastapi import HTTPException
+            raise HTTPException(403, "Kahera token is missing owner reference")
+        return int(owner_id)
+    return current_user["db_id"]
+
+
 def _debt_to_out(d: CustomerDebt, owner_db_id: int) -> CustomerDebtOut:
     paid_centavos = sum(p.amount_centavos for p in d.payments)
     # Reconstruct ProductSelection dict from stored lines (empty dict for cash debts)
@@ -76,9 +92,9 @@ def _debt_to_out(d: CustomerDebt, owner_db_id: int) -> CustomerDebtOut:
 @router.get("", response_model=List[CustomerDebtOut])
 def list_debts(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user),
+    current_user = Depends(require_role("owner", "cashier")),
 ):
-    owner_id = current_user["db_id"]
+    owner_id = _resolve_owner_id(current_user)
     debts = (
         db.query(CustomerDebt)
         .filter(CustomerDebt.owner_id == owner_id)
@@ -92,9 +108,9 @@ def list_debts(
 def create_debt(
     body: CustomerDebtCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(require_role("owner")),
+    current_user = Depends(require_role("owner", "cashier")),
 ):
-    owner_id = current_user["db_id"]
+    owner_id = _resolve_owner_id(current_user)
     occurred_at = datetime.fromisoformat(body.occurredAt.replace("Z", "+00:00"))
 
     # Find or create a Customer record so the name appears in the customer picker
@@ -171,9 +187,9 @@ def create_debt(
 @router.get("/payments", response_model=List[ReceivablePaymentOut])
 def list_payments(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user),
+    current_user = Depends(require_role("owner", "cashier")),
 ):
-    owner_id = current_user["db_id"]
+    owner_id = _resolve_owner_id(current_user)
     payments = (
         db.query(DebtPayment)
         .filter(DebtPayment.owner_id == owner_id)
@@ -197,9 +213,9 @@ def list_payments(
 def record_payment(
     body: ReceivablePaymentCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(require_role("owner")),
+    current_user = Depends(require_role("owner", "cashier")),
 ):
-    owner_id = current_user["db_id"]
+    owner_id = _resolve_owner_id(current_user)
 
     debt = db.query(CustomerDebt).filter(
         CustomerDebt.id == body.debtId,
