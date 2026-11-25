@@ -1,4 +1,4 @@
-import { File, Paths } from 'expo-file-system/next';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import type { FinancialReport } from '@/types/financial';
@@ -9,10 +9,9 @@ export async function exportFinancialPdf(report: FinancialReport): Promise<'read
   if (!await Sharing.isAvailableAsync()) throw new Error('File sharing is unavailable on this device.');
   const filename = financialFilename(report);
   const generated = await Print.printToFileAsync({ html: financialReportHtml(report), width: 595, height: 842 });
-  // Move the printed file into the shared cache directory so expo-sharing can read it.
-  const src = new File(generated.uri);
-  const dest = new File(Paths.cache, filename);
-  src.move(dest);
-  await Sharing.shareAsync(dest.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: filename });
+  // Copy into the cache directory — expo-sharing requires a file in a world-readable location.
+  const destination = FileSystem.cacheDirectory + filename;
+  await FileSystem.copyAsync({ from: generated.uri, to: destination });
+  await Sharing.shareAsync(destination, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: filename });
   return 'ready';
 }
