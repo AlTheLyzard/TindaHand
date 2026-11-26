@@ -14,7 +14,7 @@ from auth import (
     build_offline_cache_payload,
 )
 from schemas import (
-    RegisterRequest, LoginRequest,
+    RegisterRequest, LoginRequest, ReauthRequest,
     KaheraLoginRequest, KaheraLoginByPinRequest, KaheraCreateRequest, KaheraStatusRequest,
     KaheraSelfUpdateRequest,
     TokenResponse, MeResponse, OkResponse, CashierOut,
@@ -80,6 +80,31 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(403, "Account is deactivated")
 
     # ← Token creation is at this indentation level, NOT inside the is_active check above
+    token = create_access_token({"sub": str(owner.id), "role": "owner"})
+    return TokenResponse(access_token=token, full_name=owner.full_name)
+
+
+# ── 2b. MAY-ARI RE-AUTH (session refresh via email + password) ───────────────
+
+@router.post("/reauth", response_model=TokenResponse)
+def reauth(body: ReauthRequest, db: Session = Depends(get_db)):
+    """
+    Called when the 8-hour JWT has expired and the owner is still in the app.
+    Accepts email + password (not PIN) so it works even if the owner has
+    forgotten their PIN or the PIN screen is locked out.
+    Returns a fresh JWT without requiring a full logout/login flow.
+    """
+    owner = db.query(MayAri).filter(
+        MayAri.email == body.email.strip().lower(),
+        MayAri.is_active == True,
+    ).first()
+
+    if not owner or not owner.password_hash:
+        raise HTTPException(401, "Invalid email or password.")
+
+    if not verify_password(body.password, owner.password_hash):
+        raise HTTPException(401, "Invalid email or password.")
+
     token = create_access_token({"sub": str(owner.id), "role": "owner"})
     return TokenResponse(access_token=token, full_name=owner.full_name)
 

@@ -49,6 +49,10 @@ class KaheraLoginByPinRequest(BaseModel):
     owner_id: str         # TH-MA-XXXX
     pin: str
 
+class ReauthRequest(BaseModel):
+    email: EmailStr
+    password: str
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

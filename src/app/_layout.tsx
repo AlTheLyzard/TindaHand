@@ -23,6 +23,7 @@ import { QuickAddProvider } from "@/state/quick-add";
 import { PosProvider } from "@/state/pos";
 import { NavigationMotionProvider } from "@/state/navigation-motion";
 import { ToastOverlayProvider } from "@/components/ui/toast-overlay";
+import { ReauthModal } from "@/components/auth/reauth-modal";
 import tokens from "@/constants/design-tokens.json";
 
 void SplashScreen.preventAutoHideAsync();
@@ -58,6 +59,9 @@ function RootNavigation() {
                     contentStyle: { backgroundColor: tokens.color.appBackground },
                   }}
                 />
+                {/* Re-auth modal: global overlay that shows when the JWT expires.
+                    Mounted here (outside Stack) so it appears above every screen. */}
+                <ReauthModal />
               </ToastOverlayProvider>
             </NavigationMotionProvider>
             </PosProvider>

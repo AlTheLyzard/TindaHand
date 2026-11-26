@@ -7,6 +7,7 @@
  */
 
 import { getToken } from '@/services/token-storage';
+import { emit401 } from '@/services/reauth-event';
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://tindahand-production.up.railway.app';
 
@@ -61,6 +62,9 @@ export async function apiFetch<T = unknown>(
       const body = await res.json();
       if (body?.detail) detail = body.detail;
     } catch { /* ignore parse errors */ }
+    // Fire the global 401 signal so the re-auth modal can intercept.
+    // We still throw so the original caller knows the request failed.
+    if (res.status === 401) emit401();
     throw new ApiError(res.status, detail);
   }
 
