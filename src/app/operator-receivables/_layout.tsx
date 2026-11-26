@@ -21,7 +21,7 @@ export default function OperatorReceivablesLayout() {
     <ReceivableDraftProvider key={deviceSession.id}>
       <View style={{ flex: 1 }}>
         <Stack screenOptions={{ ...stackMotion, headerShown: false, contentStyle: { backgroundColor: tokens.color.surfaceCard } }} />
-        {receivablesLocked && <FeatureLockedOverlay featureName="Customer Debts" />}
+        {receivablesLocked && <FeatureLockedOverlay featureName="Customer Debts" deviceSession={deviceSession} />}
       </View>
     </ReceivableDraftProvider>
   );

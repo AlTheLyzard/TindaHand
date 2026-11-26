@@ -19,7 +19,7 @@ export default function OperatorMoreRoute() {
         {/* Always render the screen so it's visible beneath the overlay */}
         <TransactionHistoryScreen operator />
         {/* Paywall overlay when May-Ari has disabled transaction history access */}
-        {transactionsLocked && <FeatureLockedOverlay featureName="Transaction History" />}
+        {transactionsLocked && <FeatureLockedOverlay featureName="Transaction History" deviceSession={deviceSession} />}
       </View>
     );
   }

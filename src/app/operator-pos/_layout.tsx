@@ -19,7 +19,7 @@ export default function OperatorPosLayout() {
   return (
     <View style={{ flex: 1 }}>
       <Stack screenOptions={{ ...stackMotion, headerShown: false, contentStyle: { backgroundColor: tokens.color.appBackground } }} />
-      {posLocked && <FeatureLockedOverlay featureName="Point of Sale (POS)" />}
+      {posLocked && <FeatureLockedOverlay featureName="Point of Sale (POS)" deviceSession={deviceSession} />}
     </View>
   );
 }

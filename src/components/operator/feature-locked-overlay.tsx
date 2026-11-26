@@ -1,18 +1,40 @@
 /**
  * FeatureLockedOverlay
  *
- * A paywall-style dark overlay shown on Kahera's screen when May-Ari has
- * disabled access to a feature (POS, Inventory, etc.). The screen content
- * renders underneath (non-interactive) so it's clear what feature is locked.
+ * A modal dialog shown when May-Ari has disabled a feature for Kahera.
+ * Shows the reason plus shortcuts to whatever features are still available.
  */
-import { Modal, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import type { DeviceSession } from '@/types/auth';
+import { hasCapability } from '@/utils/operator-access';
 import tokens from '@/constants/design-tokens.json';
 
 type FeatureLockedOverlayProps = {
   featureName: string;
+  deviceSession: DeviceSession;
 };
 
-export function FeatureLockedOverlay({ featureName }: FeatureLockedOverlayProps) {
+type Shortcut = { label: string; icon: string; onPress: () => void };
+
+function buildShortcuts(session: DeviceSession): Shortcut[] {
+  const shortcuts: Shortcut[] = [];
+  if (hasCapability(session, 'inventory-edit') || hasCapability(session, 'restock'))
+    shortcuts.push({ label: 'Inventory', icon: '📦', onPress: () => router.navigate('/operator-inventory' as never) });
+  if (hasCapability(session, 'pos'))
+    shortcuts.push({ label: 'POS', icon: '🛒', onPress: () => router.navigate('/operator-pos' as never) });
+  if (hasCapability(session, 'receivables'))
+    shortcuts.push({ label: 'Customer Debts', icon: '📋', onPress: () => router.navigate('/operator-receivables' as never) });
+  if (hasCapability(session, 'transactions'))
+    shortcuts.push({ label: 'Transactions', icon: '🧾', onPress: () => router.navigate({ pathname: '/operator-more', params: { section: 'transactions' } } as never) });
+  shortcuts.push({ label: 'Profile', icon: '👤', onPress: () => router.navigate('/operator-profile' as never) });
+  shortcuts.push({ label: 'Settings', icon: '⚙️', onPress: () => router.navigate({ pathname: '/operator-more', params: { section: 'settings' } } as never) });
+  return shortcuts;
+}
+
+export function FeatureLockedOverlay({ featureName, deviceSession }: FeatureLockedOverlayProps) {
+  const shortcuts = buildShortcuts(deviceSession);
+
   return (
     <Modal transparent animationType="fade" statusBarTranslucent navigationBarTranslucent>
       <View style={styles.backdrop}>
@@ -33,9 +55,22 @@ export function FeatureLockedOverlay({ featureName }: FeatureLockedOverlayProps)
 
           <View style={styles.divider} />
 
-          <Text style={styles.hint}>
-            Contact your May-Ari to request access.
-          </Text>
+          <Text style={styles.goToLabel}>Go to</Text>
+
+          <View style={styles.shortcuts}>
+            {shortcuts.map(s => (
+              <Pressable
+                key={s.label}
+                style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+                onPress={s.onPress}
+                accessibilityRole="button"
+                accessibilityLabel={`Go to ${s.label}`}
+              >
+                <Text style={styles.chipIcon}>{s.icon}</Text>
+                <Text style={styles.chipLabel}>{s.label}</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </View>
     </Modal>
@@ -55,10 +90,10 @@ const styles = StyleSheet.create({
     maxWidth: 340,
     backgroundColor: tokens.color.surfaceCard,
     borderRadius: tokens.radius.card,
-    paddingVertical: 32,
+    paddingVertical: 28,
     paddingHorizontal: 24,
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
@@ -66,17 +101,15 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   iconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: tokens.color.errorTint,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  icon: {
-    fontSize: 34,
-  },
+  icon: { fontSize: 30 },
   heading: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 18,
@@ -99,13 +132,42 @@ const styles = StyleSheet.create({
     height: 1,
     width: '80%',
     backgroundColor: tokens.color.borderOutline,
-    marginVertical: 4,
+    marginVertical: 2,
   },
-  hint: {
-    fontFamily: 'Poppins_400Regular',
+  goToLabel: {
+    fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
     color: tokens.color.textPlaceholder,
-    textAlign: 'center',
-    lineHeight: 18,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    alignSelf: 'flex-start',
+    marginBottom: 2,
+  },
+  shortcuts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'flex-start',
+    width: '100%',
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: tokens.color.appBackground,
+    borderRadius: 20,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: tokens.color.borderOutline,
+  },
+  chipPressed: {
+    backgroundColor: tokens.color.borderOutline,
+  },
+  chipIcon: { fontSize: 14 },
+  chipLabel: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 13,
+    color: tokens.color.darkNavy,
   },
 });

@@ -22,7 +22,7 @@ export default function OperatorInventoryLayout() {
     <View style={{ flex: 1 }}>
       <Stack screenOptions={{ ...stackMotion, headerShown: false, contentStyle: { backgroundColor: tokens.color.appBackground } }} />
       <InventoryFeedback />
-      {inventoryLocked && <FeatureLockedOverlay featureName="Inventory" />}
+      {inventoryLocked && <FeatureLockedOverlay featureName="Inventory" deviceSession={deviceSession} />}
     </View>
   );
 }
