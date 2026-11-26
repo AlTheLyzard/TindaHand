@@ -24,7 +24,6 @@ export default function OperatorMoreRoute() {
     );
   }
   if (section === 'settings') {
-    if (!hasCapability(deviceSession, 'settings')) return <Redirect href="/choose-account" />;
     return <OperatorSettingsLandingScreen />;
   }
   return <Redirect href="/operator-pos" />;

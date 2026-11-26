@@ -15,7 +15,7 @@ export default function OperatorInventoryLayout() {
   // POS layout — keyboard open/close triggers AppState events that can race
   // with an in-progress refreshSession call during the restock confirm flow).
   if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className=" type-micro-financial-rate text-brand">Restoring your session…</Text></View>;
-  if (!deviceSession || deviceSession.role !== 'operator' || !hasCapability(deviceSession, 'pos')) return <Redirect href="/choose-account" />;
+  if (!deviceSession || deviceSession.role !== 'operator') return <Redirect href="/choose-account" />;
   // Inventory disabled by May-Ari → show overlay over ALL inventory subroutes
   const inventoryLocked = !hasCapability(deviceSession, 'inventory-edit') && !hasCapability(deviceSession, 'restock');
   return (
