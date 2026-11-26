@@ -48,7 +48,9 @@ def list_transactions(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
-    owner_id = current_user["db_id"]
+    # For cashier sessions, owner_db_id holds the May-Ari's numeric PK.
+    # For owner sessions, db_id is the owner's PK directly.
+    owner_id = current_user.get("owner_db_id") or current_user["db_id"]
 
     # Resolve kahera_id string (e.g. "TH-KH-0001") to the numeric FK used in the Sale table.
     kahera_numeric: Optional[int] = None
