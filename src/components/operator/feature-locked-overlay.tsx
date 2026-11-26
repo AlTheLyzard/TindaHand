@@ -5,8 +5,10 @@
  * disabled access to a feature (POS, Inventory, etc.). The screen content
  * renders underneath (non-interactive) so it's clear what feature is locked.
  */
-import { StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import tokens from '@/constants/design-tokens.json';
+
+const SCREEN = Dimensions.get('screen');
 
 type FeatureLockedOverlayProps = {
   featureName: string;
@@ -43,7 +45,11 @@ export function FeatureLockedOverlay({ featureName }: FeatureLockedOverlayProps)
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: SCREEN.width,
+    height: SCREEN.height,
     backgroundColor: 'rgba(10, 14, 30, 0.82)',
     alignItems: 'center',
     justifyContent: 'center',
