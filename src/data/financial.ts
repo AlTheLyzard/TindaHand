@@ -1,17 +1,17 @@
 import type { FinancialAccount, FinancialDataset, JournalEntry } from '@/types/financial';
 
 const accounts: readonly FinancialAccount[] = [
-  { id: 'cash', name: 'Cash', category: 'current-asset', normal: 'debit' },
-  { id: 'receivables', name: 'Accounts Receivable', category: 'current-asset', normal: 'debit' },
-  { id: 'inventory', name: 'Merchandise Inventory', category: 'current-asset', normal: 'debit' },
-  { id: 'equipment', name: 'Store Equipment & Fixtures', category: 'non-current-asset', normal: 'debit' },
-  { id: 'payables', name: 'Accounts Payable', category: 'liability', normal: 'credit' },
-  { id: 'capital', name: 'Capital', category: 'equity', normal: 'credit' },
-  { id: 'sales', name: 'Sales', category: 'revenue', normal: 'credit' },
-  { id: 'cogs', name: 'Cost of Goods Sold', category: 'cost', normal: 'debit' },
-  { id: 'utilities', name: 'Store Electricity & Water', category: 'expense', normal: 'debit' },
-  { id: 'transport', name: 'Supplier Transportation', category: 'expense', normal: 'debit' },
-  { id: 'expense', name: 'General Operating Expense', category: 'expense', normal: 'debit' },
+  { id: 'cash', name: 'Pera sa Kaha (Cash)', category: 'current-asset', normal: 'debit' },
+  { id: 'receivables', name: 'Sisingilin (Accounts Receivable)', category: 'current-asset', normal: 'debit' },
+  { id: 'inventory', name: 'Paninda (Merchandise Inventory)', category: 'current-asset', normal: 'debit' },
+  { id: 'equipment', name: 'Gamit ng Tindahan (Store Equipment & Fixtures)', category: 'non-current-asset', normal: 'debit' },
+  { id: 'payables', name: 'Utang Ko (Accounts Payable)', category: 'liability', normal: 'credit' },
+  { id: 'capital', name: 'Puhunan (Capital)', category: 'equity', normal: 'credit' },
+  { id: 'sales', name: 'Kita sa Benta (Sales)', category: 'revenue', normal: 'credit' },
+  { id: 'cogs', name: 'Halaga ng Binentang Paninda (Cost of Goods Sold)', category: 'cost', normal: 'debit' },
+  { id: 'utilities', name: 'Bayad sa Kuryente at Tubig (Utilities)', category: 'expense', normal: 'debit' },
+  { id: 'transport', name: 'Bayad sa Pagdadala (Supplier Transportation)', category: 'expense', normal: 'debit' },
+  { id: 'expense', name: 'Gastusin (General Operating Expense)', category: 'expense', normal: 'debit' },
 ];
 function entry(id: string, date: string, description: string, debitId: string, creditId: string, amount: number): JournalEntry {
   return { id, date, description, lines: [{ accountId: debitId, debit: amount, credit: 0 }, { accountId: creditId, debit: 0, credit: amount }] };

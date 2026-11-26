@@ -40,8 +40,11 @@ export function reportTimestamp(value: string) {
 }
 export function balanceSide(value: number) { return value < 0 ? 'credit' : 'debit'; }
 export function accountExplanation(normal: 'debit' | 'credit', name: string) {
-  const account = name.toLocaleLowerCase('en-US');
-  return `${name} is ${normal}-normal. ${normal === 'debit' ? `Debit (+) increases ${account}; credit (−) reduces ${account}.` : `Credit (+) increases ${account}; debit (−) reduces ${account}.`}`;
+  // Use Filipino-friendly plain-language explanations for the PDF ledger.
+  if (normal === 'debit') {
+    return `${name}: Ang debit ay nagdadagdag sa account na ito; ang credit ay nagbabawas. Karaniwan itong tumataas kapag may ginastos o natanggap na asset.`;
+  }
+  return `${name}: Ang credit ay nagdadagdag sa account na ito; ang debit ay nagbabawas. Karaniwan itong tumataas kapag may kita, utang, o puhunan.`;
 }
 export function calculateFinancialReport(data: FinancialDataset, kind: ReportKind, selection: ReportSelection, generatedAt: string): FinancialReport {
   const error = selectionError(selection);

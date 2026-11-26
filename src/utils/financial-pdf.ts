@@ -25,6 +25,21 @@ export function financialReportHtml(report: FinancialReport) {
     }
     body += table(['Overall totals', 'Debit', 'Credit'], `<tr class="total">${cell('All posted entries in period')}${cell(money(report.journal.debit), true)}${cell(money(report.journal.credit), true)}</tr>`);
     body += `<p class="${report.journal.balanced ? 'good' : 'bad'}">${report.journal.balanced ? 'Double-entry balance check: Total Debits = Total Credits' : 'Balance discrepancy: Total Debits do not equal Total Credits'}</p>`;
+    body += `<div class="glossary"><h2>Talaan ng mga Termino (Glossary)</h2><p class="glossary-intro">Para sa mga hindi sanay sa accounting, narito ang simpleng paliwanag ng mga termino sa ulat na ito:</p><table><thead><tr><th>Termino sa Sistema</th><th>Ibig Sabihin</th></tr></thead><tbody>` +
+      `<tr><td><strong>Pera sa Kaha (Cash)</strong></td><td>Ang aktwal na pera na nasa kamay o kaha ng tindahan. Ito ang cash na maaari mong gamitin kaagad.</td></tr>` +
+      `<tr><td><strong>Sisingilin (Accounts Receivable)</strong></td><td>Ang utang ng mga customer sa tindahan — ang pera na dapat mong singilin pa. Nabibili na nila ang paninda pero hindi pa nabayaran.</td></tr>` +
+      `<tr><td><strong>Paninda (Merchandise Inventory)</strong></td><td>Ang mga produkto o kalakal na mayroon ka sa tindahan para ibenta. Ito ang iyong stock.</td></tr>` +
+      `<tr><td><strong>Gamit ng Tindahan (Store Equipment)</strong></td><td>Mga kagamitan na ginagamit sa tindahan tulad ng ref, timbangan, istante, at iba pa. Hindi ito para ibenta.</td></tr>` +
+      `<tr><td><strong>Utang Ko (Accounts Payable)</strong></td><td>Ang utang ng tindahan sa supplier o nagbibigay ng paninda — ang pera na dapat mong bayaran pa.</td></tr>` +
+      `<tr><td><strong>Puhunan (Capital)</strong></td><td>Ang sariling pera o ari-arian na inilagay mo sa negosyo bilang simula ng tindahan.</td></tr>` +
+      `<tr><td><strong>Kita sa Benta (Sales)</strong></td><td>Ang kabuuang kita mula sa mga binentang produkto. Ito ang bayad ng mga customer sa iyong tindahan.</td></tr>` +
+      `<tr><td><strong>Halaga ng Binentang Paninda (COGS)</strong></td><td>Ang halaga ng mga produktong nabenta — kung magkano ang ginastos mo para makuha ang mga produktong iyon. Ibinabawas ito sa kita para malaman ang totoong kita.</td></tr>` +
+      `<tr><td><strong>Bayad sa Kuryente at Tubig (Utilities)</strong></td><td>Mga gastos sa kuryente at tubig ng tindahan.</td></tr>` +
+      `<tr><td><strong>Bayad sa Pagdadala (Transportation)</strong></td><td>Gastos sa pagsasakay o pagdadala ng mga paninda mula sa supplier.</td></tr>` +
+      `<tr><td><strong>Gastusin (General Expense)</strong></td><td>Iba pang mga gastos sa pagpapatakbo ng tindahan na hindi kasali sa nabanggit na kategorya.</td></tr>` +
+      `<tr><td><strong>Debit</strong></td><td>Ang "dagdag" sa asset o gastusin, o "bawas" sa utang at kita. Sa simpleng salita: may pumasok o may ginastos.</td></tr>` +
+      `<tr><td><strong>Credit</strong></td><td>Ang "bawas" sa asset, o "dagdag" sa utang at kita. Sa simpleng salita: may lumabas o may kinikita.</td></tr>` +
+      `</tbody></table></div>`;
   } else if (report.kind === 'general-ledger') {
     for (const account of report.ledger) {
       const amount = (value: number) => money(value);
@@ -57,5 +72,10 @@ export function financialReportHtml(report: FinancialReport) {
     tr { break-inside: avoid; page-break-inside: avoid; } .total { font-weight: bold; background: ${tokens.color.softBlue}; } .indent { padding-left: 24px; } .description { font-size: 10px; color: ${tokens.color.textSecondary}; }
     .summary { padding: 14px; border: 1px solid ${tokens.color.borderOutline}; margin: 12px 0; break-inside: avoid; } .summary h2 { margin: 8px 0 0; color: inherit; } .good { color: ${tokens.color.successBase}; background: ${tokens.color.successTint}; } .blue { color: ${tokens.color.darkNavy}; background: ${tokens.color.softBlue}; } .bad { color: ${tokens.color.errorBase}; background: ${tokens.color.errorTint}; }
     footer { margin-top: 20px; color: ${tokens.color.textSecondary}; font-size: 10px; }
+    .glossary { margin-top: 32px; border-top: 2px solid ${tokens.color.darkNavy}; padding-top: 16px; }
+    .glossary h2 { font-size: 14px; color: ${tokens.color.darkNavy}; margin-bottom: 4px; }
+    .glossary-intro { font-size: 10px; color: ${tokens.color.textSecondary}; margin-bottom: 10px; }
+    .glossary table { margin: 8px 0 0; } .glossary td { font-size: 10px; vertical-align: top; padding: 7px 7px; }
+    .glossary td:first-child { width: 38%; white-space: normal; }
   </style></head><body><h1>${escapeReportHtml(report.storeName)}</h1><h2>${reportTitles[report.kind]}</h2><p>${escapeReportHtml(periodLabel(report.selection, report.kind === 'balance-sheet'))}</p><p>Generated: ${escapeReportHtml(reportTimestamp(report.generatedAt))}</p>${body}<footer>TindaHand · ${escapeReportHtml(report.timezone)}</footer></body></html>`;
 }
