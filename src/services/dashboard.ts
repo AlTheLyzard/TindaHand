@@ -27,6 +27,9 @@ export interface DashboardSummary {
   totalReceivablesCentavos: number;
   totalPayablesCentavos: number;
   totalMoneyOutCentavos: number;
+  totalExpensesTodayCentavos: number;
+  totalExpensesThisWeekCentavos: number;
+  totalExpensesThisMonthCentavos: number;
   topProducts: TopProduct[];
 }
 

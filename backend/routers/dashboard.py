@@ -254,6 +254,83 @@ def dashboard_summary(
     # Money Out shown on dashboard = expenses + store debt payments + restock costs
     total_money_out_centavos = total_expenses_centavos + total_store_debt_payments_centavos + total_restock_costs_centavos
 
+    # ── Period-scoped expense totals (mirror the sales period logic) ─────────
+    # Uses the same _to_manila_naive() helper so old naive rows and new UTC-aware
+    # rows are both compared correctly against Asia/Manila day/week/month bounds.
+
+    def _expense_in_period(e) -> int:
+        """Return e.amount_centavos when occurred_at falls in today (Manila), else 0."""
+        if not hasattr(e, 'occurred_at') or e.occurred_at is None:
+            return 0
+        d = _to_manila_naive(e.occurred_at).date()
+        return e.amount_centavos if d == today else 0
+
+    def _restock_in_period(r, start: date) -> int:
+        if not hasattr(r, 'occurred_at') or r.occurred_at is None or r.cost_centavos is None:
+            return 0
+        d = _to_manila_naive(r.occurred_at).date()
+        return r.cost_centavos if d >= start else 0
+
+    def _sdp_in_period(p, start: date) -> int:
+        if not hasattr(p, 'occurred_at') or p.occurred_at is None:
+            return 0
+        d = _to_manila_naive(p.occurred_at).date()
+        return p.amount_centavos if d >= start else 0
+
+    # Expenses today
+    expenses_today = sum(
+        e.amount_centavos for e in all_expenses
+        if e.occurred_at is not None and _to_manila_naive(e.occurred_at).date() == today
+    )
+    sdp_today = sum(
+        p.amount_centavos for p in all_store_debt_payments
+        if hasattr(p, 'occurred_at') and p.occurred_at is not None
+        and _to_manila_naive(p.occurred_at).date() == today
+    )
+    restock_today = sum(
+        r.cost_centavos for r in all_restocks
+        if r.cost_centavos is not None and hasattr(r, 'occurred_at')
+        and r.occurred_at is not None
+        and _to_manila_naive(r.occurred_at).date() == today
+    )
+    total_expenses_today_centavos = expenses_today + sdp_today + restock_today
+
+    # Expenses this week (Mon – now, Manila)
+    expenses_week = sum(
+        e.amount_centavos for e in all_expenses
+        if e.occurred_at is not None and _to_manila_naive(e.occurred_at).date() >= week_start_manila
+    )
+    sdp_week = sum(
+        p.amount_centavos for p in all_store_debt_payments
+        if hasattr(p, 'occurred_at') and p.occurred_at is not None
+        and _to_manila_naive(p.occurred_at).date() >= week_start_manila
+    )
+    restock_week = sum(
+        r.cost_centavos for r in all_restocks
+        if r.cost_centavos is not None and hasattr(r, 'occurred_at')
+        and r.occurred_at is not None
+        and _to_manila_naive(r.occurred_at).date() >= week_start_manila
+    )
+    total_expenses_this_week_centavos = expenses_week + sdp_week + restock_week
+
+    # Expenses this month (1st – now, Manila)
+    expenses_month = sum(
+        e.amount_centavos for e in all_expenses
+        if e.occurred_at is not None and _to_manila_naive(e.occurred_at).date() >= month_start
+    )
+    sdp_month = sum(
+        p.amount_centavos for p in all_store_debt_payments
+        if hasattr(p, 'occurred_at') and p.occurred_at is not None
+        and _to_manila_naive(p.occurred_at).date() >= month_start
+    )
+    restock_month = sum(
+        r.cost_centavos for r in all_restocks
+        if r.cost_centavos is not None and hasattr(r, 'occurred_at')
+        and r.occurred_at is not None
+        and _to_manila_naive(r.occurred_at).date() >= month_start
+    )
+    total_expenses_this_month_centavos = expenses_month + sdp_month + restock_month
+
     # Top products by revenue (Max-Heap Top-K)
     all_lines = []
     for sale in all_sales:
@@ -269,6 +346,9 @@ def dashboard_summary(
         totalReceivablesCentavos=receivables_centavos,
         totalPayablesCentavos=payables_centavos,
         totalMoneyOutCentavos=total_money_out_centavos,
+        totalExpensesTodayCentavos=total_expenses_today_centavos,
+        totalExpensesThisWeekCentavos=total_expenses_this_week_centavos,
+        totalExpensesThisMonthCentavos=total_expenses_this_month_centavos,
         topProducts=top_products,
     )
 

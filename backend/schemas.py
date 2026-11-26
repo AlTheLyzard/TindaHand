@@ -456,11 +456,14 @@ class DashboardSummary(BaseModel):
     totalSalesTodayCentavos: int
     totalSalesThisWeekCentavos: int
     totalSalesThisMonthCentavos: int
-    totalSalesCentavos: int          # all-time, used for Money In
-    totalReceivablesCentavos: int    # sum of unpaid + partial customer debts
-    totalPayablesCentavos: int       # sum of unpaid store debts
-    totalMoneyOutCentavos: int       # store expenses only (labas)
-    topProducts: List[TopProduct]    # top-5 by revenue, via Max-Heap
+    totalSalesCentavos: int              # all-time, used for Money In
+    totalReceivablesCentavos: int        # sum of unpaid + partial customer debts
+    totalPayablesCentavos: int           # sum of unpaid store debts
+    totalMoneyOutCentavos: int           # all-time expenses + store debt payments + restock costs
+    totalExpensesTodayCentavos: int      # period-scoped: today (Asia/Manila)
+    totalExpensesThisWeekCentavos: int   # period-scoped: Mon–now (Asia/Manila)
+    totalExpensesThisMonthCentavos: int  # period-scoped: 1st–now (Asia/Manila)
+    topProducts: List[TopProduct]        # top-5 by revenue, via Max-Heap
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

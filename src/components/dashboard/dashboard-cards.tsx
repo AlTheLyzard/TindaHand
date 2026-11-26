@@ -154,7 +154,6 @@ export function SalesCard({
           </View>
         ))}
       </View>
-      {/* TODO(backend): Provide the selected period's actual expense total; moneyOut is a temporary cash outflow value. */}
       <View
         style={{ flexDirection: fontScale > 1.3 ? "column" : "row", gap: 12 }}
       >

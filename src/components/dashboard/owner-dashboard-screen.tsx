@@ -128,8 +128,12 @@ export function OwnerDashboardScreen({ owner, onLogout }: { owner: OwnerIdentity
     // Money In = all-time sales received + manual cash additions (from cash movements)
     // Both are Cash debits in the general journal; both should show in Pasok.
     moneyIn: apiSummary.totalSalesCentavos + (apiMoneyIn ?? 0),
-    // Money Out = expenses + store debt payments + restock costs (from backend)
-    moneyOut: apiSummary.totalMoneyOutCentavos,
+    // Money Out = expenses + store debt payments + restock costs, scoped to selected period
+    moneyOut: period === 'daily'
+      ? apiSummary.totalExpensesTodayCentavos
+      : period === 'weekly'
+        ? apiSummary.totalExpensesThisWeekCentavos
+        : apiSummary.totalExpensesThisMonthCentavos,
     // Sales totals per selected period — from backend
     totalSalesCentavos: period === 'daily'
       ? apiSummary.totalSalesTodayCentavos
