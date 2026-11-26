@@ -5,10 +5,8 @@
  * disabled access to a feature (POS, Inventory, etc.). The screen content
  * renders underneath (non-interactive) so it's clear what feature is locked.
  */
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 import tokens from '@/constants/design-tokens.json';
-
-const SCREEN = Dimensions.get('screen');
 
 type FeatureLockedOverlayProps = {
   featureName: string;
@@ -16,45 +14,41 @@ type FeatureLockedOverlayProps = {
 
 export function FeatureLockedOverlay({ featureName }: FeatureLockedOverlayProps) {
   return (
-    <View style={styles.overlay} pointerEvents="box-only" accessibilityViewIsModal>
-      <View style={styles.card}>
-        {/* Lock icon */}
-        <View style={styles.iconWrap}>
-          <Text style={styles.icon}>🔒</Text>
+    <Modal transparent animationType="fade" statusBarTranslucent navigationBarTranslucent>
+      <View style={styles.backdrop}>
+        <View style={styles.card}>
+          <View style={styles.iconWrap}>
+            <Text style={styles.icon}>🔒</Text>
+          </View>
+
+          <Text style={styles.heading} accessibilityRole="header">
+            Feature Disabled
+          </Text>
+
+          <Text style={styles.body}>
+            Your May-Ari has turned off access to{'\n'}
+            <Text style={styles.featureName}>{featureName}</Text>{' '}
+            for your account.
+          </Text>
+
+          <View style={styles.divider} />
+
+          <Text style={styles.hint}>
+            Contact your May-Ari to request access.
+          </Text>
         </View>
-
-        <Text style={styles.heading} accessibilityRole="header">
-          Feature Disabled
-        </Text>
-
-        <Text style={styles.body}>
-          Your May-Ari has turned off access to{'\n'}
-          <Text style={styles.featureName}>{featureName}</Text>{' '}
-          for your account.
-        </Text>
-
-        <View style={styles.divider} />
-
-        <Text style={styles.hint}>
-          Contact your May-Ari to request access.
-        </Text>
       </View>
-    </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: SCREEN.width,
-    height: SCREEN.height,
-    backgroundColor: 'rgba(10, 14, 30, 0.82)',
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 14, 30, 0.72)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
-    zIndex: 100,
   },
   card: {
     width: '100%',
