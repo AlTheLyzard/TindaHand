@@ -2,9 +2,10 @@ import { API_URL, timeoutSignal } from '@/services/api';
 
 /** Shape returned by GET /auth/me */
 interface MeApiResponse {
-  id: string;    // e.g. "TH-MA-0001"
-  name: string;  // first name / display name
-  role: string;  // "owner" | "cashier"
+  id: string;             // e.g. "TH-MA-0001"
+  name: string;           // first name / display name
+  role: string;           // "owner" | "cashier"
+  permissions?: string[]; // cashier only — the capabilities May-Ari has enabled
 }
 
 /** What fetchMe exposes.
@@ -12,6 +13,7 @@ interface MeApiResponse {
  *                 `TH-MA-${String(me.id).padStart(4,'0')}` produce the right value.
  *  - formatted_id: the full formatted ID from the server (e.g. "TH-MA-0001").
  *  - name / full_name: both set to the display name returned by the API.
+ *  - permissions: cashier only — live permissions list from the server.
  */
 export interface MeResult {
   id: string;           // numeric DB id as string
@@ -19,6 +21,7 @@ export interface MeResult {
   name: string;
   full_name: string;    // alias for name; kept for backward-compat with existing callers
   role: string;
+  permissions?: string[];
 }
 
 export async function fetchMe(token: string): Promise<MeResult | null> {
@@ -37,6 +40,7 @@ export async function fetchMe(token: string): Promise<MeResult | null> {
       name: data.name,
       full_name: data.name,
       role: data.role,
+      permissions: data.permissions,
     };
   } catch {
     return null;

@@ -60,8 +60,10 @@ class TokenResponse(BaseModel):
 
 class MeResponse(BaseModel):
     id: str               # TH-MA-XXXX or TH-KH-XXXX
+    formatted_id: Optional[str] = None   # alias kept for older clients
     name: str             # first name or display name
     role: Literal["owner", "cashier"]
+    permissions: Optional[List[str]] = None  # cashier only; None for owners
 
 class KaheraCreateRequest(BaseModel):
     full_name: str

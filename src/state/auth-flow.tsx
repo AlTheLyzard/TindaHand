@@ -192,7 +192,7 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
               ownerId: resolvedId,
               operatorId: kaheraId,
               displayName: resolvedName,
-              operator: { id: kaheraId, name: resolvedName, permissions: [...defaultOperatorPermissions] },
+              operator: { id: kaheraId, name: resolvedName, permissions: me?.permissions ?? [...defaultOperatorPermissions] },
               expiresAt: Date.now() + 8 * 60 * 60 * 1000,
               locked: wasLocked,
             };

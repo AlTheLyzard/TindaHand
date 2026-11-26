@@ -433,10 +433,12 @@ def get_me(
         kahera = db.query(Kahera).filter(Kahera.id == db_id).first()
         if not kahera or not kahera.is_active:
             raise HTTPException(404, "Account not found or deactivated")
+        perms = json.loads(kahera.permissions_json) if kahera.permissions_json else []
         return MeResponse(
             id=f"TH-KH-{kahera.id:04d}",
             name=kahera.full_name.split()[0],
             role="cashier",
+            permissions=perms,
         )
 
     raise HTTPException(401, "Unknown role")
