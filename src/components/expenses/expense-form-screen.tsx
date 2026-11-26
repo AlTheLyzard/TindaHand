@@ -14,7 +14,7 @@ import { todayInManila } from '@/utils/inventory';
 import { emptyQuickAddDraft, hasQuickAddChanges, quickAddErrors, quickAddTotal } from '@/utils/quick-add';
 import { router, useFocusEffect, usePreventRemove } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Keyboard, ScrollView, Text, View, useWindowDimensions, type ScrollViewInstance, type TextInputInstance, type ViewInstance } from 'react-native';
+import { Keyboard, ScrollView, Text, TouchableOpacity, View, useWindowDimensions, type ScrollViewInstance, type TextInputInstance, type ViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ExpenseCategoryField } from './expense-category-field';
 
@@ -48,7 +48,7 @@ export function ExpenseFormScreen() {
 
   // Classifier — only active in confirmed (real) sessions.
   // Watches the description field and suggests a category after a short debounce.
-  const { suggestion: categorySuggestion } = useExpenseClassifier(draft.details);
+  const { suggestion: categorySuggestion, loading: classifierLoading } = useExpenseClassifier(draft.details);
   // Hide the suggestion once the user has explicitly picked a category.
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
   const showSuggestion =
@@ -155,8 +155,56 @@ export function ExpenseFormScreen() {
     <Text className=" type-micro-financial-rate leading-[21px] text-text-secondary">Track your store&apos;s expenses.</Text>
     <View onLayout={event => { formTop.current = event.nativeEvent.layout.y; }} pointerEvents={saving || leaving || !!confirmation || !!savedRecord ? 'none' : 'auto'} style={{ gap: 16 }}>
       <View onLayout={event => { positions.current.category = event.nativeEvent.layout.y; }}>
-        <ExpenseCategoryField triggerRef={categoryInput} value={draft.category} onChange={category => update({ category })} error={error('category')} />
+        <ExpenseCategoryField triggerRef={categoryInput} value={draft.category} onChange={category => { update({ category }); setSuggestionDismissed(true); }} error={error('category')} />
       </View>
+
+      {/* AI classifier suggestion banner — appears after typing in Other Details */}
+      <MotionRegion>
+        {showSuggestion && categorySuggestion && (
+          <TouchableOpacity
+            onPress={applySuggestion}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`AI suggested category: ${categorySuggestion.category}. Tap to apply.`}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              borderRadius: tokens.radius.card,
+              backgroundColor: tokens.color.royalBlue + '14',
+              borderWidth: 1,
+              borderColor: tokens.color.royalBlue + '40',
+            }}
+          >
+            <Text style={{ fontSize: 15 }}>✨</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: tokens.typography.weights.semibold, fontSize: 12, color: tokens.color.royalBlue, lineHeight: 16 }}>
+                AI Suggested Category
+              </Text>
+              <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: 13, color: tokens.color.darkNavy, lineHeight: 18 }}>
+                {categorySuggestion.category.replace(' Expense', '')}
+                {' '}
+                <Text style={{ color: tokens.color.textSecondary, fontSize: 11 }}>
+                  ({Math.round(categorySuggestion.confidence * 100)}% confidence)
+                </Text>
+              </Text>
+            </View>
+            <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: tokens.color.royalBlue }}>
+              <Text style={{ fontFamily: tokens.typography.weights.semibold, fontSize: 11, color: '#fff', lineHeight: 15 }}>
+                Apply
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        {classifierLoading && !categorySuggestion && (
+          <Text style={{ fontFamily: tokens.typography.weights.regular, fontSize: 11, color: tokens.color.textSecondary, textAlign: 'center', paddingVertical: 4 }}>
+            Detecting category…
+          </Text>
+        )}
+      </MotionRegion>
+
       <View onLayout={event => { positions.current.amount = event.nativeEvent.layout.y; }}>
         <QuickAddField ref={amountInput} label="Amount" money large value={draft.amount} onChangeText={amount => update({ amount })} error={error('amount')} placeholder="0.00" inputMode="decimal" keyboardType="decimal-pad" returnKeyType="next" onSubmitEditing={() => detailsInput.current?.focus()} />
       </View>
