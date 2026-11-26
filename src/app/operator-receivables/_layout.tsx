@@ -4,13 +4,14 @@ import { Redirect, Stack } from 'expo-router';
 import { Text, View } from 'react-native';
 import { useAuthFlow } from '@/state/auth-flow';
 import { ReceivableDraftProvider } from '@/state/receivable-draft';
-import { hasCapability } from '@/utils/operator-access';
 
 /** Restrict every Receivables subroute to an active Kahera with that permission. */
 export default function OperatorReceivablesLayout() {
   const stackMotion = useStackMotion();
   const { deviceSession, restoring } = useAuthFlow();
   if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className="type-micro-financial-rate text-brand">Restoring your session…</Text></View>;
-  if (!deviceSession || deviceSession.role !== 'operator' || !hasCapability(deviceSession, 'receivables')) return <Redirect href="/choose-account" />;
+  if (!deviceSession || deviceSession.role !== 'operator') return <Redirect href="/choose-account" />;
+  // receivables capability missing → allow route to render so the index shows
+  // the feature-locked overlay instead of hard-redirecting away.
   return <ReceivableDraftProvider key={deviceSession.id}><Stack screenOptions={{ ...stackMotion, headerShown: false, contentStyle: { backgroundColor: tokens.color.surfaceCard } }} /></ReceivableDraftProvider>;
 }

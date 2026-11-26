@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 
 import { OperatorSettingsLandingScreen } from '@/components/settings/operator-settings-screens';
 import { TransactionHistoryScreen } from '@/components/transactions/transaction-history-screen';
+import { FeatureLockedOverlay } from '@/components/operator/feature-locked-overlay';
 import { useAuthFlow } from '@/state/auth-flow';
 import { hasCapability } from '@/utils/operator-access';
 
@@ -12,8 +13,15 @@ export default function OperatorMoreRoute() {
   if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className=" type-micro-financial-rate text-brand">Restoring your session…</Text></View>;
   if (!deviceSession || deviceSession.role !== 'operator') return <Redirect href="/choose-account" />;
   if (section === 'transactions') {
-    if (!hasCapability(deviceSession, 'transactions')) return <Redirect href="/choose-account" />;
-    return <TransactionHistoryScreen operator />;
+    const transactionsLocked = !hasCapability(deviceSession, 'transactions');
+    return (
+      <View style={{ flex: 1 }}>
+        {/* Always render the screen so it's visible beneath the overlay */}
+        <TransactionHistoryScreen operator />
+        {/* Paywall overlay when May-Ari has disabled transaction history access */}
+        {transactionsLocked && <FeatureLockedOverlay featureName="Transaction History" />}
+      </View>
+    );
   }
   if (section === 'settings') {
     if (!hasCapability(deviceSession, 'settings')) return <Redirect href="/choose-account" />;
