@@ -9,7 +9,7 @@ import { ownerPasswordKey, ownerPinKey } from "@/services/auth-storage-keys";
 import { loginKahera } from "@/services/mock-auth";
 import { createMockProfileService } from "@/services/profile";
 import { createRememberedIdentities } from "@/services/remembered-identities";
-import { settingsService, resetCashierPin as resetCashierPinApi, updateCashier as updateCashierApi, updateKaheraProfile, updateCashierPermissions, getCashierPermissions, getCashiers } from "@/services/settings";
+import { settingsService, setTempCashierPin as setTempCashierPinApi, updateCashier as updateCashierApi, updateKaheraProfile, updateCashierPermissions, getCashierPermissions, getCashiers } from "@/services/settings";
 import { saveToken } from "@/services/token-storage";
 import type {
   AuthenticationService,
@@ -480,10 +480,11 @@ export function createAuthenticationService(
       // - Expected Response: Updated Cashier identity and session-revocation result
       // - UI State to Wire: Confirm the reset and refresh/invalidate affected Operator sessions
       if (!MOCK_AUTH_ENABLED) {
-        // Real backend path: POST /settings/cashiers/{operatorId}/reset-pin
-        // The session JWT authorizes the owner; ownerPin verifies identity; pin is the new cashier PIN.
+        // Real backend path: POST /settings/cashiers/{operatorId}/set-temp-pin
+        // The session JWT authorizes the owner; ownerPin verifies identity; pin is the new temp PIN.
+        // The backend marks pin_is_temporary=true; Kahera must change it on next login.
         try {
-          await resetCashierPinApi(operatorId, input.ownerPin, input.pin);
+          await setTempCashierPinApi(operatorId, input.ownerPin, input.pin);
           // The PIN-reset endpoint returns no body; build a minimal stub so the
           // typed return satisfies SettingsResult<Cashier>. The call-site in
           // cashier-screens.tsx immediately maps { ok: true } → { ok: true, value: undefined }
