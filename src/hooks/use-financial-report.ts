@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { useAuthFlow } from '@/state/auth-flow';
 import { financialRepositoryFromEntries } from '@/services/financial';
 import { getJournalEntries } from '@/services/inventory';
+import { useProfileSnapshot } from '@/hooks/use-owner-profile';
 import type { FinancialReport, JournalEntry, ReportKind, ReportSelection } from '@/types/financial';
 import { presetSelection, reportFilterReducer, samePeriod, storeToday } from '@/utils/financial';
 import { buildLocalJournalEntries, type LocalLedgerInput } from '@/utils/journal-posting';
@@ -15,6 +16,10 @@ export function useFinancialReport(kind: ReportKind) {
   const quickAdd = useQuickAdd();
   const { addedCentavos } = useCashRegister();
   const sessionStartRef = useRef(new Date().toISOString());
+
+  // Get the owner's real store name from the profile snapshot.
+  const profiles = useProfileSnapshot();
+  const storeName = owner ? (profiles.get(owner.id)?.storeName || undefined) : undefined;
 
   // Build local in-session journal entries (POS sales, quick-add, etc.) that are not yet persisted.
   const localEntries: readonly JournalEntry[] = useMemo(() => {
@@ -68,7 +73,7 @@ export function useFinancialReport(kind: ReportKind) {
 
       // Merge backend entries with any local in-session entries not yet persisted.
       const allEntries: readonly JournalEntry[] = [...backendEntries, ...localEntries];
-      const repo = financialRepositoryFromEntries(allEntries);
+      const repo = financialRepositoryFromEntries(allEntries, storeName);
       const value = await repo.getReport(owner, kind, filters.applied);
       return value;
     }
@@ -82,7 +87,7 @@ export function useFinancialReport(kind: ReportKind) {
       });
 
     return () => { current = false; };
-  }, [owner, kind, filters.applied, revision, localEntries, entryCount]);
+  }, [owner, kind, filters.applied, revision, localEntries, entryCount, storeName]);
 
   return { filters, report, loading, error, refresh, pending: !samePeriod(filters.draft, filters.applied),
     setDraft: (selection: ReportSelection) => dispatch({ type: 'draft', selection }),

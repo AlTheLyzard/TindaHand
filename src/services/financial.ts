@@ -48,10 +48,16 @@ export function financialRepositoryWithLocal(local: readonly JournalEntry[]) {
  * Build a repository from an explicit set of journal entries, without using the seed dataset.
  * Use this when real backend entries are available — the seed's placeholder data is excluded
  * so only real transactions appear in the reports.
+ * Pass storeName to override the seed's placeholder store name with the owner's real store name.
  */
-export function financialRepositoryFromEntries(entries: readonly JournalEntry[], clock = () => new Date().toISOString()): FinancialRepository {
+export function financialRepositoryFromEntries(
+  entries: readonly JournalEntry[],
+  storeName?: string,
+  clock = () => new Date().toISOString(),
+): FinancialRepository {
   const data: FinancialDataset = {
-    ...financialSeed,     // inherit storeName, timezone, accounts (chart of accounts)
+    ...financialSeed,     // inherit timezone, accounts (chart of accounts)
+    storeName: storeName || financialSeed.storeName,
     entries,
     updatedAt: new Date().toISOString(),
   };
