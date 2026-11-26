@@ -102,6 +102,7 @@ export function KaheraChangePinScreen({ onSuccess }: { onSuccess: () => void }) 
                 value={newPin}
                 onChangeText={setNewPin}
                 pin
+                pinVisibilityToggle
                 keyboardType="number-pad"
                 maxLength={4}
                 placeholder="4-digit PIN"
@@ -112,6 +113,7 @@ export function KaheraChangePinScreen({ onSuccess }: { onSuccess: () => void }) 
                 value={confirmPin}
                 onChangeText={setConfirmPin}
                 pin
+                pinVisibilityToggle
                 keyboardType="number-pad"
                 maxLength={4}
                 placeholder="Repeat PIN"

@@ -4,7 +4,6 @@ import { Redirect, Stack } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { useAuthFlow } from '@/state/auth-flow';
-import { hasCapability } from '@/utils/operator-access';
 
 /** Guard every Operator POS subroute, including direct cart and payment links. */
 export default function OperatorPosLayout() {
@@ -13,7 +12,7 @@ export default function OperatorPosLayout() {
   if (restoring) return <View className="flex-1 items-center justify-center bg-canvas"><Text className=" type-micro-financial-rate text-brand">Restoring your session…</Text></View>;
   // Not an operator at all → go to login.
   if (!deviceSession || deviceSession.role !== 'operator') return <Redirect href="/choose-account" />;
-  // Operator exists but POS is disabled by May-Ari → stay logged in, go to More.
-  if (!hasCapability(deviceSession, 'pos')) return <Redirect href="/operator-more" />;
+  // POS is disabled by May-Ari → allow the route to render so the index can
+  // show the feature-locked overlay instead of hard-redirecting away.
   return <Stack screenOptions={{ ...stackMotion, headerShown: false, contentStyle: { backgroundColor: tokens.color.appBackground } }} />;
 }
