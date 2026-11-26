@@ -15,7 +15,7 @@ export function suppressAuthLock() { _lockSuppressed = true; }
 export function releaseAuthLock()  { _lockSuppressed = false; }
 import { authenticationService } from '@/services/authentication';
 import { fetchMe } from '@/services/session-api';
-import { getCashiers, getOwnerProfile, settingsService } from '@/services/settings';
+import { getOwnerProfile, settingsService } from '@/services/settings';
 import { clearOfflineKaheraPinHash, clearOfflineOwnerPinHash, clearSessionLocked, getKaheraId, getOwnerId, getOwnerName, getRole, getSessionLocked, getToken, saveSessionLocked } from '@/services/token-storage';
 import type { AccountRole, DeviceSession, MockOwnerSession, OwnerIdentity, RegisteredOwner, RegistrationCompletion, RegistrationFormValues, RememberedIdentities } from '@/types/auth';
 import { defaultOperatorPermissions } from '@/utils/operator-access';
@@ -216,20 +216,6 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
               avatarId: knownAvatar,
             });
             setDeviceSession(realSession);
-            // Pre-fetch the cashier's real avatarId so the header shows the correct
-            // photo immediately without waiting for the Profile screen to mount.
-            void getCashiers().then(cashiers => {
-              const cashier = cashiers.find(c => c.id === kaheraId);
-              if (cashier) {
-                settingsService.seedRealCashier({
-                  id: kaheraId,
-                  ownerId: resolvedId,
-                  name: cashier.name,
-                  status: cashier.status,
-                  avatarId: cashier.avatarId,
-                });
-              }
-            }).catch(() => { /* Best-effort; avatar will appear after Profile screen opens. */ });
             return realSession;
           }
           // Owner session.
