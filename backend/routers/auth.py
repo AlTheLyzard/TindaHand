@@ -434,11 +434,13 @@ def get_me(
         if not kahera or not kahera.is_active:
             raise HTTPException(404, "Account not found or deactivated")
         perms = json.loads(kahera.permissions_json) if kahera.permissions_json else []
+        owner = db.query(MayAri).filter(MayAri.id == kahera.owner_id).first()
         return MeResponse(
             id=f"TH-KH-{kahera.id:04d}",
             name=kahera.full_name.split()[0],
             role="cashier",
             permissions=perms,
+            store_name=owner.store_name if owner else None,
         )
 
     raise HTTPException(401, "Unknown role")

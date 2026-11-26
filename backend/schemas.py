@@ -64,6 +64,7 @@ class MeResponse(BaseModel):
     name: str             # first name or display name
     role: Literal["owner", "cashier"]
     permissions: Optional[List[str]] = None  # cashier only; None for owners
+    store_name: Optional[str] = None          # cashier only — the owner's store name
 
 class KaheraCreateRequest(BaseModel):
     full_name: str

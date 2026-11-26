@@ -200,6 +200,18 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
               locked: wasLocked,
             };
             authenticationService.seedRealOwner(owner);
+            // Seed the owner's store name from /auth/me so Kahera's Profile screen
+            // can display it without calling the owner-only GET /settings/profile.
+            if (me?.storeName) {
+              authenticationService.profile.syncFromApi({
+                ownerId: resolvedId,
+                name: owner.name,
+                avatarId: null,
+                storeName: me.storeName,
+                email: '',
+                pendingEmail: null,
+              });
+            }
             // Keep authentication.ts's module-level session variable in sync so
             // updateOperatorProfile (and other methods that check `session` directly)
             // see a valid session even after a background restoreSession call wiped it.

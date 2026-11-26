@@ -6,6 +6,7 @@ interface MeApiResponse {
   name: string;           // first name / display name
   role: string;           // "owner" | "cashier"
   permissions?: string[]; // cashier only — the capabilities May-Ari has enabled
+  store_name?: string;    // cashier only — the owner's store name
 }
 
 /** What fetchMe exposes.
@@ -22,6 +23,7 @@ export interface MeResult {
   full_name: string;    // alias for name; kept for backward-compat with existing callers
   role: string;
   permissions?: string[];
+  storeName?: string;
 }
 
 export async function fetchMe(token: string): Promise<MeResult | null> {
@@ -41,6 +43,7 @@ export async function fetchMe(token: string): Promise<MeResult | null> {
       full_name: data.name,
       role: data.role,
       permissions: data.permissions,
+      storeName: data.store_name,
     };
   } catch {
     return null;
