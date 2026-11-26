@@ -28,7 +28,7 @@ function buildShortcuts(session: DeviceSession): Shortcut[] {
   if (hasCapability(session, 'transactions'))
     shortcuts.push({ label: 'Transactions', icon: '🧾', onPress: () => router.navigate({ pathname: '/operator-more', params: { section: 'transactions' } } as never) });
   shortcuts.push({ label: 'Profile', icon: '👤', onPress: () => router.navigate('/operator-profile' as never) });
-  shortcuts.push({ label: 'Settings', icon: '⚙️', onPress: () => router.navigate({ pathname: '/operator-more', params: { section: 'settings' } } as never) });
+  shortcuts.push({ label: 'Settings', icon: '⚙️', onPress: () => router.navigate('/operator-settings' as never) });
   return shortcuts;
 }
 
