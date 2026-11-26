@@ -59,9 +59,9 @@ export function OperatorMenuDrawer({ visible, onClose, onPresentationChange, onN
   const operator = session?.operatorId ? settings.cashiers(session.ownerId).find(item => item.id === session.operatorId) : undefined;
   const name = operator?.name ?? session?.operator.name ?? session?.displayName ?? 'Operator';
   const canProfile = hasCapability(session, 'profile');
-  const tools = operatorMenuTools.filter(tool => tool.id === 'transaction-history'
-    ? hasCapability(session, 'transactions')
-    : tool.id === 'receivables' ? hasCapability(session, 'receivables') : hasCapability(session, 'settings'));
+  // Always show all menu tools — locked features show the overlay when navigated to,
+  // so Kahera can still see what exists and understand what's been disabled.
+  const tools = operatorMenuTools;
 
   useEffect(() => {
     desired.current = visible;
